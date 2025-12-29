@@ -47,7 +47,7 @@ const Header = ({ darkMode, toggleDarkMode }: HeaderProps) => {
                 Paroisse Notre Dame
               </h1>
               <p className="text-xs text-muted-foreground -mt-0.5">
-                de la Réconciliation
+                de la Compassion
               </p>
             </motion.div>
           </Link>

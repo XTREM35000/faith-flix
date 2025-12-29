@@ -33,7 +33,7 @@ const Footer = () => {
               <AnimatedLogo size="md" />
               <div>
                 <h3 className="font-display text-lg font-semibold leading-tight">Paroisse Notre Dame</h3>
-                <p className="text-xs text-muted-foreground">de la Réconciliation</p>
+                <p className="text-xs text-muted-foreground">de la Compassion</p>
               </div>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
@@ -119,7 +119,7 @@ const Footer = () => {
               <li className="flex items-start gap-3">
                 <MapPin className="h-4 w-4 text-gold mt-0.5 shrink-0" />
                 <span className="text-muted-foreground">
-                  Boulevard de la Réconciliation<br />
+                  Boulevard de la Compassion<br />
                   Abidjan, Côte d'Ivoire
                 </span>
               </li>
@@ -142,7 +142,7 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="liturgical-divider mt-10 mb-6" />
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <p>© 2024 Paroisse Notre Dame de la Réconciliation. Tous droits réservés.</p>
+          <p>© 2024 Paroisse Notre Dame de la Compassion. Tous droits réservés.</p>
           <div className="flex gap-6">
             <Link to="/mentions-legales" className="hover:text-primary transition-colors">
               Mentions légales

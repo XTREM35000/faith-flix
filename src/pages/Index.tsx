@@ -51,7 +51,7 @@ const Index = () => {
   }, [upcomingEvents]);
 
   const heroSection = pageContent.hero || {
-    title: "Bienvenue à Notre Dame de la Réconciliation",
+    title: "Bienvenue à Notre Dame de la Compassion",
     subtitle: "Une communauté vivante au cœur d'Abidjan, au service de la foi, de l'espérance et de la charité. Rejoignez-nous pour célébrer ensemble la Parole de Dieu.",
     button_text: "Voir les horaires",
     button_link: "/evenements",
@@ -68,7 +68,7 @@ const Index = () => {
       <main>
         {/* Hero Banner */}
         <HeroBanner
-          title={heroSection.title || "Bienvenue à Notre Dame de la Réconciliation"}
+          title={heroSection.title || "Bienvenue à Notre Dame de la Compassion"}
           subtitle={heroSection.subtitle || "Une communauté vivante..."}
           eventTitle="Messe de Noël"
           eventDate="25 décembre à 22h"

@@ -45,7 +45,7 @@ const AboutPage = () => {
           {/* Introduction */}
           <motion.section variants={itemVariants} className="max-w-3xl">
             <h2 className="text-3xl font-display font-bold text-foreground mb-4">
-              Paroisse Notre-Dame de la Réconciliation
+              Paroisse Notre-Dame de la Compassion
             </h2>
             <p className="text-muted-foreground text-lg leading-relaxed mb-4">
               Notre paroisse est un lieu de foi, de communion et de service au
