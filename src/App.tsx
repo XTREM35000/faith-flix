@@ -16,6 +16,9 @@ import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminHomepageEditor from "./pages/AdminHomepageEditor";
+import ChatPage from './pages/ChatPage';
+import AnnouncementsPage from './pages/AnnouncementsPage';
+import NotificationProvider from '@/components/ui/notification-system';
 
 const queryClient = new QueryClient();
 
@@ -24,7 +27,8 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <AuthProvider>
+      <NotificationProvider>
+        <AuthProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
@@ -60,10 +64,13 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route path="/chat" element={<ChatPage />} />
+            <Route path="/announcements" element={<AnnouncementsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-      </AuthProvider>
+        </AuthProvider>
+      </NotificationProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
