@@ -25,7 +25,7 @@ const AboutPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Header darkMode={false} toggleDarkMode={() => {}} />
+      {/* Header provided by Layout */}
       
       <HeroBanner
         title="À propos de nous"

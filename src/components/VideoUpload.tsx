@@ -27,11 +27,8 @@ const VideoUpload: React.FC = () => {
 
     const record = await createVideoRecord({
       title: file.name,
-      url: uploaded.publicUrl,
-      storage_path: uploaded.key,
-      poster_url: posterUrl,
-      created_at: new Date().toISOString(),
-      published: false,
+      video_url: uploaded.publicUrl,
+      thumbnail_url: posterUrl,
     });
 
     return record;

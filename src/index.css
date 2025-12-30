@@ -217,6 +217,34 @@
   .gradient-subtle { background: var(--gradient-subtle); }
 }
 
+/* Mobile sidebar stacking helpers */
+.sidebar-backdrop {
+  z-index: 99998 !important;
+}
+
+.sidebar-panel {
+  z-index: 99999 !important;
+}
+
+/* Body locked when sidebar is open */
+body.sidebar-open {
+  overflow: hidden !important;
+  position: fixed !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Ensure header stays below the sidebar but above most content */
+header {
+  z-index: 100 !important;
+}
+
+/* Mobile sidebar portal container to ensure it sits on top */
+.mobile-sidebar-portal {
+  position: relative;
+  z-index: 99999;
+}
+
 @keyframes glow {
   from {
     filter: drop-shadow(0 0 5px hsl(var(--gold) / 0.5));

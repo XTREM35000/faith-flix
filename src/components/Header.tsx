@@ -1,103 +1,103 @@
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Menu, X, User, Moon, Sun, LogOut } from "lucide-react";
+import { Search, User, LogOut, HelpCircle, Menu, X, Home, Info } from "lucide-react";
 import AnimatedLogo from "./AnimatedLogo";
+import AuthModal from "./AuthModal";
+import MobileSidebar from "./MobileSidebar";
+import { MENU_GROUPS } from "./Sidebar";
+import ThemeToggle from "./ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { useUser } from "@/hooks/useUser";
 
 interface HeaderProps {
-  darkMode: boolean;
-  toggleDarkMode: () => void;
+  darkMode?: boolean;
+  toggleDarkMode?: () => void;
   onOpenAuthModal?: (mode: 'login' | 'register') => void;
 }
 
-const navItems = [
-  { name: "Accueil", path: "/" },
-  { name: "Vidéos", path: "/videos" },
-  { name: "Galerie", path: "/galerie" },
-  { name: "Événements", path: "/evenements" },
-  { name: "À propos", path: "/a-propos" },
-];
-
-const Header = ({ darkMode, toggleDarkMode, onOpenAuthModal }: HeaderProps) => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }: HeaderProps) => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { profile } = useUser();
 
+  // nav items for mobile sidebar
+  const navigationItems = [
+    { label: 'Accueil', href: '/', icon: <Home className="h-5 w-5" /> },
+    { label: 'Vidéos', href: '/videos', icon: <User className="h-5 w-5" /> },
+    { label: 'Galerie', href: '/galerie', icon: <User className="h-5 w-5" /> },
+    { label: 'Événements', href: '/evenements', icon: <User className="h-5 w-5" /> },
+    { label: 'À propos', href: '/a-propos', icon: <Info className="h-5 w-5" /> },
+  ];
+
   return (
-    <header className="sticky top-0 z-50 glass-effect border-b border-border/50">
+    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border/50">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16 lg:h-20">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-3">
-            <AnimatedLogo size="md" />
-            <motion.div
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 }}
-              className="hidden sm:block"
-            >
-              <h1 className="font-display text-lg lg:text-xl font-semibold text-foreground leading-tight">
-                Paroisse Notre Dame
-              </h1>
-              <p className="text-xs text-muted-foreground -mt-0.5">
-                de la Compassion
-              </p>
-            </motion.div>
-          </Link>
-
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-1">
-            {navItems.map((item, i) => (
+        <div className="flex items-center justify-between h-16">
+          {/* Logo + Title + Navigation Menu */}
+          <div className="flex items-center gap-6">
+            <Link to="/" className="flex items-center gap-2 flex-shrink-0">
+              <AnimatedLogo size="sm" />
               <motion.div
-                key={item.path}
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * i }}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+                className="hidden sm:block"
               >
-                <Link
-                  to={item.path}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 relative group ${
-                    location.pathname === item.path
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {item.name}
-                  {location.pathname === item.path && (
-                    <motion.div
-                      layoutId="activeNav"
-                      className="absolute inset-0 bg-primary/10 rounded-lg -z-10"
-                      transition={{ type: "spring", duration: 0.5 }}
-                    />
-                  )}
-                </Link>
+                <h1 className="text-sm lg:text-base font-semibold text-foreground leading-tight">
+                  Paroisse Notre Dame
+                </h1>
+                <p className="text-xs text-muted-foreground -mt-0.5">
+                  de la Compassion
+                </p>
               </motion.div>
-            ))}
-          </nav>
+            </Link>
 
-          {/* Right Actions */}
-          <div className="flex items-center gap-2">
+            {/* Navigation Menu - Desktop */}
+            <nav className="hidden md:flex items-center gap-2">
+              <Link 
+                to="/"
+                className="flex items-center gap-1 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                title="Accueil"
+              >
+                <Home className="h-4 w-4" />
+                <span>Accueil</span>
+              </Link>
+              <Link 
+                to="/a-propos"
+                className="flex items-center gap-1 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                title="À propos"
+              >
+                <Info className="h-4 w-4" />
+                <span>À propos</span>
+              </Link>
+            </nav>
+          </div>
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Right Actions - Universelles */}
+          <div className="flex items-center gap-1">
             {/* Search */}
             <AnimatePresence>
               {isSearchOpen && (
                 <motion.div
                   initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: 200, opacity: 1 }}
+                  animate={{ width: 160, opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
-                  className="overflow-hidden"
+                  className="overflow-hidden mr-2"
                 >
                   <Input
                     type="search"
                     placeholder="Rechercher..."
-                    className="h-9 bg-muted/50"
+                    className="h-9 bg-muted/50 text-sm"
                     autoFocus
                   />
                 </motion.div>
@@ -108,185 +108,127 @@ const Header = ({ darkMode, toggleDarkMode, onOpenAuthModal }: HeaderProps) => {
               size="icon"
               onClick={() => setIsSearchOpen(!isSearchOpen)}
               className="text-muted-foreground hover:text-foreground"
+              title="Rechercher"
             >
               <Search className="h-5 w-5" />
             </Button>
 
-            {/* Dark Mode Toggle */}
+            {/* Help */}
             <Button
               variant="ghost"
               size="icon"
-              onClick={toggleDarkMode}
+              onClick={() => navigate("/help")}
               className="text-muted-foreground hover:text-foreground"
+              title="Aide"
             >
-              <AnimatePresence mode="wait">
-                {darkMode ? (
-                  <motion.div
-                    key="sun"
-                    initial={{ rotate: -90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: 90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Sun className="h-5 w-5" />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="moon"
-                    initial={{ rotate: 90, opacity: 0 }}
-                    animate={{ rotate: 0, opacity: 1 }}
-                    exit={{ rotate: -90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Moon className="h-5 w-5" />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <HelpCircle className="h-5 w-5" />
             </Button>
 
-            {/* User Menu */}
+            {/* Dark Mode Toggle */}
+              <ThemeToggle />
+
+            {/* User Menu / Auth Button */}
             <div className="relative">
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                onClick={() => {
+                  if (user) {
+                    setIsUserMenuOpen(!isUserMenuOpen);
+                  } else {
+                    setIsAuthModalOpen(true);
+                  }
+                }}
                 className="text-muted-foreground hover:text-foreground overflow-hidden rounded-full"
+                title={user ? user.email : "Se connecter"}
               >
                 {user && profile?.avatar_url ? (
                   <img
                     src={profile.avatar_url}
                     alt={profile.full_name || user.email}
-                    className="w-6 h-6 rounded-full object-cover"
+                    className="w-5 h-5 rounded-full object-cover"
                   />
                 ) : (
                   <User className="h-5 w-5" />
                 )}
               </Button>
 
+              {/* Dropdown menu seulement si connecté */}
               <AnimatePresence>
-                {isUserMenuOpen && (
+                {isUserMenuOpen && user && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-lg shadow-lg p-2 z-50"
                   >
-                    {user ? (
-                      <>
-                        <div className="px-4 py-3 border-b border-border/50">
-                          <p className="text-sm font-medium text-foreground">
-                            {user.email}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Connecté
-                          </p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          className="w-full justify-start text-muted-foreground hover:text-foreground mt-1"
-                          onClick={() => {
-                            navigate("/profil");
-                            setIsUserMenuOpen(false);
-                          }}
-                        >
-                          <User className="h-4 w-4 mr-2" />
-                          Mon profil
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          className="w-full justify-start text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                          onClick={async () => {
-                            await signOut();
-                            setIsUserMenuOpen(false);
-                            navigate("/");
-                          }}
-                        >
-                          <LogOut className="h-4 w-4 mr-2" />
-                          Déconnexion
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button
-                          variant="ghost"
-                          className="w-full justify-start text-muted-foreground hover:text-foreground"
-                          onClick={() => {
-                            onOpenAuthModal?.('login');
-                            setIsUserMenuOpen(false);
-                          }}
-                        >
-                          <User className="h-4 w-4 mr-2" />
-                          Connexion
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          className="w-full justify-start text-muted-foreground hover:text-foreground"
-                          onClick={() => {
-                            onOpenAuthModal?.('register');
-                            setIsUserMenuOpen(false);
-                          }}
-                        >
-                          <User className="h-4 w-4 mr-2" />
-                          Inscription
-                        </Button>
-                      </>
-                    )}
+                    <div className="px-3 py-2 border-b border-border/50">
+                      <p className="text-xs font-medium text-foreground truncate">
+                        {profile?.full_name || user.email}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Connecté
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-xs mt-1"
+                      onClick={() => {
+                        navigate("/profile");
+                        setIsUserMenuOpen(false);
+                      }}
+                    >
+                      <User className="h-4 w-4 mr-2" />
+                      Mon profil
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={async () => {
+                        await signOut();
+                        setIsUserMenuOpen(false);
+                        navigate("/");
+                      }}
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Déconnexion
+                    </Button>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
-            {/* Mobile Menu Toggle */}
+            {/* Mobile Menu Toggle - pour ouvrir la sidebar */}
             <Button
               variant="ghost"
               size="icon"
               className="lg:hidden text-muted-foreground"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              title="Menu mobile"
             >
-              {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
+
+            </div>
           </div>
-        </div>
+
+        {/* Mobile Sidebar */}
+        <MobileSidebar
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+          navigationGroups={MENU_GROUPS}
+          user={user}
+        />
       </div>
 
-      {/* Mobile Menu */}
-      <AnimatePresence>
-        {isMenuOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="lg:hidden border-t border-border/50 bg-background overflow-hidden"
-          >
-            <nav className="container mx-auto px-4 py-4 flex flex-col gap-2">
-              {navItems.map((item, i) => (
-                <motion.div
-                  key={item.path}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.05 * i }}
-                >
-                  <Link
-                    to={item.path}
-                    onClick={() => setIsMenuOpen(false)}
-                    className={`block px-4 py-3 rounded-lg font-medium transition-colors ${
-                      location.pathname === item.path
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    }`}
-                  >
-                    {item.name}
-                  </Link>
-                </motion.div>
-              ))}
-            </nav>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)}
+        defaultMode="login"
+      />
     </header>
   );
 };
 
 export default Header;
-
-

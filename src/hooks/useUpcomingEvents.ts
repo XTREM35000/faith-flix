@@ -5,7 +5,7 @@ interface Event {
   id: string;
   title: string;
   description?: string;
-  date: string;
+  start_date: string;
   time?: string;
   location: string;
   imageUrl?: string;
@@ -22,14 +22,14 @@ export const useUpcomingEvents = (limit = 10) => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        // Récupérer les événements futurs triés par date
-        const today = new Date().toISOString().split('T')[0];
-        
+        // Récupérer les événements futurs triés par start_date (timestamp)
+        const today = new Date().toISOString();
+
         const { data, error: fetchError } = await supabase
           .from('events')
           .select('*')
-          .gte('date', today) // Date >= aujourd'hui
-          .order('date', { ascending: true })
+          .gte('start_date', today)
+          .order('start_date', { ascending: true })
           .limit(limit);
         
         if (fetchError) throw fetchError;
@@ -40,7 +40,7 @@ export const useUpcomingEvents = (limit = 10) => {
             id: item.id as string,
             title: item.title as string,
             description: item.description as string | undefined,
-            date: item.date as string,
+            start_date: (item.start_date as string) || (item.startDate as string) || '',
             time: item.time as string | undefined,
             location: item.location as string,
             imageUrl: (item.image_url as string | null) || (item.imageUrl as string | null),

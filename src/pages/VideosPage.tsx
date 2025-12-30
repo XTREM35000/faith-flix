@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Search, Plus, Trash2, Edit2, Eye, EyeOff } from 'lucide-react';
-import Header from '@/components/Header';
 import HeroBanner from '@/components/HeroBanner';
-import Footer from '@/components/Footer';
 import VideoCard from '@/components/VideoCard';
 import { useVideos } from '@/hooks/useVideos';
 import { useAuth } from '@/hooks/useAuth';
@@ -52,7 +50,7 @@ interface NewVideo {
 }
 
 const VideosPage = () => {
-  const [darkMode, setDarkMode] = useState(false);
+  
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -71,13 +69,7 @@ const VideosPage = () => {
     selectedCategory === 'all' ? undefined : selectedCategory
   );
 
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [darkMode]);
+  
 
   // Filtrer les vidéos par recherche
   const filteredVideos = videos.filter((video) =>
@@ -144,7 +136,7 @@ const VideosPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Header darkMode={darkMode} toggleDarkMode={() => setDarkMode(!darkMode)} />
+      {/* Header provided by Layout */}
       
      <HeroBanner
       title="Vidéos"
@@ -475,7 +467,7 @@ const VideosPage = () => {
         </section>
       </main>
 
-      <Footer />
+      {/* Footer provided by Layout */}
     </div>
   );
 };

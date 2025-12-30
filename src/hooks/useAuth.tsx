@@ -6,14 +6,14 @@ import type { User } from "@supabase/supabase-js";
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<unknown>;
   register: (
     email: string,
     password: string,
     metadata?: Record<string, string>
   ) => Promise<unknown>;
-  signInWithProvider: (provider: "google" | "github") => Promise<void>;
-  signOut: () => Promise<void>;
+  signInWithProvider: (provider: "google" | "github") => Promise<unknown>;
+  signOut: () => Promise<unknown>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -52,7 +52,12 @@ export function AuthProvider({ children }: React.PropsWithChildren): React.JSX.E
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      await supabase.auth.signInWithPassword({ email, password });
+      const res = await supabase.auth.signInWithPassword({ email, password });
+      if (res.error) {
+        throw res.error;
+      }
+      setUser(res.data?.user ?? null);
+      return res;
     } finally {
       setLoading(false);
     }
@@ -66,6 +71,8 @@ export function AuthProvider({ children }: React.PropsWithChildren): React.JSX.E
     setLoading(true);
     try {
       const res = await supabase.auth.signUp({ email, password, options: { data: metadata } });
+      if (res.error) throw res.error;
+      setUser(res.data?.user ?? null);
       return res;
     } finally {
       setLoading(false);
@@ -79,8 +86,12 @@ export function AuthProvider({ children }: React.PropsWithChildren): React.JSX.E
   const signOut = async () => {
     setLoading(true);
     try {
-      await supabase.auth.signOut();
+      const res = await supabase.auth.signOut();
+      if (res.error) {
+        console.error('Sign out error', res.error);
+      }
       setUser(null);
+      return res;
     } finally {
       setLoading(false);
     }

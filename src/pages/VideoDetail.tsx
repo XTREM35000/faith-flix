@@ -39,7 +39,7 @@ const VideoDetail: React.FC = () => {
   if (isLoading)
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <Header darkMode={false} toggleDarkMode={() => {}} />
+        {/* Header provided by Layout */}
         <HeroBanner
           title="Chargement..."
           subtitle="Veuillez patienter"
@@ -61,7 +61,7 @@ const VideoDetail: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Header darkMode={false} toggleDarkMode={() => {}} />
+      {/* Header provided by Layout */}
 
       <HeroBanner
         title={video.title ?? "Vidéo"}

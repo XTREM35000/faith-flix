@@ -26,7 +26,6 @@ const ProfilePage = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { profile, isLoading: profileLoading } = useUser();
-  const [darkMode, setDarkMode] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -142,7 +141,7 @@ const ProfilePage = () => {
   if (profileLoading) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <Header darkMode={darkMode} toggleDarkMode={() => setDarkMode(!darkMode)} />
+        {/* Header provided by Layout */}
         <HeroBanner
           title="Mon profil"
           subtitle="Gérez vos informations personnelles"
@@ -161,7 +160,7 @@ const ProfilePage = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Header darkMode={darkMode} toggleDarkMode={() => setDarkMode(!darkMode)} />
+      {/* Header provided by Layout */}
 
       <HeroBanner
         title="Mon profil"

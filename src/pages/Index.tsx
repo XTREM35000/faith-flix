@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+// Header/Footer provided by Layout
 import HeroBanner from "@/components/HeroBanner";
 import SectionTitle from "@/components/SectionTitle";
 import VideoCard from "@/components/VideoCard";
@@ -92,7 +91,7 @@ const mockEventsDefault = [
 ];
 
 const Index = () => {
-  const [darkMode, setDarkMode] = useState(false);
+  
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -128,13 +127,7 @@ const Index = () => {
     }
   };
 
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [darkMode]);
+  
 
   // Utiliser les événements du hook ou le fallback
   useEffect(() => {
@@ -144,7 +137,7 @@ const Index = () => {
     }
   }, [upcomingEvents]);
 
-  const heroSection = pageContent.hero || {
+  const heroSection = pageContent?.hero || {
     title: "Bienvenue à Notre Dame de la Compassion",
     subtitle: "Une communauté vivante au cœur d'Abidjan, au service de la foi, de l'espérance et de la charité. Rejoignez-nous pour célébrer ensemble la Parole de Dieu.",
     button_text: "Voir les horaires",
@@ -157,7 +150,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header darkMode={darkMode} toggleDarkMode={() => setDarkMode(!darkMode)} onOpenAuthModal={openAuthModal} />
+      {/* Header provided by Layout */}
 
       <AuthModal
         isOpen={isAuthModalOpen}
@@ -178,9 +171,9 @@ const Index = () => {
         <section className="py-12 lg:py-16">
           <div className="container mx-auto px-4">
             <SectionTitle
-              title={pageContent.gallery_title?.title || "Galerie photos"}
-              subtitle={pageContent.gallery_title?.subtitle || "Les moments forts de notre communauté"}
-              viewAllLink={pageContent.gallery_title?.button_link || "/galerie"}
+              title={pageContent?.gallery_title?.title || "Galerie photos"}
+              subtitle={pageContent?.gallery_title?.subtitle || "Les moments forts de notre communauté"}
+              viewAllLink={pageContent?.gallery_title?.button_link || "/galerie"}
             />
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {displayImages.map((image, i) => (
@@ -210,9 +203,9 @@ const Index = () => {
         <section className="py-12 lg:py-16 bg-muted/30">
           <div className="container mx-auto px-4">
             <SectionTitle
-              title={pageContent.videos_title?.title || "Vidéos populaires"}
-              subtitle={pageContent.videos_title?.subtitle || "Retrouvez nos dernières célébrations et enseignements"}
-              viewAllLink={pageContent.videos_title?.button_link || "/videos"}
+              title={pageContent?.videos_title?.title || "Vidéos populaires"}
+              subtitle={pageContent?.videos_title?.subtitle || "Retrouvez nos dernières célébrations et enseignements"}
+              viewAllLink={pageContent?.videos_title?.button_link || "/videos"}
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {videosLoading && displayVideos.length === 0 ? (
@@ -256,8 +249,8 @@ const Index = () => {
         <section className="py-12 lg:py-16 bg-muted/30">
           <div className="container mx-auto px-4">
             <SectionTitle
-              title={pageContent.events_title?.title || "Prochains événements"}
-              viewAllLink={pageContent.events_title?.button_link || "/evenements"}
+              title={pageContent?.events_title?.title || "Prochains événements"}
+              viewAllLink={pageContent?.events_title?.button_link || "/evenements"}
             />
             <div className="grid md:grid-cols-2 gap-6">
               {events.map((event) => (
@@ -268,7 +261,7 @@ const Index = () => {
         </section>
       </main>
 
-      <Footer />
+      {/* Footer provided by Layout */}
     </div>
   );
 };

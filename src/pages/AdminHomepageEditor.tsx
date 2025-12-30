@@ -66,7 +66,7 @@ const AdminHomepageEditor = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <Header darkMode={false} toggleDarkMode={() => {}} />
+        {/* Header provided by Layout */}
         <HeroBanner
           title="Chargement..."
           subtitle="Veuillez patienter"
@@ -81,7 +81,7 @@ const AdminHomepageEditor = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Header darkMode={false} toggleDarkMode={() => {}} />
+      {/* Header provided by Layout */}
 
       <HeroBanner
         title="Éditeur de la page d'accueil"

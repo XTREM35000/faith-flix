@@ -2,9 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import Header from "@/components/Header";
 import HeroBanner from "@/components/HeroBanner";
-import Footer from "@/components/Footer";
 import { useUpcomingEvents } from "@/hooks/useUpcomingEvents";
 import EventCard from "@/components/EventCard";
 
@@ -23,17 +21,11 @@ interface Event {
 
 const EventsPage = () => {
   const { events, loading } = useUpcomingEvents(100);
-  const [darkMode, setDarkMode] = useState(false);
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
 
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [darkMode]);
+  
 
   const categories = useMemo(
     () =>
@@ -60,7 +52,7 @@ const EventsPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Header darkMode={darkMode} toggleDarkMode={() => setDarkMode(!darkMode)} />
+      {/* Header provided by Layout */}
       
       <HeroBanner
         title="Événements"
@@ -168,7 +160,7 @@ const EventsPage = () => {
         )}
       </div>
 
-      <Footer />
+      {/* Footer provided by Layout */}
     </div>
   );
 };

@@ -2,9 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import Header from "@/components/Header";
 import HeroBanner from "@/components/HeroBanner";
-import Footer from "@/components/Footer";
 import { useGalleryImages } from "@/hooks/useGalleryImages";
 import GalleryCard from "@/components/GalleryCard";
 
@@ -20,17 +18,11 @@ interface GalleryImage {
 
 const GalleryPage = () => {
   const { images, loading } = useGalleryImages(100);
-  const [darkMode, setDarkMode] = useState(false);
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
 
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [darkMode]);
+  
 
   const categories = useMemo(
     () =>
@@ -61,7 +53,7 @@ const GalleryPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Header darkMode={darkMode} toggleDarkMode={() => setDarkMode(!darkMode)} />
+      {/* Header provided by Layout */}
       
       <HeroBanner
         title="Galerie"
@@ -165,7 +157,7 @@ const GalleryPage = () => {
         )}
       </div>
 
-      <Footer />
+      {/* Footer provided by Layout */}
     </div>
   );
 };

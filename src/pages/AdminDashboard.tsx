@@ -8,7 +8,7 @@ import VideoUpload from "@/components/VideoUpload";
 const AdminDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Header darkMode={false} toggleDarkMode={() => {}} />
+      {/* Header provided by Layout */}
 
       <HeroBanner
         title="Tableau de bord"
