@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Plus, Calendar, MapPin, Clock, Edit2, Trash2 } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -7,6 +8,7 @@ import EventModalForm from '@/components/EventModalForm';
 import { useEvents } from '@/hooks/useEvents';
 import { useAuth } from '@/hooks/useAuth';
 import { useUser } from '@/hooks/useUser';
+import usePageHero from '@/hooks/usePageHero';
 import { useNotification } from '@/components/ui/notification-system';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +24,8 @@ interface EditingEvent {
 }
 
 const AdminEvents: React.FC = () => {
+  const location = useLocation();
+  const { data: hero, save: saveHero } = usePageHero(location.pathname);
   const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<EditingEvent | null>(null);
@@ -135,7 +139,8 @@ const AdminEvents: React.FC = () => {
         <HeroBanner
           title="Gestion des événements"
           subtitle="Créez et gérez les événements de votre église"
-          backgroundImage="/images/events/prieres.png"
+          backgroundImage={hero?.image_url || '/images/events/prieres.png'}
+          onBgSave={saveHero}
         />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
