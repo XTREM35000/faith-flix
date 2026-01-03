@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, User, LogOut, HelpCircle, Menu, X, Home, Info, Users } from "lucide-react";
 import AnimatedLogo from "./AnimatedLogo";
@@ -25,10 +25,24 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const location = useLocation();
+  const authMode = new URLSearchParams(location.search).get("mode") === "register" ? "register" : "login";
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { profile } = useUser();
   const { data: headerConfig, isLoading: headerLoading } = useHeaderConfig();
+
+  // Close mobile menu when auth state changes (e.g. on logout)
+  useEffect(() => {
+    if (!user) {
+      setIsMobileMenuOpen(false);
+    }
+  }, [user]);
+
+  // Ouvrir le modal d'authentification si l'URL contient #auth
+  useEffect(() => {
+    setIsAuthModalOpen(location.hash === '#auth');
+  }, [location.hash]);
 
   // Afficher le skeleton pendant le chargement
   if (headerLoading || !headerConfig) {
@@ -211,6 +225,7 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
                       onClick={async () => {
                         await signOut();
                         setIsUserMenuOpen(false);
+                        setIsMobileMenuOpen(false);
                         navigate("/");
                       }}
                     >
@@ -222,16 +237,18 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
               </AnimatePresence>
             </div>
 
-            {/* Mobile Menu Toggle - pour ouvrir la sidebar */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden text-muted-foreground"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              title="Menu mobile"
-            >
-              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
+            {/* Mobile Menu Toggle - pour ouvrir la sidebar (masqué si non connecté) */}
+            {user && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden text-muted-foreground"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                title="Menu mobile"
+              >
+                {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </Button>
+            )}
 
             </div>
           </div>

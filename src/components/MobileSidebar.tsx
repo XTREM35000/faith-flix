@@ -202,8 +202,13 @@ export default function MobileSidebar({ isOpen, onClose, navItems, navigation, n
                     </NavLink>
                     <button
                       onClick={async () => {
-                        await signOut();
-                        onClose();
+                        try {
+                          await signOut();
+                        } catch (e) {
+                          // ignore signOut errors but ensure UI closes
+                        } finally {
+                          onClose();
+                        }
                       }}
                       className="w-full text-left px-3 py-2 rounded hover:bg-destructive/10 text-destructive"
                     >

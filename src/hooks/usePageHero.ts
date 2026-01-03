@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@supabase/supabase-js';
+import { supabase as supabaseClient } from '@/integrations/supabase/client';
 
 export interface PageHero {
   id: string;
@@ -9,11 +9,7 @@ export interface PageHero {
   updated_at?: string;
 }
 
-// Create a separate client instance to avoid typing issues
-const supabaseClient = createClient(
-  import.meta.env.VITE_SUPABASE_URL || '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-);
+// Reuse main supabase client to avoid multiple GoTrue instances
 
 const fetchHero = async (path: string): Promise<PageHero | null> => {
   try {

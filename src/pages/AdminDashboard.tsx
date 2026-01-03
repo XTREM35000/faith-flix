@@ -1,5 +1,4 @@
 import React from "react";
-import Header from "@/components/Header";
 import HeroBanner from "@/components/HeroBanner";
 import { useLocation } from 'react-router-dom';
 import usePageHero from '@/hooks/usePageHero';
@@ -8,6 +7,9 @@ import CommentModeration from "@/components/CommentModeration";
 import VideoUpload from "@/components/VideoUpload";
 
 const AdminDashboard: React.FC = () => {
+  const location = useLocation();
+  const { data: hero, save: saveHero } = usePageHero(location.pathname);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header provided by Layout */}

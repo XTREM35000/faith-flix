@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { supabase } from '@/integrations/supabase/client';
 import { Eye, EyeOff } from 'lucide-react';
 
 interface LoginFormProps {
@@ -21,13 +22,29 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password);
+      const res: any = await login(email, password);
+      const loggedUser = res?.data?.user;
       // Fermer le modal si callback existe
       if (onSuccess) {
         setTimeout(() => {
           onSuccess();
-          // Rediriger selon le rôle (admin/user)
-          setTimeout(() => navigate("/admin"), 300);
+          // Rediriger selon le rôle (admin/user) après avoir vérifié le profil
+          setTimeout(async () => {
+            try {
+              const uid = loggedUser?.id || (await supabase.auth.getUser()).data?.user?.id;
+              let role: string | null = null;
+              if (uid) {
+                const { data: profileData } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
+                role = (profileData as any)?.role ?? null;
+              }
+              const metaRole = (loggedUser?.user_metadata?.role || '') as string;
+              const adminFlag = (role || metaRole || '').toLowerCase().includes('admin');
+              if (adminFlag) navigate('/admin');
+              else navigate('/');
+            } catch (err) {
+              navigate('/');
+            }
+          }, 300);
         }, 500);
       } else {
         navigate("/");

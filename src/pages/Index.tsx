@@ -8,7 +8,7 @@ import SectionTitle from "@/components/SectionTitle";
 import VideoCard from "@/components/VideoCard";
 import GalleryCard from "@/components/GalleryCard";
 import EventCard from "@/components/EventCard";
-import AuthModal from "@/components/AuthModal";
+// AuthModal is now controlled globally in Header
 import VideoPlayerModal from "@/components/VideoPlayerModal";
 import { useHomepageContent } from "@/hooks/useHomepageContent";
 import { useAuth } from "@/hooks/useAuth";
@@ -39,21 +39,7 @@ const Index = () => {
     isLoading
   } = useHomepageContent();
 
-  // Déterminer si le modal doit être ouvert basé sur le hash
-  const isAuthModalOpen = location.hash === "#auth";
-  const authMode = new URLSearchParams(location.search).get("mode") === "register" ? "register" : "login";
-
-  const closeAuthModal = () => {
-    navigate(location.pathname, { replace: true });
-  };
-
-  const openAuthModal = (mode: "login" | "register") => {
-    if (mode === "register") {
-      navigate("/?mode=register#auth", { replace: true });
-    } else {
-      navigate("#auth", { replace: true });
-    }
-  };
+  // Auth modal controlled centrally in Header; Index no longer renders AuthModal
 
   const handleVideoSelect = (video: Video) => {
     setSelectedVideo(video);
@@ -67,11 +53,7 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Header provided by Layout */}
 
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={closeAuthModal}
-        defaultMode={authMode}
-      />
+      {/* AuthModal moved to Header to avoid duplicate modals */}
 
       <VideoPlayerModal
         video={selectedVideo}
@@ -191,12 +173,7 @@ const Index = () => {
         onClose={() => setSelectedVideo(null)}
       />
 
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={closeAuthModal}
-        mode={authMode}
-      />
+      {/* AuthModal moved to Header */}
     </div>
   );
 };

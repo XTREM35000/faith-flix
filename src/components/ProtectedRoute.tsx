@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import React from "react";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useUser } from "@/hooks/useUser";
 
@@ -20,28 +20,22 @@ const roleHierarchy: Record<RoleName, number> = {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole = 'member' }) => {
   const { user, loading } = useAuth();
   const { profile, isLoading: profileLoading } = useUser();
-  const navigate = useNavigate();
   const location = useLocation();
 
-  useEffect(() => {
-    if (!loading && !profileLoading) {
-      if (!user) {
-        navigate('/auth', { state: { from: location.pathname } });
-      } else if (requiredRole !== 'member') {
-        // Prefer profile.role, fallback to auth user metadata role if available
-        // Some accounts may have role stored in auth metadata before profile is created
-        const authUser: any = user as any;
-        const metaRole = authUser?.user_metadata?.role as RoleName | undefined;
-        const userRole = (profile?.role || metaRole || 'member') as RoleName;
-        if ((roleHierarchy[userRole] || 0) < (roleHierarchy[requiredRole] || 0)) {
-          navigate('/unauthorized');
-        }
-      }
-    }
-  }, [user, loading, profileLoading, requiredRole, navigate, location.pathname, profile]);
-
   if (loading || profileLoading) return <div className="p-6">Vérification...</div>;
-  if (!user) return null;
+
+  if (!user) {
+    return <Navigate to="/#auth" state={{ from: location.pathname }} replace />;
+  }
+
+  if (requiredRole !== 'member') {
+    const authUser: any = user as any;
+    const metaRole = authUser?.user_metadata?.role as RoleName | undefined;
+    const userRole = (profile?.role || metaRole || 'member') as RoleName;
+    if ((roleHierarchy[userRole] || 0) < (roleHierarchy[requiredRole] || 0)) {
+      return <Navigate to="/unauthorized" replace />;
+    }
+  }
 
   return <>{children}</>;
 };

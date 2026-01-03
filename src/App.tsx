@@ -40,6 +40,7 @@ import Receipts from './pages/Receipts';
 import AdminUsers from './pages/AdminUsers';
 import AdminSettings from './pages/AdminSettings';
 import HelpPage from './pages/HelpPage';
+import Unauthorized from './pages/Unauthorized';
 import NotificationProvider from '@/components/ui/notification-system';
 import MembersPage from './pages/MembersPage';
 
@@ -134,6 +135,7 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/membres" element={<Layout><MembersPage /></Layout>} />
+            <Route path="/unauthorized" element={<Unauthorized />} />
             <Route path="*" element={<Layout><NotFound /></Layout>} />
           </Routes>
         </BrowserRouter>
