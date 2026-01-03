@@ -98,7 +98,6 @@ const HeroBanner = ({
           current={bg}
           onSave={handleBgSave}
           bucket={bucket}
-          path={location.pathname}
         />
       )}
 

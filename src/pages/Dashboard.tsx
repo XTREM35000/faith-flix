@@ -2,35 +2,56 @@ import React, { useMemo } from 'react';
 import HeroBanner from '@/components/HeroBanner';
 import { useLocation } from 'react-router-dom';
 import usePageHero from '@/hooks/usePageHero';
+import { useAnalyticsDashboard } from '@/hooks/useAnalytics';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
-import { Users, Video, Calendar, BarChart2 } from 'lucide-react';
+import { Users, Video, Calendar, BarChart2, TrendingUp } from 'lucide-react';
 import { ChartContainer } from '@/components/ui/chart';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import VideoCard from '@/components/VideoCard';
 import { useVideos } from '@/hooks/useVideos';
-
-const statsData = {
-  users: 1240,
-  videos: 312,
-  events: 18,
-  storage_gb: 42,
-};
-
-const activityMock = [
-  { day: 'Lun', views: 120 },
-  { day: 'Mar', views: 200 },
-  { day: 'Mer', views: 150 },
-  { day: 'Jeu', views: 300 },
-  { day: 'Ven', views: 240 },
-  { day: 'Sam', views: 320 },
-  { day: 'Dim', views: 280 },
-];
+import { useEvents } from '@/hooks/useEvents';
+import { useDirectory } from '@/hooks/useDirectory';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const Dashboard: React.FC = () => {
-  const { videos: recentVideos = [], loading: videosLoading } = useVideos(4);
   const location = useLocation();
   const { data: hero, save: saveHero } = usePageHero(location.pathname);
+  
+  // Fetch real data
+  const { videos: recentVideos = [], loading: videosLoading } = useVideos(4);
+  const { events = [] } = useEvents();
+  const { data: directoryItems = [] } = useDirectory();
+  const { data: analyticsData } = useAnalyticsDashboard();
+  
+  // Fetch user count
+  const { data: userCount = 0 } = useQuery({
+    queryKey: ['user-count'],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
+      return count || 0;
+    },
+  });
+  
+  const statsData = useMemo(() => ({
+    users: userCount,
+    videos: recentVideos.length || 0,
+    events: events.length || 0,
+    storage_gb: 42,
+  }), [userCount, recentVideos.length, events.length]);
+  
+  const activityMock = analyticsData?.weeklyViews || [
+    { day: 'Lun', views: 120 },
+    { day: 'Mar', views: 200 },
+    { day: 'Mer', views: 150 },
+    { day: 'Jeu', views: 300 },
+    { day: 'Ven', views: 240 },
+    { day: 'Sam', views: 320 },
+    { day: 'Dim', views: 280 },
+  ];
 
   const statCards = useMemo(() => [
     { id: 'users', label: 'Membres', value: statsData.users, icon: Users, color: 'bg-primary/10 text-primary' },
@@ -128,14 +149,29 @@ const Dashboard: React.FC = () => {
           <div>
             <Card>
               <CardHeader>
-                <CardTitle>Résumé rapide</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5" />
+                  Résumé rapide
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-3 text-sm text-muted-foreground">
-                  <li>Utilisateurs actifs cette semaine: <strong className="text-foreground">{Math.round(statsData.users * 0.12)}</strong></li>
-                  <li>Nouvelles vidéos: <strong className="text-foreground">{Math.round(statsData.videos * 0.05)}</strong></li>
-                  <li>Événements à venir: <strong className="text-foreground">{statsData.events}</strong></li>
-                  <li>Stockage utilisé: <strong className="text-foreground">{statsData.storage_gb} GB</strong></li>
+                  <li className="flex items-center justify-between">
+                    <span>Membres:</span>
+                    <strong className="text-foreground">{statsData.users}</strong>
+                  </li>
+                  <li className="flex items-center justify-between">
+                    <span>Vidéos:</span>
+                    <strong className="text-foreground">{statsData.videos}</strong>
+                  </li>
+                  <li className="flex items-center justify-between">
+                    <span>Événements:</span>
+                    <strong className="text-foreground">{statsData.events}</strong>
+                  </li>
+                  <li className="flex items-center justify-between">
+                    <span>Total vues:</span>
+                    <strong className="text-foreground">{analyticsData?.totalViews?.toLocaleString() || 0}</strong>
+                  </li>
                 </ul>
               </CardContent>
             </Card>

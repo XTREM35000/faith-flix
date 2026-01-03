@@ -10,6 +10,13 @@ create table if not exists public.page_hero_banners (
 -- Enable RLS and simple policies: public reads, authenticated writes
 alter table public.page_hero_banners enable row level security;
 
+-- Drop existing policies if they exist
+drop policy if exists "public_select" on public.page_hero_banners;
+drop policy if exists "authenticated_insert" on public.page_hero_banners;
+drop policy if exists "authenticated_update" on public.page_hero_banners;
+drop policy if exists "authenticated_delete" on public.page_hero_banners;
+
+-- Create policies
 create policy "public_select" on public.page_hero_banners for select using (true);
 
 create policy "authenticated_insert" on public.page_hero_banners for insert with check (auth.role() = 'authenticated');
