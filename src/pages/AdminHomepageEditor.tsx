@@ -336,6 +336,24 @@ const AdminHomepageEditor = () => {
     }
   };
 
+  const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setLoading(true);
+      const fileName = `hero-${Date.now()}-${file.name}`;
+      const res = await uploadFile(file, `heroes/${fileName}`);
+      if (!res || !res.publicUrl) throw new Error('Upload failed');
+      setHeroData({ ...heroData, image_url: res.publicUrl });
+      toast({ title: 'Succès', description: 'Image héro téléchargée' });
+    } catch (error) {
+      console.error('Error uploading hero image:', error);
+      toast({ title: 'Erreur', description: "Impossible de télécharger l'image héro", variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const addNavigationItem = () => {
     setHeaderData({
       ...headerData,
@@ -661,13 +679,31 @@ const AdminHomepageEditor = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">URL de l'image</label>
-                  <input
-                    type="text"
-                    value={heroData.image_url}
-                    onChange={(e) => setHeroData({ ...heroData, image_url: e.target.value })}
-                    className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="/images/hero.png"
-                  />
+                  <div className="flex gap-4 items-start">
+                    <input
+                      type="text"
+                      value={heroData.image_url}
+                      onChange={(e) => setHeroData({ ...heroData, image_url: e.target.value })}
+                      className="flex-1 px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="/images/hero.png"
+                    />
+                    <div className="flex flex-col items-start gap-2">
+                      <label className="block text-sm font-medium mb-1">Ou téléverser</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleHeroImageUpload}
+                        disabled={loading}
+                        className="px-3 py-2 bg-background border border-border rounded-lg focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  {heroData.image_url && (
+                    <div className="mt-3">
+                      <label className="block text-sm font-medium mb-2">Aperçu</label>
+                      <img src={heroData.image_url} alt="aperçu hero" className="w-full max-h-60 object-cover rounded border border-border" />
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={handleSaveHero}
