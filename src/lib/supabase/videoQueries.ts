@@ -1,214 +1,163 @@
-import { supabase } from "@/integrations/supabase/client";
-import type { Video, ContentStatus } from "@/types/database";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+import { supabase } from '@/integrations/supabase/client';
+import type { Video } from '@/types/database';
+
+// =====================================================
+// VIDEO QUERIES - CRUD OPERATIONS
+// Contournement des types Supabase : utiliser 'as any'
+// =====================================================
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const videosTable = 'videos' as any;
 
 export async function fetchVideos(options?: {
-  status?: ContentStatus;
-  categoryId?: string;
-  authorId?: string;
   limit?: number;
   offset?: number;
   search?: string;
 }) {
-  let query = supabase
-    .from('videos')
-    .select('*', { count: 'exact' });
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = (supabase.from(videosTable) as any)
+      .select('*', { count: 'exact' });
 
-  if (options?.status) {
-    query = query.eq('status', options.status);
+    if (options?.search) {
+      query = query.or(`title.ilike.%${options.search}%,description.ilike.%${options.search}%`);
+    }
+
+    query = query.order('created_at', { ascending: false });
+
+    if (options?.limit) query = query.limit(options.limit);
+    if (options?.offset) query = query.range(options.offset, options.offset + (options.limit || 10) - 1);
+
+    const { data, error, count } = await query;
+    if (error) {
+      console.error('❌ fetchVideos error:', error.code, error.message);
+      throw error;
+    }
+
+    const recordCount = data?.length || 0;
+    const validData = (data || []).filter((video: any): video is Video =>
+      !!video && typeof video === 'object' && 'id' in video && 'title' in video
+    );
+
+    console.log(`🎥 Videos Query: ${recordCount} records → ${validData.length} valides`);
+
+    return { data: validData, count };
+  } catch (e) {
+    console.error('❌ fetchVideos unexpected error:', e);
+    return null;
   }
-
-  if (options?.categoryId) {
-    query = query.eq('category_id', options.categoryId);
-  }
-
-  if (options?.authorId) {
-    query = query.eq('author_id', options.authorId);
-  }
-
-  if (options?.search) {
-    query = query.or(`title.ilike.%${options.search}%,description.ilike.%${options.search}%`);
-  }
-
-  query = query.order('created_at', { ascending: false });
-
-  if (options?.limit) {
-    query = query.limit(options.limit);
-  }
-
-  if (options?.offset) {
-    query = query.range(options.offset, options.offset + (options.limit || 10) - 1);
-  }
-
-  const { data, error, count } = await query;
-  if (error) throw error;
-  
-  // Fetch related data separately to avoid join issues
-  if (data && data.length > 0) {
-    const categoryIds = [...new Set(data.filter(v => v.category_id).map(v => v.category_id))];
-    const authorIds = [...new Set(data.filter(v => v.author_id).map(v => v.author_id))];
-    
-    const [categoriesRes, profilesRes] = await Promise.all([
-      categoryIds.length > 0 
-        ? supabase.from('categories').select('*').in('id', categoryIds as string[])
-        : { data: [] },
-      authorIds.length > 0
-        ? supabase.from('profiles').select('*').in('id', authorIds as string[])
-        : { data: [] },
-    ]);
-    
-    const categoryMap = new Map(categoriesRes.data?.map(c => [c.id, c]) || []);
-    const profileMap = new Map(profilesRes.data?.map(p => [p.id, p]) || []);
-    
-    const enrichedData = data.map(video => ({
-      ...video,
-      category: video.category_id ? categoryMap.get(video.category_id) : null,
-      author: video.author_id ? profileMap.get(video.author_id) : null,
-    }));
-    
-    return { data: enrichedData as Video[], count };
-  }
-  
-  return { data: data as Video[], count };
 }
 
 export async function fetchVideoById(id: string) {
-  const { data, error } = await supabase
-    .from('videos')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from(videosTable) as any)
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
 
-  if (error) throw error;
-  if (!data) return null;
-  
-  // Fetch related data
-  const [categoryRes, authorRes] = await Promise.all([
-    data.category_id
-      ? supabase.from('categories').select('*').eq('id', data.category_id).maybeSingle()
-      : { data: null },
-    data.author_id
-      ? supabase.from('profiles').select('*').eq('id', data.author_id).maybeSingle()
-      : { data: null },
-  ]);
-  
-  return {
-    ...data,
-    category: categoryRes.data,
-    author: authorRes.data,
-  } as Video;
+    if (error) {
+      console.error('fetchVideoById error', error);
+      return null;
+    }
+
+    return (data as any as Video) || null;
+  } catch (e) {
+    console.error('fetchVideoById unexpected error', e);
+    return null;
+  }
 }
 
 export async function createVideo(video: Partial<Video>) {
-  const insertData: Record<string, unknown> = {
-    title: video.title,
-    description: video.description,
-    thumbnail_url: video.thumbnail_url,
-    video_url: video.video_url,
-    hls_url: video.hls_url,
-    duration: video.duration,
-    category_id: video.category_id,
-    author_id: video.author_id,
-    status: video.status || 'draft',
-    is_live: video.is_live,
-    is_featured: video.is_featured,
-    allow_comments: video.allow_comments,
-    allow_download: video.allow_download,
-    tags: video.tags,
-    metadata: video.metadata,
-  };
-
-  const { data, error } = await supabase
-    .from('videos')
-    .insert([insertData])
-    .select('*')
-    .single();
-
-  if (error) throw error;
-  return data as Video;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from(videosTable) as any)
+      .insert([video])
+      .select()
+      .single();
+    if (error) {
+      console.error('createVideo error', error);
+      return null;
+    }
+    return (data as any as Video) || null;
+  } catch (e) {
+    console.error('createVideo unexpected error', e);
+    return null;
+  }
 }
 
 export async function updateVideo(id: string, updates: Partial<Video>) {
-  const updateData: Record<string, unknown> = {};
-  
-  if (updates.title !== undefined) updateData.title = updates.title;
-  if (updates.description !== undefined) updateData.description = updates.description;
-  if (updates.thumbnail_url !== undefined) updateData.thumbnail_url = updates.thumbnail_url;
-  if (updates.video_url !== undefined) updateData.video_url = updates.video_url;
-  if (updates.status !== undefined) updateData.status = updates.status;
-  if (updates.is_featured !== undefined) updateData.is_featured = updates.is_featured;
-  if (updates.category_id !== undefined) updateData.category_id = updates.category_id;
-  if (updates.published_at !== undefined) updateData.published_at = updates.published_at;
-  if (updates.views !== undefined) updateData.views = updates.views;
-
-  const { data, error } = await supabase
-    .from('videos')
-    .update(updateData)
-    .eq('id', id)
-    .select('*')
-    .single();
-
-  if (error) throw error;
-  return data as Video;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from(videosTable) as any)
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) {
+      console.error('updateVideo error', error);
+      return null;
+    }
+    return (data as any as Video) || null;
+  } catch (e) {
+    console.error('updateVideo unexpected error', e);
+    return null;
+  }
 }
 
 export async function deleteVideo(id: string) {
-  const { error } = await supabase.from('videos').delete().eq('id', id);
-  if (error) throw error;
-  return true;
+  try {
+    console.debug('🗑️ deleteVideo START for id:', id);
+    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error, count } = await (supabase.from(videosTable) as any)
+      .delete()
+      .eq('id', id);
+    
+    console.debug('🗑️ deleteVideo response:', { error, count });
+    
+    if (error) {
+      console.error('❌ deleteVideo error:', error);
+      return false;
+    }
+    
+    console.debug('✅ deleteVideo success:', { count, id });
+    return true;
+  } catch (e) {
+    console.error('❌ deleteVideo unexpected error:', e);
+    return false;
+  }
 }
 
 export async function incrementVideoViews(id: string) {
   try {
-    const { data } = await supabase
-      .from('videos')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: readData, error: readErr } = await (supabase.from(videosTable) as any)
       .select('views')
       .eq('id', id)
       .maybeSingle();
 
-    if (data) {
-      const nextViews = (data.views ?? 0) + 1;
-      await supabase
-        .from('videos')
-        .update({ views: nextViews })
-        .eq('id', id);
+    if (readErr || !readData) {
+      console.error('incrementVideoViews read error', readErr);
+      return null;
     }
+
+    const current = (readData as any).views ?? 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: updData, error: updErr } = await (supabase.from(videosTable) as any)
+      .update({ views: current + 1 })
+      .eq('id', id)
+      .select('views')
+      .single();
+
+    if (updErr) {
+      console.error('incrementVideoViews update error', updErr);
+      return null;
+    }
+    return (updData as any) as { views: number } | null;
   } catch (e) {
-    console.warn('Error incrementing views:', e);
+    console.error('incrementVideoViews unexpected error', e);
+    return null;
   }
-}
-
-export async function publishVideo(id: string) {
-  return updateVideo(id, { 
-    status: 'published', 
-    published_at: new Date().toISOString() 
-  });
-}
-
-export async function unpublishVideo(id: string) {
-  return updateVideo(id, { status: 'draft' });
-}
-
-export async function fetchFeaturedVideos(limit = 6) {
-  const { data, error } = await supabase
-    .from('videos')
-    .select('*')
-    .eq('status', 'published')
-    .eq('is_featured', true)
-    .order('published_at', { ascending: false })
-    .limit(limit);
-
-  if (error) throw error;
-  return data as Video[];
-}
-
-export async function fetchRecentVideos(limit = 12) {
-  const { data, error } = await supabase
-    .from('videos')
-    .select('*')
-    .eq('status', 'published')
-    .order('published_at', { ascending: false })
-    .limit(limit);
-
-  if (error) throw error;
-  return data as Video[];
 }

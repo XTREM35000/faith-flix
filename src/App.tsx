@@ -18,6 +18,8 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminHomepageEditor from "./pages/AdminHomepageEditor";
+import AdminEvents from "./pages/AdminEvents";
+import AddMemberForm from '@/components/AddMemberForm';
 import ChatPage from './pages/ChatPage';
 import AnnouncementsPage from './pages/AnnouncementsPage';
 import Dashboard from './pages/Dashboard';
@@ -72,7 +74,7 @@ const App = () => (
             <Route
               path="/admin"
               element={
-                <ProtectedRoute admin>
+                <ProtectedRoute requiredRole="admin">
                   <Layout><AdminDashboard /></Layout>
                 </ProtectedRoute>
               }
@@ -80,8 +82,16 @@ const App = () => (
             <Route
               path="/admin/homepage"
               element={
-                <ProtectedRoute admin>
+                <ProtectedRoute requiredRole="admin">
                   <Layout><AdminHomepageEditor /></Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/events"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminEvents />
                 </ProtectedRoute>
               }
             />
@@ -100,11 +110,16 @@ const App = () => (
             <Route path="/campaigns" element={<Layout><Campaigns /></Layout>} />
             <Route path="/donations" element={<Layout><DonationsHistory /></Layout>} />
             <Route path="/receipts" element={<Layout><Receipts /></Layout>} />
-            <Route path="/admin/users" element={<ProtectedRoute admin><Layout><AdminUsers /></Layout></ProtectedRoute>} />
-            <Route path="/admin/settings" element={<ProtectedRoute admin><Layout><AdminSettings /></Layout></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute requiredRole="admin"><Layout><AdminUsers /></Layout></ProtectedRoute>} />
+            <Route path="/admin/settings" element={<ProtectedRoute requiredRole="admin"><Layout><AdminSettings /></Layout></ProtectedRoute>} />
             <Route path="/admin/members" element={
-              <ProtectedRoute admin>
+              <ProtectedRoute requiredRole="admin">
                 <Layout><MembersPage /></Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/add-member" element={
+              <ProtectedRoute requiredRole="admin">
+                <Layout><AddMemberForm /></Layout>
               </ProtectedRoute>
             } />
             <Route path="/membres" element={<Layout><MembersPage /></Layout>} />

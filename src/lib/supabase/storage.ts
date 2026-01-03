@@ -11,6 +11,39 @@ export async function uploadVideoFile(file: File, path?: string) {
   return { key: data.path, publicUrl: publicData.publicUrl };
 }
 
+// Gallery storage helpers
+export const GALLERY_BUCKET = (import.meta.env.VITE_BUCKET_GALLERY as string) || 'gallery';
+
+export async function uploadFile(file: File, path?: string) {
+  const fileName = (file.name || '').replace(/\s+/g, '-');
+  const key = path ?? `uploads/${Date.now()}_${fileName}`;
+  try {
+    const { data, error } = await supabase.storage.from(GALLERY_BUCKET).upload(key, file, {
+      cacheControl: '3600',
+      upsert: false,
+    });
+    if (error) {
+      console.error('uploadFile error', error);
+      return null;
+    }
+    const { data: publicData } = supabase.storage.from(GALLERY_BUCKET).getPublicUrl(data.path);
+    return { key: data.path, publicUrl: publicData.publicUrl };
+  } catch (e) {
+    console.error('uploadFile unexpected error', e);
+    return null;
+  }
+}
+
+export function getPublicUrl(path: string) {
+  try {
+    const { data } = supabase.storage.from(GALLERY_BUCKET).getPublicUrl(path);
+    return data.publicUrl;
+  } catch (e) {
+    console.error('getPublicUrl error', e);
+    return null;
+  }
+}
+
 export async function createVideoRecord(record: {
   title: string;
   description?: string;
@@ -93,4 +126,23 @@ export async function generateThumbnailFromFile(file: File, seekTo = 0.5): Promi
       reject(e);
     }
   });
+}
+
+export async function testStorageConnection() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    console.log('testStorageConnection: user id =', user?.id);
+    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+    console.log('testStorageConnection: buckets', buckets?.map(b => b.name), bucketsError);
+    const galleryExists = buckets?.some(b => b.name === 'gallery');
+    if (!galleryExists) return { ok: false, message: 'Bucket gallery not found' };
+    const blob = new Blob(['test'], { type: 'text/plain' });
+    const file = new File([blob], '_test_connection.txt');
+    const { error } = await supabase.storage.from('gallery').upload('_test/connection.txt', file);
+    if (error) return { ok: false, message: error.message };
+    return { ok: true, message: 'Test upload OK' };
+  } catch (e) {
+    console.error('testStorageConnection error', e);
+    return { ok: false, message: String(e) };
+  }
 }

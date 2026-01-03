@@ -40,6 +40,29 @@ export function AuthProvider({ children }: React.PropsWithChildren): React.JSX.E
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
       setUser(session?.user ?? null);
+      // After auth state changes, ensure roles consistency (first user = admin)
+      if (session?.user) {
+        (async () => {
+          try {
+            const { data: profiles } = await supabase
+              .from('profiles')
+              .select('id, role')
+              .order('created_at', { ascending: true });
+
+            if (profiles && profiles.length > 0) {
+              const first = profiles[0];
+              if (first.role !== 'admin') {
+                await supabase
+                  .from('profiles')
+                  .update({ role: 'admin' })
+                  .eq('id', first.id);
+              }
+            }
+          } catch (err) {
+            console.error('Erreur lors de la vérification des rôles:', err);
+          }
+        })();
+      }
       setLoading(false);
     });
 

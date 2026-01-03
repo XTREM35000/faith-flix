@@ -50,10 +50,26 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess }) => {
     e.preventDefault();
     setLoading(true);
     try {
+      // Déterminer le rôle à attribuer (premier utilisateur = admin, deuxième = moderator)
+      let assignedRole = 'member';
+      try {
+        const { data: countData, error: countErr, count } = await (supabase as any)
+          .from('profiles')
+          .select('*', { count: 'exact', head: true });
+
+        if (!countErr) {
+          if (typeof count === 'number' && count === 0) assignedRole = 'admin';
+          else if (typeof count === 'number' && count === 1) assignedRole = 'moderator';
+        }
+      } catch (err) {
+        console.error('Impossible de compter les profiles, assignation par défaut:', err);
+      }
+
       // 1) Créer l'utilisateur d'abord
       await register(email, password, {
         full_name: fullName,
         phone: fullPhone,
+        role: assignedRole,
       });
 
       // Récupérer l'utilisateur courant depuis Supabase
@@ -89,7 +105,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess }) => {
             email: createdUser.email,
             full_name: fullName || null,
             phone: fullPhone || null,
-            role: 'membre',
+            role: (createdUser?.user_metadata?.role as string) || assignedRole || 'member',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };

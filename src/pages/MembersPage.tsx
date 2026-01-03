@@ -136,6 +136,19 @@ const MembersPage: React.FC = () => {
               <label className="text-sm block mb-1">Email</label>
               <Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </div>
+            <div>
+              <label className="text-sm block mb-1">Rôle</label>
+              <select 
+                value={form.role} 
+                onChange={(e) => setForm({ ...form, role: e.target.value })}
+                className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="membre">Membre</option>
+                <option value="moderateur">Modérateur</option>
+                <option value="admin">Admin</option>
+                <option value="super_admin">Super Admin</option>
+              </select>
+            </div>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={close}>Annuler</Button>
               <Button onClick={save}>Enregistrer</Button>

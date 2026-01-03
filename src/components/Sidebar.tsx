@@ -53,7 +53,9 @@ export const MENU_GROUPS = [
     adminOnly: true,
     items: [
       { label: 'Utilisateurs', href: '/admin/users', icon: Users },
-      { label: 'Paramètres', href: '/admin/settings', icon: Settings },
+      { label: 'Paramètres généraux', href: '/admin/settings', icon: Settings },
+      { label: 'Page d\'accueil', href: '/admin/homepage', icon: Settings },
+      { label: 'Événements', href: '/admin/events', icon: Calendar },
     ],
   },
 ];
@@ -64,7 +66,7 @@ export interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
-  const { profile } = useUser();
+  const { profile, isAdmin } = useUser();
 
   return (
     <aside
@@ -85,7 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
       <nav className="px-2 py-4">
         {MENU_GROUPS.map((group) => {
-          if (group.adminOnly && !profile) return null;
+          if (group.adminOnly && !isAdmin) return null;
           return (
             <div key={group.title} className="mb-6">
               {!isCollapsed && (

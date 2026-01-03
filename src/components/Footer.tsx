@@ -2,14 +2,11 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { MapPin, Phone, Mail, Clock, Facebook, Youtube, Instagram } from "lucide-react";
 import AnimatedLogo from "./AnimatedLogo";
+import { useHomepageContent } from "@/hooks/useHomepageContent";
 
 const Footer = () => {
-  const massSchedule = [
-    { day: "Dimanche", time: "9h00, 11h00, 18h30" },
-    { day: "Lundi - Vendredi", time: "8h00, 18h30" },
-    { day: "Samedi", time: "9h00, 18h00 (anticipée)" },
-  ];
-
+  const { massTimes, contact } = useHomepageContent();
+  
   const quickLinks = [
     { name: "Accueil", path: "/" },
     { name: "Vidéos", path: "/videos" },
@@ -17,6 +14,31 @@ const Footer = () => {
     { name: "Événements", path: "/evenements" },
     { name: "À propos", path: "/a-propos" },
   ];
+
+  // Default mass schedule fallback
+  const defaultMassSchedule = [
+    { day: "Dimanche", time: "9h00, 11h00, 18h30" },
+    { day: "Lundi - Vendredi", time: "8h00, 18h30" },
+    { day: "Samedi", time: "9h00, 18h00 (anticipée)" },
+  ];
+
+  // Format mass times for display
+  const massSchedule = massTimes ? [
+    { day: "Dimanche", time: Array.isArray(massTimes.sunday) ? massTimes.sunday.join(", ") : massTimes.sunday || "9h00, 11h00, 18h30" },
+    { day: "Lundi - Vendredi", time: Array.isArray(massTimes.weekdays) ? massTimes.weekdays.join(", ") : massTimes.weekdays || "8h00, 18h30" },
+    { day: "Samedi", time: Array.isArray(massTimes.saturday) ? massTimes.saturday.join(", ") : massTimes.saturday || "9h00, 18h00 (anticipée)" },
+  ] : defaultMassSchedule;
+
+  // Default contact info fallback
+  const defaultContact = {
+    address: "Boulevard de la Compassion\nAbidjan, Côte d'Ivoire",
+    email: "compassionotredame5@gmail.com",
+    moderator_phone: "0720035585",
+    super_admin_email: "basilediane71@gmail.com",
+    super_admin_phone: "0505263030"
+  };
+
+  const contactInfo = contact || defaultContact;
 
   return (
     <footer className="bg-card border-t border-border cross-pattern">
@@ -118,31 +140,36 @@ const Footer = () => {
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-3">
                 <MapPin className="h-4 w-4 text-gold mt-0.5 shrink-0" />
-                <span className="text-muted-foreground">
-                  Boulevard de la Compassion<br />
-                  Abidjan, Côte d'Ivoire
+                <span className="text-muted-foreground whitespace-pre-line">
+                  {contactInfo.address}
                 </span>
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="h-4 w-4 text-gold shrink-0" />
-                <a href="mailto:compassionotredame5@gmail.com" className="text-muted-foreground hover:text-primary">
-                  compassionotredame5@gmail.com
+                <a href={`mailto:${contactInfo.email}`} className="text-muted-foreground hover:text-primary">
+                  {contactInfo.email}
                 </a>
               </li>
-              <li className="flex items-center gap-3">
-                <Mail className="h-4 w-4 text-gold shrink-0" />
-                <span className="text-xs text-muted-foreground">Modérateur: 0720035585</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Mail className="h-4 w-4 text-gold shrink-0" />
-                <a href="mailto:basilediane71@gmail.com" className="text-muted-foreground hover:text-primary">
-                  Super Admin: basilediane71@gmail.com
-                </a>
-              </li>
-              <li className="flex items-center gap-3">
-                <Phone className="h-4 w-4 text-gold shrink-0" />
-                <span className="text-xs text-muted-foreground">Super Admin: 0505263030</span>
-              </li>
+              {contactInfo.moderator_phone && (
+                <li className="flex items-center gap-3">
+                  <Phone className="h-4 w-4 text-gold shrink-0" />
+                  <span className="text-xs text-muted-foreground">Modérateur: {contactInfo.moderator_phone}</span>
+                </li>
+              )}
+              {contactInfo.super_admin_email && (
+                <li className="flex items-center gap-3">
+                  <Mail className="h-4 w-4 text-gold shrink-0" />
+                  <a href={`mailto:${contactInfo.super_admin_email}`} className="text-muted-foreground hover:text-primary text-xs">
+                    Super Admin: {contactInfo.super_admin_email}
+                  </a>
+                </li>
+              )}
+              {contactInfo.super_admin_phone && (
+                <li className="flex items-center gap-3">
+                  <Phone className="h-4 w-4 text-gold shrink-0" />
+                  <span className="text-xs text-muted-foreground">Super Admin: {contactInfo.super_admin_phone}</span>
+                </li>
+              )}
             </ul>
           </motion.div>
         </div>

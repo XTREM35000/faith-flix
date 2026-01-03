@@ -15,6 +15,8 @@ interface Video {
   created_at: string;
   description?: string;
   published?: boolean;
+  video_url?: string | null;
+  video_storage_path?: string | null;
 }
 
 type VideoInsertData = {
@@ -25,7 +27,8 @@ type VideoInsertData = {
   created_at?: string;
   description?: string;
   published?: boolean;
-  video_url?: string;
+  video_url?: string | null;
+  video_storage_path?: string | null;
   storage_path?: string;
   poster_url?: string;
 };
@@ -47,20 +50,22 @@ export const useVideos = (limit = 4, category?: string) => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      let finalQuery: any = query;
-      if (category && category !== 'all') {
-        finalQuery = finalQuery.eq('category', category);
-      }
-
-      const res = await finalQuery.limit(limit);
+      const res = await query.limit(limit);
       const { data, error: fetchError } = res as { data: unknown[] | null; error: unknown };
       /* eslint-enable @typescript-eslint/no-explicit-any */
 
-      if (fetchError) throw fetchError;
-
-      if (data) {
-        setVideos(data as Video[]);
+      if (fetchError) {
+        throw fetchError;
       }
+
+      // Filtrer par catégorie côté client si nécessaire
+      let filtered = (data || []) as Video[];
+      if (category && category !== 'all') {
+        console.debug('📹 Filtering videos by category (client-side):', category);
+        filtered = filtered.filter(v => v.category === category);
+      }
+
+      setVideos(filtered);
     } catch (err) {
       console.error('Erreur lors du chargement des vidéos:', err);
       setError(err instanceof Error ? err.message : 'Erreur inconnue');
@@ -76,13 +81,52 @@ export const useVideos = (limit = 4, category?: string) => {
 
   const createVideo = async (videoData: VideoInsertData) => {
     try {
+      // Colonnes de base garanties d'exister dans la table videos
+      const baseData = {
+        title: videoData.title,
+        description: videoData.description,
+        thumbnail_url: videoData.thumbnail_url,
+        duration: videoData.duration,
+        created_at: videoData.created_at,
+      };
+
+      // Colonnes optionnelles (ajoutées par migration)
+      const optionalData: Record<string, any> = {};
+      if (videoData.category !== undefined) optionalData.category = videoData.category;
+      if (videoData.published !== undefined) optionalData.published = videoData.published;
+      // video_url est optionnel - on le met que s'il est fourni
+      if (videoData.video_url) optionalData.video_url = videoData.video_url;
+      // video_storage_path pour les vidéos uploadées localement
+      if (videoData.video_storage_path) optionalData.video_storage_path = videoData.video_storage_path;
+
+      const insertData = { ...baseData, ...optionalData };
+      console.debug('📹 Creating video with data:', insertData);
+
       const { data, error } = await sb
         .from('videos')
-        .insert([videoData as never])
+        .insert([insertData as never])
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erreur createVideo:', error);
+        // Fallback: réessayer sans les colonnes optionnelles si erreur
+        if (error.message?.includes('column') || error.message?.includes('42703')) {
+          console.warn('⚠️ Colonnes optionnelles non disponibles, tentative sans');
+          const { data: fallbackData, error: fallbackError } = await sb
+            .from('videos')
+            .insert([baseData as never])
+            .select()
+            .single();
+          if (fallbackError) throw fallbackError;
+          if (fallbackData) {
+            setVideos(prev => [fallbackData as Video, ...prev]);
+          }
+          notifySuccess('Succès', 'Vidéo publiée (colonnes optionnelles non disponibles)');
+          return fallbackData as Video | null;
+        }
+        throw error;
+      }
 
       if (data) {
         setVideos(prev => [data as Video, ...prev]);
@@ -90,6 +134,7 @@ export const useVideos = (limit = 4, category?: string) => {
       notifySuccess('Succès', 'Vidéo publiée avec succès');
       return data as Video | null;
     } catch (err: unknown) {
+      console.error('Erreur lors de createVideo:', err);
       notifyError('Erreur', 'Échec de la publication de la vidéo');
       throw err;
     }
@@ -97,21 +142,62 @@ export const useVideos = (limit = 4, category?: string) => {
 
   const updateVideo = async (id: string, updates: VideoUpdateData) => {
     try {
+      console.debug('📹 Updating video with data:', updates);
+      try {
+        // Lire l'utilisateur courant pour aide au debug (RLS)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: authData } = await (supabase as any).auth.getUser();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const currentUser = (authData as any)?.user;
+        console.debug('📹 updateVideo executing as user:', currentUser?.id, 'targetVideoId:', id);
+      } catch (authErr) {
+        console.warn('⚠️ Impossible de récupérer l\'utilisateur avant update:', authErr);
+      }
+
       const { data, error } = await sb
         .from('videos')
         .update(updates as never)
         .eq('id', id)
         .select()
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
-
+      if (error) {
+        console.error('Erreur updateVideo:', error);
+        // Fallback: réessayer sans les colonnes optionnelles si erreur
+        if (error.message?.includes('column') || error.message?.includes('42703')) {
+          console.warn('⚠️ Colonnes optionnelles non disponibles, tentative sans');
+          const baseUpdates: Record<string, any> = {};
+          if (updates.title !== undefined) baseUpdates.title = updates.title;
+          if (updates.description !== undefined) baseUpdates.description = updates.description;
+          if (updates.thumbnail_url !== undefined) baseUpdates.thumbnail_url = updates.thumbnail_url;
+          if (updates.duration !== undefined) baseUpdates.duration = updates.duration;
+          const { data: fallbackData, error: fallbackError } = await sb
+            .from('videos')
+            .update(baseUpdates as never)
+            .eq('id', id)
+            .select()
+            .maybeSingle();
+          if (fallbackError) throw fallbackError;
+          if (fallbackData) {
+            setVideos(prev => prev.map(video => (video.id === id ? fallbackData as Video : video)));
+          } else {
+            console.warn('updateVideo: aucune ligne affectée lors du fallback pour id', id);
+          }
+          notifySuccess('Succès', 'Vidéo mise à jour (colonnes optionnelles non disponibles)');
+          return fallbackData as Video | null;
+        }
+        throw error;
+      }
       if (data) {
         setVideos(prev => prev.map(video => (video.id === id ? data as Video : video)));
+      } else {
+        console.warn('updateVideo: aucune ligne affectée pour id', id);
+        throw new Error('Aucune ligne mise à jour — vérifiez les permissions (RLS) ou l\'identifiant');
       }
       notifySuccess('Succès', 'Vidéo mise à jour avec succès');
       return data as Video | null;
     } catch (err: unknown) {
+      console.error('Erreur lors de updateVideo:', err);
       notifyError('Erreur', 'Échec de la mise à jour de la vidéo');
       throw err;
     }
@@ -119,16 +205,41 @@ export const useVideos = (limit = 4, category?: string) => {
 
   const deleteVideo = async (id: string) => {
     try {
-      const { error } = await sb
+      console.debug('📹 deleteVideo called for id:', id);
+      
+      // Récupérer l'utilisateur courant
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: authData } = await (supabase as any).auth.getUser();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const currentUser = (authData as any)?.user;
+        console.debug('📹 deleteVideo executing as user:', currentUser?.id);
+      } catch (authErr) {
+        console.warn('⚠️ Impossible de récupérer l\'utilisateur avant delete:', authErr);
+      }
+
+      const { error, count } = await sb
         .from('videos')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      console.debug('📹 deleteVideo response:', { error, count });
 
-      setVideos(prev => prev.filter(video => video.id !== id));
+      if (error) {
+        console.error('❌ deleteVideo RLS/query error:', error);
+        throw error;
+      }
+
+      // Supprimer du state local
+      setVideos(prev => {
+        const updated = prev.filter(video => video.id !== id);
+        console.debug('📹 updateState: removed video id', id, '— remaining videos:', updated.length);
+        return updated;
+      });
+      
       notifySuccess('Succès', 'Vidéo supprimée avec succès');
     } catch (err: unknown) {
+      console.error('❌ Erreur lors de deleteVideo:', err);
       notifyError('Erreur', 'Échec de la suppression de la vidéo');
       throw err;
     }

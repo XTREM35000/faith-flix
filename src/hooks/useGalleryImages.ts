@@ -1,63 +1,59 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { fetchGalleryImages } from '@/lib/supabase/galleryQueries';
+import type { GalleryImage } from '@/types/database';
 
-interface GalleryImage {
-  id: string;
-  title: string;
-  imageUrl: string;
-  likes: number;
-  comments: number;
-  description?: string;
-  category?: string;
-}
-
-export function useGalleryImages(limit = 50) {
+export function useGalleryImages(initialLimit = 20) {
   const [images, setImages] = useState<GalleryImage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+  const offsetRef = useRef(0);
+  const [hasMore, setHasMore] = useState(true);
 
-  const fetchImages = useCallback(async () => {
+  const loadMore = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const query = (supabase
-        .from('gallery_images' as never)
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(limit)) as unknown;
-
-      const res = await query;
-      const { data, error: fetchError } = res as { data: unknown[] | null; error: unknown };
-
-      if (fetchError) throw fetchError;
-
-      if (data) {
-        // Map database columns to GalleryImage interface safely
-        const mappedImages: GalleryImage[] = (data || []).map((img) => {
-          const r = img as Record<string, unknown>;
-          return {
-            id: String(r.id ?? ''),
-            title: String(r.title ?? 'Sans titre'),
-            imageUrl: String((r['image_url'] ?? r['url']) ?? ''),
-            likes: Number(r['likes'] ?? 0),
-            comments: Number(r['comments'] ?? 0),
-            description: (r['description'] as string | undefined) ?? undefined,
-            category: (r['category'] as string | undefined) ?? undefined,
-          };
-        });
-        setImages(mappedImages);
+      console.log('🔄 Chargement des images de galerie (offset:', offsetRef.current, 'limit:', initialLimit, ')');
+      const res = await fetchGalleryImages({ limit: initialLimit, offset: offsetRef.current });
+      if (!res) {
+        const err = new Error('Impossible de charger les images - Supabase n\'a pas répondu');
+        setError(err);
+        console.error('❌', err.message);
+        return;
       }
+      // Filtrer les valeurs undefined/null et valider les données
+      const data = (res.data || []).filter((img): img is GalleryImage => !!img && typeof img === 'object' && 'id' in img);
+      console.log(`📸 Images chargées: ${data.length} valides (offset: ${offsetRef.current})`);
+      
+      if (data.length === 0 && offsetRef.current === 0) {
+        console.warn('⚠️  Aucune image trouvée. Vérifiez les données de la table gallery_images');
+      }
+      
+      setImages((prev) => [...prev, ...data]);
+      offsetRef.current += data.length;
+      setHasMore(data.length === initialLimit);
     } catch (err) {
-      console.error('Erreur lors du chargement des images de galerie:', err);
-      setError(err instanceof Error ? err.message : 'Erreur inconnue');
-      setImages([]);
+      const errorMsg = err instanceof Error ? err.message : 'Erreur inconnue';
+      console.error('❌ Erreur gallery:', errorMsg);
+      setError(err instanceof Error ? err : new Error(errorMsg));
     } finally {
       setLoading(false);
     }
-  }, [limit]);
+  }, [initialLimit]);
+
+  const refresh = useCallback(async () => {
+    console.log('🔄 Rafraîchissement de la galerie');
+    offsetRef.current = 0;
+    setImages([]);
+    setHasMore(true);
+    setError(null);
+    await loadMore();
+  }, [loadMore]);
 
   useEffect(() => {
-    fetchImages();
-  }, [fetchImages]);
+    // initial load
+    refresh();
+  }, [refresh]);
 
-  return { images, loading, error, refreshImages: fetchImages };
+  return { images, loading, error, refresh, loadMore, hasMore, isEmpty: images.length === 0, refetch: refresh } as const;
 }

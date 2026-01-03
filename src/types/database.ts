@@ -54,6 +54,7 @@ export interface Video {
   description: string | null;
   thumbnail_url: string | null;
   video_url: string | null;
+  video_storage_path?: string | null;
   hls_url: string | null;
   duration: number;
   views: number;
@@ -281,4 +282,34 @@ export interface DashboardStats {
   recentVideos: Video[];
   recentComments: Comment[];
   upcomingEvents: Event[];
+}
+
+// =====================================================
+// Gallery types
+// =====================================================
+
+export interface GalleryCategory {
+  id: string;
+  name: string;
+  slug?: string | null;
+  description?: string | null;
+  created_at: string;
+}
+
+export interface GalleryImage {
+  id: string;
+  title?: string | null;
+  description?: string | null;
+  image_url: string;
+  thumbnail_url?: string | null;
+  category_id?: string | null;
+  user_id: string;
+  views: number;
+  is_public: boolean;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at?: string | null;
+  // Relations
+  category?: GalleryCategory;
+  user?: Profile;
 }

@@ -1,20 +1,12 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import HeroBanner from "@/components/HeroBanner";
 import { useGalleryImages } from "@/hooks/useGalleryImages";
 import GalleryCard from "@/components/GalleryCard";
-
-interface GalleryImage {
-  id: string;
-  title: string;
-  imageUrl: string;
-  likes: number;
-  comments: number;
-  description?: string;
-  category?: string;
-}
+import GalleryGrid from "@/components/GalleryGrid";
+import type { GalleryImage } from '@/types/database';
 
 const GalleryPage = () => {
   const { images, loading } = useGalleryImages(100);
@@ -27,12 +19,12 @@ const GalleryPage = () => {
   const categories = useMemo(
     () =>
       Array.from(
-        new Set(
-          (images as GalleryImage[])
-            ?.map((img) => img.category)
-            .filter(Boolean) ?? []
-        )
-      ).sort(),
+          new Set(
+            (images as GalleryImage[])
+              ?.map((img) => img.category?.name ?? null)
+              .filter(Boolean) ?? []
+          )
+        ).sort(),
     [images]
   );
 
@@ -40,13 +32,13 @@ const GalleryPage = () => {
     if (!images) return [];
 
     return (images as GalleryImage[]).filter((img) => {
+      const title = img.title || '';
+      const desc = img.description || '';
       const matchesSearch =
-        (img.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (img.description || "")
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase());
-      const matchesCategory =
-        selectedCategory === "all" || img.category === selectedCategory;
+        title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        desc.toLowerCase().includes(searchTerm.toLowerCase());
+      const imgCategory = img.category?.name ?? 'all';
+      const matchesCategory = selectedCategory === 'all' || imgCategory === selectedCategory;
       return matchesSearch && matchesCategory;
     });
   }, [images, searchTerm, selectedCategory]);
@@ -116,45 +108,14 @@ const GalleryPage = () => {
         </motion.div>
 
         {/* Gallery Grid */}
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          </div>
-        ) : filteredImages.length > 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ staggerChildren: 0.1 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          >
-            {filteredImages.map((image, index) => (
-              <motion.div
-                key={image.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <GalleryCard
-                  id={image.id}
-                  title={image.title}
-                  imageUrl={image.imageUrl}
-                  likes={image.likes || 0}
-                  comments={image.comments || 0}
-                />
-              </motion.div>
-            ))}
-          </motion.div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-12"
-          >
-            <p className="text-muted-foreground text-lg">
-              Aucune image trouvée
-            </p>
-          </motion.div>
-        )}
+        <GalleryGrid
+          images={filteredImages as GalleryImage[]}
+          loading={loading}
+          onOpen={(img) => {
+            /* TODO: open modal/lightbox */
+            console.log('Open image', img.id);
+          }}
+        />
       </div>
 
       {/* Footer provided by Layout */}

@@ -1,209 +1,749 @@
-import React, { useEffect, useState } from 'react';
-import Header from '@/components/Header';
-import HeroBanner from '@/components/HeroBanner';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Save } from 'lucide-react';
-import type { Database } from '@/integrations/supabase/types';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { Loader2, Save, X, AlertCircle } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useHomepageContent } from "@/hooks/useHomepageContent";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
-type HomepageSection = Database['public']['Tables']['homepage_sections']['Row'];
-
+// use shared `supabase` client from integrations
 const AdminHomepageEditor = () => {
-  const [sections, setSections] = useState<HomepageSection[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { sections, isLoading: contentLoading } = useHomepageContent();
+  
+  const [loading, setLoading] = useState(false);
+  const [heroData, setHeroData] = useState({
+    title: "",
+    subtitle: "",
+    content: "",
+    button_text: "",
+    button_link: "",
+    image_url: "",
+  });
+  
+  const [galleryConfig, setGalleryConfig] = useState({
+    limit: 4,
+    order: "recent" as "recent" | "popular",
+  });
+  
+  const [videosConfig, setVideosConfig] = useState({
+    limit: 4,
+    order: "recent" as "recent" | "popular",
+  });
+  
+  const [eventsConfig, setEventsConfig] = useState({
+    limit: 2,
+    upcoming_only: true,
+  });
+  
+  const [massTimes, setMassTimes] = useState({
+    sunday: ["9h00", "11h00", "18h30"],
+    weekdays: ["8h00", "18h30"],
+    saturday: ["9h00", "18h00 (anticipée)"],
+  });
+  
+  const [contact, setContact] = useState({
+    address: "",
+    email: "",
+    moderator_phone: "",
+    super_admin_email: "",
+    super_admin_phone: "",
+  });
+  
+  const [activeTab, setActiveTab] = useState("hero");
 
+  // Load sections data on mount
   useEffect(() => {
-    fetchSections();
-  }, []);
+    if (sections && sections.length > 0) {
+      const heroSection = sections.find((s) => s.section_key === "hero");
+      const gallerySection = sections.find((s) => s.section_key === "gallery_section");
+      const videosSection = sections.find((s) => s.section_key === "videos_section");
+      const eventsSection = sections.find((s) => s.section_key === "events_section");
+      const massTSection = sections.find((s) => s.section_key === "footer_mass_times");
+      const contactSection = sections.find((s) => s.section_key === "footer_contact");
 
-  const fetchSections = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('homepage_sections')
-        .select('*')
-        .order('sort_order');
-      
-      if (error) throw error;
-      if (data) setSections(data);
-    } catch (err) {
-      console.error('Erreur lors du chargement des sections:', err);
-    } finally {
-      setLoading(false);
+      if (heroSection) {
+        setHeroData({
+          title: heroSection.title || "",
+          subtitle: heroSection.subtitle || "",
+          content: heroSection.content || "",
+          button_text: heroSection.button_text || "",
+          button_link: heroSection.button_link || "",
+          image_url: heroSection.image_url || "",
+        });
+      }
+
+      if (gallerySection && gallerySection.content) {
+        try {
+          const parsed = typeof gallerySection.content === "string" 
+            ? JSON.parse(gallerySection.content) 
+            : gallerySection.content;
+          setGalleryConfig(parsed);
+        } catch (e) {
+          console.error("Error parsing gallery config:", e);
+        }
+      }
+
+      if (videosSection && videosSection.content) {
+        try {
+          const parsed = typeof videosSection.content === "string" 
+            ? JSON.parse(videosSection.content) 
+            : videosSection.content;
+          setVideosConfig(parsed);
+        } catch (e) {
+          console.error("Error parsing videos config:", e);
+        }
+      }
+
+      if (eventsSection && eventsSection.content) {
+        try {
+          const parsed = typeof eventsSection.content === "string" 
+            ? JSON.parse(eventsSection.content) 
+            : eventsSection.content;
+          setEventsConfig(parsed);
+        } catch (e) {
+          console.error("Error parsing events config:", e);
+        }
+      }
+
+      if (massTSection && massTSection.content) {
+        try {
+          const parsed = typeof massTSection.content === "string" 
+            ? JSON.parse(massTSection.content) 
+            : massTSection.content;
+          setMassTimes(parsed);
+        } catch (e) {
+          console.error("Error parsing mass times:", e);
+        }
+      }
+
+      if (contactSection && contactSection.content) {
+        try {
+          const parsed = typeof contactSection.content === "string" 
+            ? JSON.parse(contactSection.content) 
+            : contactSection.content;
+          setContact(parsed);
+        } catch (e) {
+          console.error("Error parsing contact:", e);
+        }
+      }
     }
-  };
+  }, [sections]);
 
-  const updateSection = async (id: string, field: string, value: string | boolean) => {
-    setSaving(true);
-    try {
-      const updates: Record<string, unknown> = { 
-        [field]: value, 
-        updated_at: new Date().toISOString() 
-      };
-      
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
-        .from('homepage_sections')
-        .update(updates)
-        .eq('id', id);
-
-      if (error) throw error;
-
-      // Mettre à jour l'état local pour un feedback immédiat
-      setSections(sections.map(s => 
-        s.id === id ? { ...s, [field]: value } : s
-      ));
-    } catch (err) {
-      console.error('Erreur lors de la sauvegarde:', err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) {
+  // Check if user is admin
+  if (!user) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
-        {/* Header provided by Layout */}
-        <HeroBanner
-          title="Chargement..."
-          subtitle="Veuillez patienter"
-          showBackButton={true}
-        />
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
+          <p className="text-lg font-semibold">Accès refusé</p>
+          <p className="text-muted-foreground">Vous devez être connecté pour accéder à cette page.</p>
+          <button
+            onClick={() => navigate("/?mode=login#auth")}
+            className="mt-4 px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            Se connecter
+          </button>
         </div>
       </div>
     );
   }
 
+  const handleSaveHero = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("homepage_sections")
+        .update({
+          title: heroData.title,
+          subtitle: heroData.subtitle,
+          content: heroData.content,
+          button_text: heroData.button_text,
+          button_link: heroData.button_link,
+          image_url: heroData.image_url,
+          updated_at: new Date().toISOString(),
+          updated_by: user.id,
+        })
+        .eq("section_key", "hero");
+
+      if (error) throw error;
+      toast({ title: "Succès", description: "Section héro mise à jour" });
+    } catch (error) {
+      console.error("Error saving hero:", error);
+      toast({ 
+        title: "Erreur", 
+        description: "Impossible de mettre à jour la section héro",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveGalleryConfig = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("homepage_sections")
+        .update({
+          content: JSON.stringify(galleryConfig),
+          updated_at: new Date().toISOString(),
+          updated_by: user.id,
+        })
+        .eq("section_key", "gallery_section");
+
+      if (error) throw error;
+      toast({ title: "Succès", description: "Configuration galerie mise à jour" });
+    } catch (error) {
+      console.error("Error saving gallery config:", error);
+      toast({ 
+        title: "Erreur", 
+        description: "Impossible de mettre à jour la configuration",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveVideosConfig = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("homepage_sections")
+        .update({
+          content: JSON.stringify(videosConfig),
+          updated_at: new Date().toISOString(),
+          updated_by: user.id,
+        })
+        .eq("section_key", "videos_section");
+
+      if (error) throw error;
+      toast({ title: "Succès", description: "Configuration vidéos mise à jour" });
+    } catch (error) {
+      console.error("Error saving videos config:", error);
+      toast({ 
+        title: "Erreur", 
+        description: "Impossible de mettre à jour la configuration",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveEventsConfig = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("homepage_sections")
+        .update({
+          content: JSON.stringify(eventsConfig),
+          updated_at: new Date().toISOString(),
+          updated_by: user.id,
+        })
+        .eq("section_key", "events_section");
+
+      if (error) throw error;
+      toast({ title: "Succès", description: "Configuration événements mise à jour" });
+    } catch (error) {
+      console.error("Error saving events config:", error);
+      toast({ 
+        title: "Erreur", 
+        description: "Impossible de mettre à jour la configuration",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveMassTimes = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("homepage_sections")
+        .update({
+          content: JSON.stringify(massTimes),
+          updated_at: new Date().toISOString(),
+          updated_by: user.id,
+        })
+        .eq("section_key", "footer_mass_times");
+
+      if (error) throw error;
+      toast({ title: "Succès", description: "Horaires des messes mis à jour" });
+    } catch (error) {
+      console.error("Error saving mass times:", error);
+      toast({ 
+        title: "Erreur", 
+        description: "Impossible de mettre à jour les horaires",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveContact = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("homepage_sections")
+        .update({
+          content: JSON.stringify(contact),
+          updated_at: new Date().toISOString(),
+          updated_by: user.id,
+        })
+        .eq("section_key", "footer_contact");
+
+      if (error) throw error;
+      toast({ title: "Succès", description: "Informations de contact mises à jour" });
+    } catch (error) {
+      console.error("Error saving contact:", error);
+      toast({ 
+        title: "Erreur", 
+        description: "Impossible de mettre à jour les contacts",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (contentLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header provided by Layout */}
+    <div className="min-h-screen bg-background py-12">
+      <div className="container mx-auto px-4 max-w-4xl">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-8"
+        >
+          {/* Header */}
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold font-display">Édition de la page d'accueil</h1>
+            <p className="text-muted-foreground">Modifiez le contenu dynamique de votre site</p>
+          </div>
 
-      <HeroBanner
-        title="Éditeur de la page d'accueil"
-        subtitle="Modifiez les titres, sous-titres et textes affichés sur la page principale"
-        showBackButton={true}
-        backgroundImage="/images/ceremonie.png"
-      />
+          {/* Tabs */}
+          <div className="flex gap-2 border-b border-border overflow-x-auto pb-4">
+            {[
+              { id: "hero", label: "Section héro" },
+              { id: "gallery", label: "Galerie" },
+              { id: "videos", label: "Vidéos" },
+              { id: "events", label: "Événements" },
+              { id: "mass-times", label: "Horaires" },
+              { id: "contact", label: "Contact" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? "text-primary border-b-2 border-primary -mb-4 pb-4"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-      <main className="flex-1 py-12 lg:py-16">
-        <div className="container mx-auto px-4 space-y-6">
-          {sections.map((section) => (
-            <Card key={section.id} className="overflow-hidden">
-              <CardHeader className="bg-muted/50 border-b">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-3">
-                    <span className="font-mono text-sm bg-background px-3 py-1 rounded border">
-                      {section.key}
-                    </span>
-                  </CardTitle>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-1 rounded font-medium ${
-                      section.is_active 
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' 
-                        : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100'
-                    }`}>
-                      {section.is_active ? 'Actif' : 'Inactif'}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => updateSection(section.id, 'is_active', !section.is_active)}
-                      disabled={saving}
-                    >
-                      {section.is_active ? 'Désactiver' : 'Activer'}
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-6 space-y-4">
+          {/* Content */}
+          <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+            {/* Hero Tab */}
+            {activeTab === "hero" && (
+              <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Titre principal</label>
-                  <Input
-                    value={section.title || ''}
-                    onChange={(e) => updateSection(section.id, 'title', e.target.value)}
-                    placeholder="Titre de la section..."
-                    disabled={saving}
+                  <label className="block text-sm font-medium mb-2">Titre principal</label>
+                  <input
+                    type="text"
+                    value={heroData.title}
+                    onChange={(e) => setHeroData({ ...heroData, title: e.target.value })}
+                    className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
-                
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Sous-titre</label>
-                  <Input
-                    value={section.subtitle || ''}
-                    onChange={(e) => updateSection(section.id, 'subtitle', e.target.value)}
-                    placeholder="Sous-titre optionnel..."
-                    disabled={saving}
+                  <label className="block text-sm font-medium mb-2">Sous-titre</label>
+                  <input
+                    type="text"
+                    value={heroData.subtitle}
+                    onChange={(e) => setHeroData({ ...heroData, subtitle: e.target.value })}
+                    className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
-                
-                {(section.key === 'hero' || section.key.includes('event')) && (
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Contenu détaillé</label>
-                    <Textarea
-                      value={section.content || ''}
-                      onChange={(e) => updateSection(section.id, 'content', e.target.value)}
-                      placeholder="Texte descriptif plus long..."
-                      rows={3}
-                      disabled={saving}
-                    />
-                  </div>
-                )}
-                
+                <div>
+                  <label className="block text-sm font-medium mb-2">Contenu</label>
+                  <textarea
+                    value={heroData.content}
+                    onChange={(e) => setHeroData({ ...heroData, content: e.target.value })}
+                    rows={4}
+                    className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Texte du bouton</label>
-                    <Input
-                      value={section.button_text || ''}
-                      onChange={(e) => updateSection(section.id, 'button_text', e.target.value)}
-                      placeholder="Ex: Voir plus"
-                      disabled={saving}
+                    <label className="block text-sm font-medium mb-2">Texte du bouton</label>
+                    <input
+                      type="text"
+                      value={heroData.button_text}
+                      onChange={(e) => setHeroData({ ...heroData, button_text: e.target.value })}
+                      className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium mb-2 block">Lien du bouton</label>
-                    <Input
-                      value={section.button_link || ''}
-                      onChange={(e) => updateSection(section.id, 'button_link', e.target.value)}
-                      placeholder="/chemin-ou-url"
-                      disabled={saving}
+                    <label className="block text-sm font-medium mb-2">Lien du bouton</label>
+                    <input
+                      type="text"
+                      value={heroData.button_link}
+                      onChange={(e) => setHeroData({ ...heroData, button_link: e.target.value })}
+                      className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
                 </div>
-
-                {section.key === 'hero' && (
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">URL de l'image</label>
-                    <Input
-                      value={section.image_url || ''}
-                      onChange={(e) => updateSection(section.id, 'image_url', e.target.value)}
-                      placeholder="https://..."
-                      disabled={saving}
-                    />
-                    {section.image_url && (
-                      <img 
-                        src={section.image_url} 
-                        alt="Aperçu" 
-                        className="mt-3 h-40 object-cover rounded border"
-                      />
-                    )}
-                  </div>
-                )}
-
-                <div className="pt-2 border-t">
-                  <p className="text-xs text-muted-foreground">
-                    Dernière modification: {new Date(section.updated_at).toLocaleString('fr-FR')}
-                  </p>
+                <div>
+                  <label className="block text-sm font-medium mb-2">URL de l'image</label>
+                  <input
+                    type="text"
+                    value={heroData.image_url}
+                    onChange={(e) => setHeroData({ ...heroData, image_url: e.target.value })}
+                    className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="/images/hero.png"
+                  />
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </main>
+                <button
+                  onClick={handleSaveHero}
+                  disabled={loading}
+                  className="w-full bg-primary text-primary-foreground py-2 rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Enregistrer
+                </button>
+              </div>
+            )}
+
+            {/* Gallery Config Tab */}
+            {activeTab === "gallery" && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Nombre d'images à afficher</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={galleryConfig.limit}
+                    onChange={(e) => setGalleryConfig({ ...galleryConfig, limit: parseInt(e.target.value) })}
+                    className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Ordre d'affichage</label>
+                  <select
+                    value={galleryConfig.order}
+                    onChange={(e) => setGalleryConfig({ ...galleryConfig, order: e.target.value as "recent" | "popular" })}
+                    className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="recent">Récentes</option>
+                    <option value="popular">Populaires</option>
+                  </select>
+                </div>
+                <button
+                  onClick={handleSaveGalleryConfig}
+                  disabled={loading}
+                  className="w-full bg-primary text-primary-foreground py-2 rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Enregistrer
+                </button>
+              </div>
+            )}
+
+            {/* Videos Config Tab */}
+            {activeTab === "videos" && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Nombre de vidéos à afficher</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={videosConfig.limit}
+                    onChange={(e) => setVideosConfig({ ...videosConfig, limit: parseInt(e.target.value) })}
+                    className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Ordre d'affichage</label>
+                  <select
+                    value={videosConfig.order}
+                    onChange={(e) => setVideosConfig({ ...videosConfig, order: e.target.value as "recent" | "popular" })}
+                    className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="recent">Récentes</option>
+                    <option value="popular">Populaires</option>
+                  </select>
+                </div>
+                <button
+                  onClick={handleSaveVideosConfig}
+                  disabled={loading}
+                  className="w-full bg-primary text-primary-foreground py-2 rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Enregistrer
+                </button>
+              </div>
+            )}
+
+            {/* Events Config Tab */}
+            {activeTab === "events" && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Nombre d'événements à afficher</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={eventsConfig.limit}
+                    onChange={(e) => setEventsConfig({ ...eventsConfig, limit: parseInt(e.target.value) })}
+                    className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="upcoming-only"
+                    checked={eventsConfig.upcoming_only}
+                    onChange={(e) => setEventsConfig({ ...eventsConfig, upcoming_only: e.target.checked })}
+                    className="w-4 h-4"
+                  />
+                  <label htmlFor="upcoming-only" className="text-sm font-medium">
+                    Afficher uniquement les événements à venir
+                  </label>
+                </div>
+                <button
+                  onClick={handleSaveEventsConfig}
+                  disabled={loading}
+                  className="w-full bg-primary text-primary-foreground py-2 rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Enregistrer
+                </button>
+              </div>
+            )}
+
+            {/* Mass Times Tab */}
+            {activeTab === "mass-times" && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Dimanche</label>
+                  <div className="space-y-2">
+                    {massTimes.sunday.map((time, idx) => (
+                      <div key={idx} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={time}
+                          onChange={(e) => {
+                            const updated = [...massTimes.sunday];
+                            updated[idx] = e.target.value;
+                            setMassTimes({ ...massTimes, sunday: updated });
+                          }}
+                          className="flex-1 px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                        <button
+                          onClick={() => {
+                            const updated = massTimes.sunday.filter((_, i) => i !== idx);
+                            setMassTimes({ ...massTimes, sunday: updated });
+                          }}
+                          className="px-3 py-2 bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setMassTimes({ ...massTimes, sunday: [...massTimes.sunday, ""] })}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      + Ajouter une heure
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Lunes - Viernes</label>
+                  <div className="space-y-2">
+                    {massTimes.weekdays.map((time, idx) => (
+                      <div key={idx} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={time}
+                          onChange={(e) => {
+                            const updated = [...massTimes.weekdays];
+                            updated[idx] = e.target.value;
+                            setMassTimes({ ...massTimes, weekdays: updated });
+                          }}
+                          className="flex-1 px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                        <button
+                          onClick={() => {
+                            const updated = massTimes.weekdays.filter((_, i) => i !== idx);
+                            setMassTimes({ ...massTimes, weekdays: updated });
+                          }}
+                          className="px-3 py-2 bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setMassTimes({ ...massTimes, weekdays: [...massTimes.weekdays, ""] })}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      + Ajouter une heure
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Samedi</label>
+                  <div className="space-y-2">
+                    {massTimes.saturday.map((time, idx) => (
+                      <div key={idx} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={time}
+                          onChange={(e) => {
+                            const updated = [...massTimes.saturday];
+                            updated[idx] = e.target.value;
+                            setMassTimes({ ...massTimes, saturday: updated });
+                          }}
+                          className="flex-1 px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                        <button
+                          onClick={() => {
+                            const updated = massTimes.saturday.filter((_, i) => i !== idx);
+                            setMassTimes({ ...massTimes, saturday: updated });
+                          }}
+                          className="px-3 py-2 bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setMassTimes({ ...massTimes, saturday: [...massTimes.saturday, ""] })}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      + Ajouter une heure
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleSaveMassTimes}
+                  disabled={loading}
+                  className="w-full bg-primary text-primary-foreground py-2 rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Enregistrer
+                </button>
+              </div>
+            )}
+
+            {/* Contact Tab */}
+            {activeTab === "contact" && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Adresse</label>
+                  <textarea
+                    value={contact.address}
+                    onChange={(e) => setContact({ ...contact, address: e.target.value })}
+                    rows={3}
+                    className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Email principal</label>
+                  <input
+                    type="email"
+                    value={contact.email}
+                    onChange={(e) => setContact({ ...contact, email: e.target.value })}
+                    className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Téléphone modérateur</label>
+                  <input
+                    type="tel"
+                    value={contact.moderator_phone}
+                    onChange={(e) => setContact({ ...contact, moderator_phone: e.target.value })}
+                    className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Email super admin</label>
+                  <input
+                    type="email"
+                    value={contact.super_admin_email}
+                    onChange={(e) => setContact({ ...contact, super_admin_email: e.target.value })}
+                    className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Téléphone super admin</label>
+                  <input
+                    type="tel"
+                    value={contact.super_admin_phone}
+                    onChange={(e) => setContact({ ...contact, super_admin_phone: e.target.value })}
+                    className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <button
+                  onClick={handleSaveContact}
+                  disabled={loading}
+                  className="w-full bg-primary text-primary-foreground py-2 rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Enregistrer
+                </button>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      </div>
     </div>
   );
 };

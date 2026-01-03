@@ -20,6 +20,7 @@ interface UserData {
   phone: string;
   avatar_url: string;
   email: string;
+  role?: string | null;
 }
 
 const ProfilePage = () => {
@@ -36,6 +37,7 @@ const ProfilePage = () => {
     phone: '',
     avatar_url: '',
     email: '',
+    role: null,
   });
 
   useEffect(() => {
@@ -50,6 +52,7 @@ const ProfilePage = () => {
         phone: user.user_metadata?.phone || '',
         avatar_url: profile.avatar_url || user.user_metadata?.avatar_url || '',
         email: user.email || '',
+        role: profile.role || null,
       });
     } else if (user) {
       setUserData((prev) => ({ 
@@ -58,6 +61,7 @@ const ProfilePage = () => {
         full_name: user.user_metadata?.full_name || '',
         phone: user.user_metadata?.phone || '',
         avatar_url: user.user_metadata?.avatar_url || '',
+        role: user.user_metadata?.role || prev.role || null,
       }));
     }
   }, [user, profile, navigate]);
@@ -102,6 +106,7 @@ const ProfilePage = () => {
       const profileUpdates: Database['public']['Tables']['profiles']['Update'] = {
         full_name: userData.full_name,
         avatar_url: updatedAvatarUrl,
+        role: userData.role ?? undefined,
       };
       
       const { error: updateError } = await supabase
@@ -362,9 +367,32 @@ const ProfilePage = () => {
                       {/* Account Type */}
                       <div>
                         <label className="text-sm font-medium mb-2 block">Type de compte</label>
-                        <div className="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
-                          Membre
-                        </div>
+                        {/* Sélecteur visible seulement pour les admins */}
+                        {(() => {
+                          const isAdmin = !!(profile && profile.role && ['admin','super_admin','administrateur'].includes(String(profile.role).toLowerCase()));
+                          if (isAdmin && isEditing) {
+                            return (
+                              <select
+                                value={userData.role || 'member'}
+                                onChange={(e) => setUserData({ ...userData, role: e.target.value })}
+                                className="w-full p-2 border rounded"
+                                disabled={String(profile?.role).toLowerCase() === 'super_admin'}
+                              >
+                                <option value="member">Membre</option>
+                                <option value="moderator">Modérateur</option>
+                                <option value="admin">Administrateur</option>
+                              </select>
+                            );
+                          }
+
+                          // Lecture seule pour les non-admins
+                          return (
+                            <div className="p-3 bg-muted rounded">
+                              <p className="text-sm">Rôle : <strong>{profile?.role || 'member'}</strong></p>
+                              <p className="text-xs text-muted-foreground">Seul un administrateur peut modifier votre rôle.</p>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </CardContent>
                   </Card>

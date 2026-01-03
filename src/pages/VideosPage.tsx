@@ -1,29 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Search, Plus, Trash2, Edit2, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Search, Plus, Trash2, Edit2 } from 'lucide-react';
 import HeroBanner from '@/components/HeroBanner';
 import VideoCard from '@/components/VideoCard';
+import VideoModalForm from '@/components/VideoModalForm';
 import { useVideos } from '@/hooks/useVideos';
 import { useAuth } from '@/hooks/useAuth';
+import { useUser } from '@/hooks/useUser';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 interface VideoCategory {
   id: string;
@@ -40,36 +26,21 @@ const CATEGORIES: VideoCategory[] = [
   { id: 'temoignage', label: 'Témoignage', value: 'Témoignage' },
 ];
 
-interface NewVideo {
-  title: string;
-  description: string;
-  category: string;
-  duration: number;
-  thumbnail_url: string;
-  published?: boolean;
-}
-
 const VideosPage = () => {
-  
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingVideoId, setEditingVideoId] = useState<string | null>(null);
-  const [newVideo, setNewVideo] = useState<NewVideo>({
-    title: '',
-    description: '',
-    category: 'Sermon',
-    duration: 0,
-    thumbnail_url: '',
-    published: true,
-  });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingVideo, setEditingVideo] = useState<Record<string, unknown> | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const { user } = useAuth();
-  const { videos, loading, createVideo, updateVideo, deleteVideo } = useVideos(
+  const { profile } = useUser();
+  const { videos, loading, createVideo, updateVideo, deleteVideo, refreshVideos } = useVideos(
     100,
     selectedCategory === 'all' ? undefined : selectedCategory
   );
 
-  
+  const isAdmin = profile?.role === 'admin' || (user as any)?.user_metadata?.role === 'admin';
+  console.debug('📹 VideosPage rendered:', { userId: user?.id, profileRole: profile?.role, authRole: (user as any)?.user_metadata?.role, isAdmin });
 
   // Filtrer les vidéos par recherche
   const filteredVideos = videos.filter((video) =>
@@ -79,71 +50,56 @@ const VideosPage = () => {
 
   const displayVideos = searchTerm ? filteredVideos : videos;
 
-  // Gestionnaires CRUD
-  const handleAddVideo = async () => {
-    if (!newVideo.title.trim() || !newVideo.category) {
-      alert('Veuillez remplir les champs obligatoires');
-      return;
-    }
-
+  // Gestionnaire pour sauvegarder une vidéo (create ou update)
+  const handleSaveVideo = async (videoData: Record<string, unknown>) => {
     try {
-      await createVideo({
-        title: newVideo.title,
-        description: newVideo.description,
-        category: newVideo.category,
-        duration: newVideo.duration,
-        thumbnail_url: newVideo.thumbnail_url || '/images/videos/default-thumbnail.jpg',
-        created_at: new Date().toISOString(),
-        views: 0,
-      } as NewVideo);
-
-      setNewVideo({
-        title: '',
-        description: '',
-        category: 'Sermon',
-        duration: 0,
-        thumbnail_url: '',
-      });
-      setIsAddDialogOpen(false);
-    } catch (error) {
-      console.error('Erreur lors de l\'ajout de la vidéo:', error);
-    }
-  };
-
-  const handleDeleteVideo = async (videoId: string) => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cette vidéo ?')) {
-      try {
-        await deleteVideo(videoId);
-      } catch (error) {
-        console.error('Erreur lors de la suppression de la vidéo:', error);
+      setIsSaving(true);
+      if (editingVideo) {
+        await updateVideo(editingVideo.id as string, videoData);
+      } else {
+        await createVideo({
+          ...videoData,
+          created_at: new Date().toISOString(),
+          views: 0,
+        });
       }
+      await refreshVideos?.();
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleToggleVisibility = async (videoId: string, currentVideo: NewVideo) => {
+  // Gestionnaire pour supprimer une vidéo
+  const handleDeleteVideo = async (videoId: string) => {
     try {
-      await updateVideo(videoId, {
-        ...currentVideo,
-        description: currentVideo.description || '',
-        published: !currentVideo.published,
-      });
-    } catch (error) {
-      console.error('Erreur lors de la mise à jour de la vidéo:', error);
+      setIsSaving(true);
+      await deleteVideo(videoId);
+      await refreshVideos?.();
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const isAdmin = user?.role === 'admin';
+  const handleOpenModal = (video?: Record<string, unknown>) => {
+    console.debug('📹 Opening video modal', { video, isEditing: !!video });
+    setEditingVideo(video || null);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    console.debug('📹 Closing video modal');
+    setIsModalOpen(false);
+    setEditingVideo(null);
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header provided by Layout */}
-      
-     <HeroBanner
-      title="Vidéos"
-      subtitle="Parcourez tous nos enregistrements de célébrations, enseignements et moments de partage"
-      showBackButton={true}
-      backgroundImage="/images/prieres.png"
-    />
+      <HeroBanner
+        title="Vidéos"
+        subtitle="Parcourez tous nos enregistrements de célébrations, enseignements et moments de partage"
+        showBackButton={true}
+        backgroundImage="/images/prieres.png"
+      />
 
       <main className="flex-1">
         {/* Barre de recherche et filtres */}
@@ -155,7 +111,6 @@ const VideosPage = () => {
               transition={{ duration: 0.5 }}
               className="max-w-3xl mx-auto mb-8"
             >
-              {/* Barre de recherche et bouton d'ajout */}
               <div className="flex gap-3 mb-8">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
@@ -166,140 +121,46 @@ const VideosPage = () => {
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
-                {isAdmin && (
-                  <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="gap-2 h-12">
-                        <Plus className="h-5 w-5" />
-                        Ajouter une vidéo
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-md">
-                      <DialogHeader>
-                        <DialogTitle>Ajouter une nouvelle vidéo</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div>
-                          <Label htmlFor="title" className="text-sm font-medium">
-                            Titre *
-                          </Label>
-                          <Input
-                            id="title"
-                            placeholder="Titre de la vidéo"
-                            value={newVideo.title}
-                            onChange={(e) =>
-                              setNewVideo({ ...newVideo, title: e.target.value })
-                            }
-                            className="mt-2"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="description" className="text-sm font-medium">
-                            Description
-                          </Label>
-                          <Input
-                            id="description"
-                            placeholder="Description brève"
-                            value={newVideo.description}
-                            onChange={(e) =>
-                              setNewVideo({ ...newVideo, description: e.target.value })
-                            }
-                            className="mt-2"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="category" className="text-sm font-medium">
-                            Catégorie *
-                          </Label>
-                          <Select
-                            value={newVideo.category}
-                            onValueChange={(value) =>
-                              setNewVideo({ ...newVideo, category: value })
-                            }
-                          >
-                            <SelectTrigger className="mt-2">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {CATEGORIES.filter((cat) => cat.value !== 'all').map((cat) => (
-                                <SelectItem key={cat.id} value={cat.value}>
-                                  {cat.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor="duration" className="text-sm font-medium">
-                            Durée (secondes)
-                          </Label>
-                          <Input
-                            id="duration"
-                            type="number"
-                            placeholder="0"
-                            value={newVideo.duration}
-                            onChange={(e) =>
-                              setNewVideo({
-                                ...newVideo,
-                                duration: parseInt(e.target.value) || 0,
-                              })
-                            }
-                            className="mt-2"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="thumbnail" className="text-sm font-medium">
-                            URL vignette
-                          </Label>
-                          <Input
-                            id="thumbnail"
-                            placeholder="/images/videos/..."
-                            value={newVideo.thumbnail_url}
-                            onChange={(e) =>
-                              setNewVideo({
-                                ...newVideo,
-                                thumbnail_url: e.target.value,
-                              })
-                            }
-                            className="mt-2"
-                          />
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button
-                          variant="outline"
-                          onClick={() => setIsAddDialogOpen(false)}
-                        >
-                          Annuler
-                        </Button>
-                        <Button onClick={handleAddVideo}>Ajouter</Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                )}
+                <Button 
+                  className="gap-2 h-12" 
+                  onClick={() => {
+                    if (isAdmin) {
+                      handleOpenModal();
+                    } else {
+                      console.debug('❌ User is not admin');
+                    }
+                  }}
+                  disabled={!isAdmin}
+                  title={!user ? 'Connectez-vous pour ajouter une vidéo' : !isAdmin ? 'Vous n\'êtes pas admin' : 'Ajouter une nouvelle vidéo'}
+                >
+                  <Plus className="h-5 w-5" />
+                  Ajouter une vidéo
+                </Button>
               </div>
             </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.1, duration: 0.5 }}
-              className="flex flex-wrap gap-3"
-            >
-              {CATEGORIES.map((cat) => (
-                <Button
-                  key={cat.id}
-                  variant={selectedCategory === cat.value ? 'default' : 'outline'}
-                  onClick={() => {
-                    setSelectedCategory(cat.value);
-                    setSearchTerm('');
-                  }}
-                  className="transition-all"
-                >
-                  {cat.label}
-                </Button>
-              ))}
-            </motion.div>
+            <div className="flex items-center justify-between">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1, duration: 0.5 }}
+                className="flex flex-wrap gap-3"
+              >
+                {CATEGORIES.map((cat) => (
+                  <Button
+                    key={cat.id}
+                    variant={selectedCategory === cat.value ? 'default' : 'outline'}
+                    onClick={() => {
+                      setSelectedCategory(cat.value);
+                      setSearchTerm('');
+                    }}
+                    className="transition-all"
+                  >
+                    {cat.label}
+                  </Button>
+                ))}
+              </motion.div>
+            </div>
           </div>
         </section>
 
@@ -334,26 +195,11 @@ const VideosPage = () => {
                         className="relative group"
                       >
                         <VideoCard
-                          id={video.id}
-                          title={video.title}
-                          description={video.description}
-                          thumbnail={
-                            video.thumbnail_url || '/images/videos/default-thumbnail.jpg'
-                          }
-                          duration={
-                            video.duration
-                              ? `${Math.floor(video.duration / 60)}:${String(
-                                  video.duration % 60
-                                ).padStart(2, '0')}`
-                              : '0:00'
-                          }
-                          views={video.views}
-                          category={video.category || 'Vidéo'}
-                          date={new Date(video.created_at).toLocaleDateString('fr-FR', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })}
+                          video={video}
+                          onOpen={() => {
+                            /* ouvrir lecteur ou page vidéo */
+                          }}
+                          onDeleted={() => refreshVideos?.()}
                         />
                         {/* Admin actions overlay */}
                         {isAdmin && (
@@ -366,37 +212,24 @@ const VideosPage = () => {
                               size="sm"
                               variant="secondary"
                               className="gap-2"
-                              onClick={() =>
-                                handleToggleVisibility(video.id, {
-                                  ...video,
-                                  description: video.description || '',
-                                } as NewVideo)
-                              }
+                              onClick={() => handleOpenModal(video as Record<string, unknown>)}
                             >
-                              {(video as NewVideo).published ? (
-                                <>
-                                  <EyeOff className="h-4 w-4" />
-                                  Masquer
-                                </>
-                              ) : (
-                                <>
-                                  <Eye className="h-4 w-4" />
-                                  Afficher
-                                </>
-                              )}
+                              <Edit2 className="h-4 w-4" />
+                              Modifier
                             </Button>
                             <Button
                               size="sm"
                               variant="destructive"
                               className="gap-2"
                               onClick={() => handleDeleteVideo(video.id)}
+                              disabled={isSaving}
                             >
                               <Trash2 className="h-4 w-4" />
                               Supprimer
                             </Button>
                           </motion.div>
                         )}
-                        {!(video as NewVideo).published && (
+                        {!video.published && (
                           <Badge variant="secondary" className="absolute top-2 right-2 z-5">
                             Brouillon
                           </Badge>
@@ -418,10 +251,7 @@ const VideosPage = () => {
                     : 'Aucune vidéo disponible pour le moment.'}
                 </p>
                 {searchTerm && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setSearchTerm('')}
-                  >
+                  <Button variant="outline" onClick={() => setSearchTerm('')}>
                     Réinitialiser la recherche
                   </Button>
                 )}
@@ -429,8 +259,6 @@ const VideosPage = () => {
             )}
           </div>
         </section>
-
-        {/* Stats Section */}
         <section className="py-12 lg:py-16 bg-muted/30 border-t border-border/50">
           <div className="container mx-auto px-4">
             <motion.div
@@ -466,6 +294,16 @@ const VideosPage = () => {
           </div>
         </section>
       </main>
+
+      {/* Modal de gestion vidéo */}
+      <VideoModalForm
+        open={isModalOpen}
+        onClose={handleCloseModal}
+        editingVideo={editingVideo}
+        onSave={handleSaveVideo}
+        onDelete={handleDeleteVideo}
+        isLoading={isSaving}
+      />
 
       {/* Footer provided by Layout */}
     </div>

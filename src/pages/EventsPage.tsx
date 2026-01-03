@@ -4,17 +4,22 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import HeroBanner from "@/components/HeroBanner";
 import { useUpcomingEvents } from "@/hooks/useUpcomingEvents";
+import { ImageOff } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useUser } from '@/hooks/useUser';
 import EventCard from "@/components/EventCard";
 
 interface Event {
   id: string;
   title: string;
-  description: string;
-  date: string;
-  time: string;
+  description?: string;
+  start_date: string;
+  date?: string;
+  time?: string;
   location: string;
-  attendees: number;
   imageUrl?: string;
+  image_url?: string;
+  attendees?: number;
   category?: string;
   featured?: boolean;
 }
@@ -24,6 +29,8 @@ const EventsPage = () => {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const { profile } = useUser();
+  const isAdmin = !!(profile && profile.role && ['admin','super_admin','administrateur'].includes(String(profile.role).toLowerCase()));
 
   
 
@@ -136,12 +143,12 @@ const EventsPage = () => {
                 <EventCard
                   id={event.id}
                   title={event.title}
-                  description={event.description}
-                  date={event.date}
-                  time={event.time}
+                  description={event.description || ""}
+                  date={event.start_date || event.date || ""}
+                  time={event.time || ""}
                   location={event.location}
                   attendees={event.attendees || 0}
-                  imageUrl={event.imageUrl}
+                  imageUrl={event.imageUrl || event.image_url}
                   featured={event.featured}
                 />
               </motion.div>
@@ -153,9 +160,19 @@ const EventsPage = () => {
             animate={{ opacity: 1 }}
             className="text-center py-12"
           >
-            <p className="text-muted-foreground text-lg">
-              Aucun événement trouvé
+            <ImageOff className="w-20 h-20 mx-auto text-muted-foreground/40 mb-4" />
+            <h3 className="text-lg font-medium">Aucun événement à venir</h3>
+            <p className="text-muted-foreground mt-2">
+              Nous n'avons pas encore programmé d'événements. Revenez bientôt.
             </p>
+            {/* Bouton pour les admins seulement */}
+            {isAdmin && (
+              <div className="mt-4">
+                <Button asChild>
+                  <a href="/admin/events">Créer un événement</a>
+                </Button>
+              </div>
+            )}
           </motion.div>
         )}
       </div>

@@ -1,7 +1,9 @@
 import { motion } from "framer-motion";
 import { Calendar, ChevronRight, ArrowLeft } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import HeroBgEditor from "@/components/HeroBgEditor";
+import { useState } from "react";
 
 interface HeroBannerProps {
   title: string;
@@ -23,14 +25,28 @@ const HeroBanner = ({
   description,
 }: HeroBannerProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [bg, setBg] = useState<string | undefined>(backgroundImage);
+
+  const handleBgSave = async (url: string) => {
+    // Mettre à jour localement pour un rendu immédiat
+    setBg(url);
+    // Émettre un événement global que l'app peut écouter pour persistance
+    try {
+      const ev = new CustomEvent('hero-bg-changed', { detail: { path: location.pathname, url } });
+      window.dispatchEvent(ev);
+    } catch (e) {
+      // noop
+    }
+  };
 
   return (
     <section className="relative min-h-[50vh] lg:min-h-[60vh] flex items-center overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0">
-        {backgroundImage ? (
+        {bg ? (
           <img
-            src={backgroundImage}
+            src={bg}
             alt=""
             className="w-full h-full object-cover object-center"
           />
@@ -40,6 +56,11 @@ const HeroBanner = ({
         <div className="absolute inset-0 bg-gradient-to-r from-foreground/40 via-foreground/30 to-foreground/10" />
         <div className="absolute inset-0 cross-pattern opacity-10" />
       </div>
+
+      {/* Editor button for non-index pages */}
+      {location.pathname !== '/' && (
+        <HeroBgEditor current={bg} onSave={handleBgSave} />
+      )}
 
       {/* Content */}
       <div className="container mx-auto px-4 relative z-10">

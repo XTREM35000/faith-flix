@@ -22,32 +22,41 @@ export const useUpcomingEvents = (limit = 10) => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        // Récupérer les événements futurs triés par start_date (timestamp)
-        const today = new Date().toISOString();
-
+        // Récupérer TOUS les événements sans filtre de date d'abord
         const { data, error: fetchError } = await supabase
           .from('events')
-          .select('*')
-          .gte('start_date', today)
+          .select('id, title, description, start_date, location, image_url')
           .order('start_date', { ascending: true })
           .limit(limit);
         
         if (fetchError) throw fetchError;
         
+        console.log('📅 Events fetched (ALL):', data);
+        
         if (data) {
-          // Mapper les données avec les noms attendus
-          const mappedEvents: Event[] = data.map((item: Record<string, unknown>) => ({
-            id: item.id as string,
-            title: item.title as string,
-            description: item.description as string | undefined,
-            start_date: (item.start_date as string) || (item.startDate as string) || '',
-            time: item.time as string | undefined,
-            location: item.location as string,
-            imageUrl: (item.image_url as string | null) || (item.imageUrl as string | null),
-            attendees: item.attendees as number | undefined,
-            created_at: item.created_at as string | undefined,
-            updated_at: item.updated_at as string | undefined,
-          }));
+          console.log('📅 All events:', data);
+          
+          // Mapper les données avec les noms attendus (afficher tous les événements)
+          const mappedEvents: Event[] = data.map((item: Record<string, unknown>) => {
+            const startDate = (item.start_date as string) || '';
+            // Extraire l'heure depuis start_date (format ISO: 2026-01-03T10:30:00Z)
+            const timeFromDate = startDate ? new Date(startDate).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
+            
+            const mapped = {
+              id: item.id as string,
+              title: item.title as string,
+              description: item.description as string | undefined,
+              start_date: startDate,
+              time: timeFromDate,
+              location: item.location as string,
+              imageUrl: (item.image_url as string | null) || undefined,
+              attendees: 0,
+              created_at: undefined,
+              updated_at: undefined,
+            };
+            console.log('🖼️ Event:', mapped.title, 'Date:', mapped.start_date, 'Image URL:', mapped.imageUrl);
+            return mapped;
+          });
           
           setEvents(mappedEvents);
         }

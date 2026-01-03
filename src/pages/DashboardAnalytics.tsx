@@ -6,6 +6,7 @@ import { ChartContainer } from '@/components/ui/chart';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useVideos } from '@/hooks/useVideos';
 import VideoCard from '@/components/VideoCard';
+import { Button } from '@/components/ui/button';
 
 const weeklyViews = [
   { day: 'Lun', views: 120 },
@@ -145,7 +146,15 @@ const DashboardAnalytics: React.FC = () => {
                       />
                     ))
                   ) : (
-                    <p className="text-muted-foreground">Aucune vidéo</p>
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">Aucune vidéo disponible</p>
+                      <p className="text-sm text-muted-foreground mt-2">La bibliothèque vidéo est vide pour l'instant.</p>
+                      <div className="mt-3">
+                        <Button asChild>
+                          <a href="/admin/videos">Ajouter une vidéo</a>
+                        </Button>
+                      </div>
+                    </div>
                   )}
                 </div>
               </CardContent>
