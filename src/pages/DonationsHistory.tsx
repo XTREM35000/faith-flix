@@ -57,13 +57,8 @@ const DonationsHistoryPage = () => {
   const fetchDonations = async () => {
     try {
       setLoading(true);
-      let query = (supabase as any).from("donations").select("*");
-
-      // Non-admins only see their own donations
-      if (!isAdmin && profile?.id) {
-        query = query.eq("user_id", profile.id);
-      }
-
+      // RLS policies handle filtering by user_id; no need to manually filter
+      const query = (supabase as any).from("donations").select("*");
       const { data, error } = await query.order("donation_date", { ascending: false });
 
       if (error) throw error;
@@ -189,7 +184,7 @@ const DonationsHistoryPage = () => {
         title="Historique des dons"
         subtitle="Vos donations et historique"
         showBackButton={true}
-        backgroundImage={hero?.image_url || "/images/donations.png"}
+        backgroundImage={hero?.image_url || "/images/bapteme.png"}
         onBgSave={saveHero}
       />
 
