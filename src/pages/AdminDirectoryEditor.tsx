@@ -8,7 +8,7 @@ import { useLocation } from 'react-router-dom';
 import usePageHero from '@/hooks/usePageHero';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import DraggableModal from '@/components/DraggableModal';
 import { useToast } from '@/hooks/use-toast';
 
 const AdminDirectoryEditor: React.FC = () => {
@@ -319,18 +319,24 @@ const AdminDirectoryEditor: React.FC = () => {
         </motion.div>
       </main>
 
-      {/* Edit/Create Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" aria-describedby="admin-directory-desc">
-          <DialogHeader>
-            <DialogTitle>
-              {editingId ? 'Éditer l\'élément' : 'Créer un nouvel élément'}
-            </DialogTitle>
-          </DialogHeader>
+      {/* Edit/Create Dialog - Draggable */}
+      <DraggableModal open={isDialogOpen} onClose={closeDialog} dragHandleOnly={true}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border" data-drag-handle>
+          <h2 className="text-lg font-semibold">
+            {editingId ? 'Éditer l\'élément' : 'Créer un nouvel élément'}
+          </h2>
+          <button
+            onClick={closeDialog}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
 
-          <div id="admin-directory-desc" className="sr-only">Dialog pour créer ou éditer un élément de l'annuaire.</div>
+        <div id="admin-directory-desc" className="sr-only">Dialog draggable pour créer ou éditer un élément de l'annuaire.</div>
 
-          <div className="space-y-4 py-4">
+        <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto px-6 py-4">
             {/* Name */}
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
@@ -468,8 +474,7 @@ const AdminDirectoryEditor: React.FC = () => {
               </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </DraggableModal>
     </div>
   );
 };
