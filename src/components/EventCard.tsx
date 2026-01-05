@@ -44,12 +44,12 @@ const EventCard = ({
     >
       {/* Image */}
       {imageUrl && (
-        <div className={`${featured ? "lg:w-2/5" : ""} aspect-video lg:aspect-auto overflow-hidden relative`}>
+        <div className={`${featured ? "lg:w-2/5" : ""} h-32 md:h-40 overflow-hidden relative bg-muted`}>
           <img
             src={imageUrl}
             alt={title}
             loading="lazy"
-            className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+            className="w-full h-full object-cover object-center transition-transform duration-500 hover:scale-105"
           />
           {featured && (
             <Badge className="absolute top-4 left-4 bg-primary hover:bg-primary">

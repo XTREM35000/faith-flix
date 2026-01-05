@@ -52,12 +52,13 @@ const HomepageHero = ({ data, isLoading }: HomepageHeroProps) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
-      className="relative min-h-[50vh] md:min-h-[65vh] lg:min-h-[75vh] py-12 md:py-16 lg:py-20 bg-gradient-to-b from-primary/10 to-background overflow-hidden"
+      className="relative min-h-[13vh] md:min-h-[16vh] lg:min-h-[20vh] py-6 md:py-8 lg:py-10 bg-gradient-to-b from-primary/10 to-background overflow-hidden"
       style={
         data.image_url
           ? {
               backgroundImage: `url(${data.image_url})`,
-              backgroundSize: 'cover',
+              backgroundSize: 'contain',
+              backgroundRepeat: 'no-repeat',
               backgroundPosition: 'center',
               backgroundAttachment: 'fixed',
             }
@@ -74,14 +75,14 @@ const HomepageHero = ({ data, isLoading }: HomepageHeroProps) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.6 }}
-          className="text-center py-8 md:py-12 lg:py-16"
+          className="text-center pt-2 md:pt-4 lg:pt-6 pb-8 md:pb-12 lg:pb-16"
         >
           {data.subtitle && (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="text-xs md:text-sm lg:text-base font-medium text-primary/80 mb-2 md:mb-4 uppercase tracking-wider"
+              className="text-xs md:text-sm lg:text-base font-bold text-black bg-white px-3 py-1 inline-block mb-2 md:mb-4 uppercase tracking-wider"
             >
               {data.subtitle}
             </motion.p>

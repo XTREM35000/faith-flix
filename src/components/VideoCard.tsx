@@ -93,12 +93,12 @@ const VideoCard = ({ video, onOpen, onDeleted }: VideoCardProps) => {
       className="group relative overflow-hidden rounded-xl shadow-card cursor-pointer h-full flex flex-col"
       onClick={onOpen}
     >
-      <div className="aspect-video overflow-hidden bg-background">
+      <div className="aspect-video overflow-hidden bg-muted">
         <img
           src={thumbnailUrl}
           alt={title}
           loading="lazy"
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
         />
         {/* Play icon overlay */}
         <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors flex items-center justify-center">

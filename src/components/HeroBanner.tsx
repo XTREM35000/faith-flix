@@ -73,7 +73,7 @@ const HeroBanner = ({
     }
   };
   return (
-    <section className="relative h-[60vh] md:h-[75vh] lg:h-screen flex items-center overflow-hidden">
+    <section className="relative h-[30vh] md:h-[38vh] lg:h-[50vh] flex items-center overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0">
         {bg ? (

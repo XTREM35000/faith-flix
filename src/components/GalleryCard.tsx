@@ -105,12 +105,12 @@ const GalleryCard = ({ image, onOpen, onDeleted }: GalleryCardProps) => {
       className="group relative overflow-hidden rounded-xl shadow-card cursor-pointer h-full flex flex-col"
       onClick={onOpen}
     >
-      <div className="aspect-square overflow-hidden">
+      <div className="aspect-square overflow-hidden bg-muted">
         <img
           src={imgUrl}
           alt={title}
           loading="lazy"
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
         />
       </div>
 
