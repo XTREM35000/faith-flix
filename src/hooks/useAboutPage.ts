@@ -1,6 +1,7 @@
 import { supabase } from '../integrations/supabase/client';
 import type { Json } from '../integrations/supabase/types';
 import { useQuery } from '@tanstack/react-query';
+import { useUser } from './useUser';
 
 export interface AboutSection {
   id: string;
@@ -18,6 +19,9 @@ export interface AboutSection {
 }
 
 export const useAboutPage = () => {
+  const { profile } = useUser();
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin' || profile?.role === 'administrateur';
+
   return useQuery({
     queryKey: ['about-page'],
     queryFn: async (): Promise<AboutSection[]> => {
@@ -26,9 +30,16 @@ export const useAboutPage = () => {
         .select('*')
         .order('display_order', { ascending: true });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching about page sections:', error);
+        throw error;
+      }
+      console.log('About page sections fetched:', data, '(isAdmin:', isAdmin, ')');
       return data || [];
-    }
+    },
+    // Force refetch when cache is invalidated
+    staleTime: 0,
+    gcTime: 0, // Previously cacheTime
   });
 };
 

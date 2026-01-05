@@ -10,6 +10,13 @@ import { supabase } from '@/integrations/supabase/client';
 const AboutPage: React.FC = () => {
   const { data: sections, isLoading, error } = useAboutPage();
 
+  // Debug log
+  React.useEffect(() => {
+    if (sections) {
+      console.log('AboutPage - Sections loaded:', sections.map(s => ({ key: s.section_key, title: s.title, active: s.is_active })));
+    }
+  }, [sections]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -29,7 +36,9 @@ const AboutPage: React.FC = () => {
     );
   }
 
-  const organized = organizeAboutSections(sections);
+  // Filtrer les sections actives uniquement
+  const activeSections = sections.filter(s => s.is_active);
+  const organized = organizeAboutSections(activeSections);
 
   const handleHeroImageSave = async (url: string) => {
     if (!organized.hero) return;

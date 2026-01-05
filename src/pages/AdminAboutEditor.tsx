@@ -445,8 +445,10 @@ const AdminAboutEditor: React.FC = () => {
         description: 'Les modifications ont été enregistrées avec succès.'
       });
 
-      // Invalider le cache pour rafraîchir les données
-      queryClient.invalidateQueries({ queryKey: ['about-page'] });
+      // Invalider le cache et forcer un refetch immédiat
+      await queryClient.invalidateQueries({ queryKey: ['about-page'] });
+      // Refetch immédiatement pour mettre à jour la page publique
+      queryClient.refetchQueries({ queryKey: ['about-page'] });
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
       toast({
@@ -517,7 +519,9 @@ const AdminAboutEditor: React.FC = () => {
         description: 'L\'ordre d\'affichage a été mis à jour.'
       });
 
-      queryClient.invalidateQueries({ queryKey: ['about-page'] });
+      // Invalider et refetch immédiatement
+      await queryClient.invalidateQueries({ queryKey: ['about-page'] });
+      queryClient.refetchQueries({ queryKey: ['about-page'] });
     } catch (error) {
       console.error('Erreur lors du déplacement:', error);
       toast({
@@ -540,7 +544,9 @@ const AdminAboutEditor: React.FC = () => {
         description: `Section ${isActive ? 'activée' : 'désactivée'}`
       });
 
-      queryClient.invalidateQueries({ queryKey: ['about-page'] });
+      // Invalider et refetch immédiatement
+      await queryClient.invalidateQueries({ queryKey: ['about-page'] });
+      queryClient.refetchQueries({ queryKey: ['about-page'] });
     } catch (error) {
       console.error('Erreur lors de la modification:', error);
       toast({
