@@ -75,7 +75,7 @@ const HeroBanner = ({
   };
 
   return (
-    <section className="relative min-h-[50vh] lg:min-h-[60vh] flex items-center overflow-hidden">
+    <section className="relative h-[60vh] md:h-[75vh] lg:h-screen flex items-center overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0">
         {bg ? (
@@ -111,9 +111,9 @@ const HeroBanner = ({
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 }}
               onClick={() => navigate(-1)}
-              className="mb-6 inline-flex items-center gap-2 text-sm text-white hover:text-primary-foreground transition-colors backdrop-blur-sm bg-black/40 px-3 py-1.5 rounded-full border border-white/20"
+              className="mb-4 md:mb-6 inline-flex items-center gap-2 text-xs md:text-sm text-white hover:text-white transition-colors backdrop-blur-sm bg-black/40 px-2 md:px-3 py-1.5 rounded-full border border-white/20"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-3 h-3 md:w-4 md:h-4" />
               Retour
             </motion.button>
           )}
@@ -124,11 +124,11 @@ const HeroBanner = ({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="mb-6"
+              className="mb-4 md:mb-6"
             >
-              <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30">
-                <Calendar className="w-4 h-4 text-gold" />
-                <span className="text-sm font-medium text-white">
+              <div className="inline-flex items-center gap-2 md:gap-3 px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30">
+                <Calendar className="w-3 h-3 md:w-4 md:h-4 text-gold" />
+                <span className="text-xs md:text-sm font-medium text-white">
                   <strong>{eventTitle}</strong> • {eventDate}
                 </span>
               </div>
@@ -140,7 +140,7 @@ const HeroBanner = ({
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-4 drop-shadow-lg"
+            className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-2 md:mb-4 drop-shadow-lg"
           >
             {title}
           </motion.h1>
@@ -150,7 +150,7 @@ const HeroBanner = ({
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="text-lg md:text-xl text-white/90 mb-8 leading-relaxed drop-shadow-md max-w-2xl"
+            className="text-sm md:text-lg lg:text-xl text-white/90 mb-4 md:mb-8 leading-relaxed drop-shadow-md max-w-2xl"
           >
             {description || subtitle}
           </motion.p>
@@ -161,23 +161,23 @@ const HeroBanner = ({
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="flex flex-wrap gap-4"
+              className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-4"
             >
               <Button
                 asChild
-                size="lg"
-                className="bg-gold hover:bg-gold-light text-secondary-foreground font-semibold shadow-lg hover:shadow-xl transition-shadow"
+                size="sm"
+                className="bg-gold hover:bg-gold-light text-secondary-foreground font-semibold shadow-lg hover:shadow-xl transition-shadow md:size-lg"
               >
                 <Link to="/videos">
                   Découvrir nos vidéos
-                  <ChevronRight className="ml-2 h-4 w-4" />
+                  <ChevronRight className="ml-2 h-3 w-3 md:h-4 md:w-4" />
                 </Link>
               </Button>
               <Button
                 asChild
                 variant="outline"
-                size="lg"
-                className="border-white text-white hover:bg-white/20 backdrop-blur-sm hover:border-white/50"
+                size="sm"
+                className="border-white text-white hover:bg-white/20 backdrop-blur-sm hover:border-white/50 md:size-lg"
               >
                 <Link to="/evenements">Voir les événements</Link>
               </Button>

@@ -73,7 +73,7 @@ const HeroBanner = ({
     }
   };
   return (
-    <section className="relative min-h-[50vh] lg:min-h-[60vh] flex items-center overflow-hidden">
+    <section className="relative h-[60vh] md:h-[75vh] lg:h-screen flex items-center overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0">
         {bg ? (
@@ -104,9 +104,9 @@ const HeroBanner = ({
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1 }}
               onClick={() => navigate(-1)}
-              className="mb-6 inline-flex items-center gap-2 text-sm text-primary-foreground/80 hover:text-primary-foreground transition-colors"
+              className="mb-4 md:mb-6 inline-flex items-center gap-2 text-xs md:text-sm text-primary-foreground/80 hover:text-primary-foreground transition-colors backdrop-blur-sm bg-black/30 px-2 md:px-3 py-1.5 rounded-full border border-white/20"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-3 h-3 md:w-4 md:h-4" />
               Retour
             </motion.button>
           )}
@@ -117,11 +117,11 @@ const HeroBanner = ({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="mb-6"
+              className="mb-4 md:mb-6"
             >
-              <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-gold/20 backdrop-blur-sm border border-gold/30">
-                <Calendar className="w-4 h-4 text-gold" />
-                <span className="text-sm text-primary-foreground/90">
+              <div className="inline-flex items-center gap-2 md:gap-3 px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-gold/20 backdrop-blur-sm border border-gold/30">
+                <Calendar className="w-3 h-3 md:w-4 md:h-4 text-gold" />
+                <span className="text-xs md:text-sm text-primary-foreground/90">
                   <strong>{eventTitle}</strong> • {eventDate}
                 </span>
               </div>
@@ -133,7 +133,7 @@ const HeroBanner = ({
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-primary-foreground leading-tight mb-4"
+            className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-primary-foreground leading-tight mb-2 md:mb-4 drop-shadow-lg"
           >
             {title}
           </motion.h1>
@@ -143,7 +143,7 @@ const HeroBanner = ({
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="text-lg md:text-xl text-primary-foreground/80 mb-8 leading-relaxed"
+            className="text-sm md:text-lg lg:text-xl text-primary-foreground/80 mb-4 md:mb-8 leading-relaxed max-w-2xl"
           >
             {description || subtitle}
           </motion.p>

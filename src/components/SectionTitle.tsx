@@ -23,7 +23,7 @@ const SectionTitle = ({
       className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8"
     >
       <div>
-        <h2 className="font-display text-2xl md:text-3xl font-bold text-foreground">
+        <h2 className="font-display text-2xl md:text-3xl font-bold text-black bg-white px-3 py-1 inline-block">
           {title}
         </h2>
         {subtitle && (
