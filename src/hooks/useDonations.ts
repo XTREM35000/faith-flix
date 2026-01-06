@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
+import type { Database, TablesInsert } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 
 export interface Donation {
@@ -107,7 +107,7 @@ export const useDonations = () => {
   const createDonation = async (donationData: Partial<Donation>) => {
     try {
       // Préparez les données selon votre schéma réel
-      type DonationInsert = Database['public']['Tables']['donations']['Insert'];
+      type DonationInsert = TablesInsert<'donations'>;
 
       const payload: Partial<DonationInsert> = {
         type: donationData.type,

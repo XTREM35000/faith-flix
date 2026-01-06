@@ -23,6 +23,7 @@ export type Database = {
           join_date: string | null
           is_verified: boolean | null
           settings: Json | null
+          last_read_messages_at: string | null
           created_at: string
           updated_at: string
         }
@@ -39,6 +40,7 @@ export type Database = {
           join_date?: string | null
           is_verified?: boolean | null
           settings?: Json | null
+          last_read_messages_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -55,6 +57,7 @@ export type Database = {
           join_date?: string | null
           is_verified?: boolean | null
           settings?: Json | null
+          last_read_messages_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -64,6 +67,73 @@ export type Database = {
             columns: ["id"]
             isOneToOne: true
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      },
+      messages: {
+        Row: {
+          id: string
+          content: string
+          sender_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          content: string
+          sender_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          content?: string
+          sender_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          body: string | null
+          is_read: boolean
+          metadata: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          body?: string | null
+          is_read?: boolean
+          metadata?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          body?: string | null
+          is_read?: boolean
+          metadata?: Json | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

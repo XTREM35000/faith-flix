@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, User, LogOut, HelpCircle, Menu, X, Home, Info, Users } from "lucide-react";
+import { Search, User, LogOut, HelpCircle, Menu, X, Home, Info, Users, MessageCircle, Bell } from "lucide-react";
 import AnimatedLogo from "./AnimatedLogo";
 import AuthModal from "./AuthModal";
 import MobileSidebar from "./MobileSidebar";
@@ -27,6 +27,8 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
   const location = useLocation();
   const authMode = new URLSearchParams(location.search).get("mode") === "register" ? "register" : "login";
   const navigate = useNavigate();
@@ -86,6 +88,50 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
   if (headerLoading) {
     return <HeaderSkeleton />;
   }
+
+  // Charger les compteurs non lus pour l'utilisateur connecté
+  useEffect(() => {
+    if (!user || !profile) return;
+
+    const loadCounts = async () => {
+      try {
+        // Notifications non lues
+        const { count: notifCount } = await supabase
+          .from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', profile.id)
+          .eq('is_read', false);
+
+        setUnreadNotificationsCount(notifCount || 0);
+
+        // Messages non lus: messages newer than profile.last_read_messages_at
+        if (profile.last_read_messages_at) {
+          const { count: msgCount } = await supabase
+            .from('messages')
+            .select('id', { count: 'exact', head: true })
+            .gt('created_at', profile.last_read_messages_at)
+            .neq('sender_id', profile.id);
+
+          setUnreadMessagesCount(msgCount || 0);
+        } else {
+          // If never read, count recent messages (e.g. last 7 days)
+          const d = new Date();
+          d.setDate(d.getDate() - 7);
+          const { count: msgCount } = await supabase
+            .from('messages')
+            .select('id', { count: 'exact', head: true })
+            .gt('created_at', d.toISOString())
+            .neq('sender_id', profile.id);
+
+          setUnreadMessagesCount(msgCount || 0);
+        }
+      } catch (e) {
+        // silent
+      }
+    };
+
+    loadCounts();
+  }, [user, profile]);
 
 
   return (
@@ -181,6 +227,42 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
             >
               <Search className="h-5 w-5" />
             </Button>
+
+            {/* Chat icon with badge */}
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate('/live')}
+                className="text-muted-foreground hover:text-foreground"
+                title="Chat en direct"
+              >
+                <MessageCircle className="h-5 w-5" />
+              </Button>
+              {unreadMessagesCount > 0 && (
+                <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-semibold leading-none text-white bg-destructive rounded-full">
+                  {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                </span>
+              )}
+            </div>
+
+            {/* Notifications icon with badge */}
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate('/notifications')}
+                className="text-muted-foreground hover:text-foreground"
+                title="Notifications"
+              >
+                <Bell className="h-5 w-5" />
+              </Button>
+              {unreadNotificationsCount > 0 && (
+                <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-semibold leading-none text-white bg-rose-600 rounded-full">
+                  {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                </span>
+              )}
+            </div>
 
             {/* Help */}
             <Button

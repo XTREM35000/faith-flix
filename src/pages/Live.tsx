@@ -1,11 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { MessageCircle, Users, Heart, Share2, MoreVertical, Send } from "lucide-react";
 import HeroBanner from "@/components/HeroBanner";
 import { useLocation } from 'react-router-dom';
 import usePageHero from '@/hooks/usePageHero';
+import { useHeaderConfig } from '@/hooks/useHeaderConfig';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { supabase } from '@/integrations/supabase/client';
+import { useUser } from '@/hooks/useUser';
 
 interface ChatMessage {
   id: string;
@@ -17,55 +20,95 @@ interface ChatMessage {
 
 const Live: React.FC = () => {
   const [isLive] = useState(true);
-  const [likes, setLikes] = useState(1284);
+  const [likes, setLikes] = useState(0);
   const [hasLiked, setHasLiked] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "1",
-      author: "Marie D.",
-      message: "Quelle belle messe! 🙏",
-      timestamp: new Date(Date.now() - 5 * 60000),
-      avatar: "👩",
-    },
-    {
-      id: "2",
-      author: "Jean M.",
-      message: "Merci pour ce moment spirituel",
-      timestamp: new Date(Date.now() - 3 * 60000),
-      avatar: "👨",
-    },
-    {
-      id: "3",
-      author: "Sophie L.",
-      message: "La bénédiction nous accompagne tous! ✨",
-      timestamp: new Date(Date.now() - 1 * 60000),
-      avatar: "👩",
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [viewerCount, setViewerCount] = useState<number>(0);
+  const [duration, setDuration] = useState<string>('00:00:00');
+
+  const { profile } = useUser();
+
+  // Fetch messages from DB
+  const { data: headerConfig } = useHeaderConfig();
+
+  // Déterminer le nom de la paroisse
+  const paroisseName = headerConfig?.main_title || 'Notre Paroisse';
+  const paroisseSubtitle = headerConfig?.subtitle || '';
+
+  const fetchMessages = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('id, content, sender_id, created_at')
+        .order('created_at', { ascending: true })
+        .limit(200);
+
+      if (error) throw error;
+
+      // Map to ChatMessage
+      const msgs: ChatMessage[] = (data || []).map((m) => ({
+        id: m.id,
+        author: m.sender_id === profile?.id ? 'Vous' : (m.sender_id || 'Invité'),
+        message: m.content,
+        timestamp: new Date(m.created_at),
+      }));
+
+      setMessages(msgs);
+    } catch (e) {
+      // silent
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    fetchMessages();
+    // Optionally: poll every 6s
+    const t = setInterval(fetchMessages, 6000);
+    return () => clearInterval(t);
+  }, [fetchMessages]);
 
   const handleLike = () => {
     setHasLiked(!hasLiked);
-    setLikes(hasLiked ? likes - 1 : likes + 1);
+    setLikes(hasLiked ? Math.max(0, likes - 1) : likes + 1);
   };
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim()) return;
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !profile) return;
 
-    const message: ChatMessage = {
-      id: Date.now().toString(),
-      author: "Vous",
-      message: newMessage,
-      timestamp: new Date(),
-      avatar: "👤",
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .insert([{ content: newMessage.trim(), sender_id: profile.id }]);
+
+      if (error) throw error;
+      setNewMessage('');
+      // mark messages read for this user
+      await supabase
+        .from('profiles')
+        .update({ last_read_messages_at: new Date().toISOString() })
+        .eq('id', profile.id);
+
+      fetchMessages();
+    } catch (e) {
+      // silent
+    }
+  };
+
+  // When component mounts / user opens chat, update last_read_messages_at
+  useEffect(() => {
+    const markRead = async () => {
+      if (!profile) return;
+      try {
+        await supabase
+          .from('profiles')
+          .update({ last_read_messages_at: new Date().toISOString() })
+          .eq('id', profile.id);
+      } catch (e) {
+        // silent
+      }
     };
-
-    setMessages([...messages, message]);
-    setNewMessage("");
-  };
-
-  const viewerCount = 2847;
-  const duration = "1:23:45";
+    markRead();
+  }, [profile]);
 
   const location = useLocation();
   const { data: hero, save: saveHero } = usePageHero(location.pathname);
@@ -73,8 +116,8 @@ const Live: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       <HeroBanner
-        title="Messe en direct"
-        subtitle="Rejoignez notre communauté pour ce moment de prière"
+        title={`Messe en direct - ${paroisseName}`}
+        subtitle={paroisseSubtitle ? `${paroisseSubtitle} - Rejoignez notre communauté pour ce moment de prière` : "Rejoignez notre communauté pour ce moment de prière"}
         backgroundImage={hero?.image_url || '/images/gallery/prieres.png'}
         onBgSave={saveHero}
       />
@@ -138,7 +181,7 @@ const Live: React.FC = () => {
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div className="flex-1">
                   <h1 className="text-3xl font-bold text-foreground mb-2">
-                    Messe Solennelle du Dimanche
+                      {paroisseName}
                   </h1>
                   <p className="text-muted-foreground">
                     Rejoignez-nous pour cette messe solennelle en direct de l&apos;église Saint-Jean. Un moment de prière et de recueillement en famille.
@@ -198,7 +241,7 @@ const Live: React.FC = () => {
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Lieu</p>
-                  <p className="font-semibold">Église Saint-Jean, Paris</p>
+                    <p className="font-semibold">{paroisseName}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Horaire</p>
