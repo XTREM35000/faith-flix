@@ -352,7 +352,7 @@ const VersePage = () => {
         title="Verset du jour"
         subtitle="Un verset pour aujourd'hui"
         showBackButton={true}
-        backgroundImage={hero?.image_url || "/images/bible.png"}
+        backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
 

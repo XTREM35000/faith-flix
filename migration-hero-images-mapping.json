@@ -1,0 +1,312 @@
+{
+  "timestamp": "2026-01-06T13:48:34.677Z",
+  "bucket": "gallery",
+  "supabaseUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co",
+  "images": [
+    {
+      "localPath": "/images/prieres.png",
+      "storageKey": "hero-images/1767707315208_prieres.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707315208_prieres.png"
+    },
+    {
+      "localPath": "/images/noel.png",
+      "storageKey": "hero-images/1767707322813_noel.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707322813_noel.png"
+    },
+    {
+      "localPath": "/images/messe.png",
+      "storageKey": "hero-images/1767707326863_messe.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707326863_messe.png"
+    },
+    {
+      "localPath": "/images/hero5.png",
+      "storageKey": "hero-images/1767707330071_hero5.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707330071_hero5.png"
+    },
+    {
+      "localPath": "/images/hero3.png",
+      "storageKey": "hero-images/1767707334131_hero3.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707334131_hero3.png"
+    },
+    {
+      "localPath": "/images/hero1.png",
+      "storageKey": "hero-images/1767707337362_hero1.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707337362_hero1.png"
+    },
+    {
+      "localPath": "/images/hero.png",
+      "storageKey": "hero-images/1767707340642_hero.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707340642_hero.png"
+    },
+    {
+      "localPath": "/images/hero.jpeg",
+      "storageKey": "hero-images/1767707343281_hero.jpeg",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707343281_hero.jpeg"
+    },
+    {
+      "localPath": "/images/ecran01.png",
+      "storageKey": "hero-images/1767707344046_ecran01.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707344046_ecran01.png"
+    },
+    {
+      "localPath": "/images/ecran01 - Copie.png",
+      "storageKey": "hero-images/1767707346568_ecran01 - Copie.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707346568_ecran01%20-%20Copie.png"
+    },
+    {
+      "localPath": "/images/ceremonie.png",
+      "storageKey": "hero-images/1767707349087_ceremonie.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707349087_ceremonie.png"
+    },
+    {
+      "localPath": "/images/celebration.png",
+      "storageKey": "hero-images/1767707352747_celebration.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707352747_celebration.png"
+    },
+    {
+      "localPath": "/images/bapteme.png",
+      "storageKey": "hero-images/1767707355668_bapteme.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707355668_bapteme.png"
+    },
+    {
+      "localPath": "/images/videos/video02.jpeg",
+      "storageKey": "hero-images/1767707358857_videos/video02.jpeg",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707358857_videos/video02.jpeg"
+    },
+    {
+      "localPath": "/images/videos/video01.jpeg",
+      "storageKey": "hero-images/1767707359769_videos/video01.jpeg",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707359769_videos/video01.jpeg"
+    },
+    {
+      "localPath": "/images/videos/prieres.png",
+      "storageKey": "hero-images/1767707360891_videos/prieres.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707360891_videos/prieres.png"
+    },
+    {
+      "localPath": "/images/videos/noel.png",
+      "storageKey": "hero-images/1767707363970_videos/noel.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707363970_videos/noel.png"
+    },
+    {
+      "localPath": "/images/videos/messe.png",
+      "storageKey": "hero-images/1767707366934_videos/messe.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707366934_videos/messe.png"
+    },
+    {
+      "localPath": "/images/videos/ceremonie.png",
+      "storageKey": "hero-images/1767707371143_videos/ceremonie.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707371143_videos/ceremonie.png"
+    },
+    {
+      "localPath": "/images/videos/celebration.png",
+      "storageKey": "hero-images/1767707376218_videos/celebration.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707376218_videos/celebration.png"
+    },
+    {
+      "localPath": "/images/videos/bapteme.png",
+      "storageKey": "hero-images/1767707379802_videos/bapteme.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707379802_videos/bapteme.png"
+    },
+    {
+      "localPath": "/images/test/ecran06.png",
+      "storageKey": "hero-images/1767707383790_test/ecran06.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707383790_test/ecran06.png"
+    },
+    {
+      "localPath": "/images/test/ecran04.png",
+      "storageKey": "hero-images/1767707388919_test/ecran04.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707388919_test/ecran04.png"
+    },
+    {
+      "localPath": "/images/test/ecran03.png",
+      "storageKey": "hero-images/1767707391292_test/ecran03.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707391292_test/ecran03.png"
+    },
+    {
+      "localPath": "/images/test/ecran02.png",
+      "storageKey": "hero-images/1767707393195_test/ecran02.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707393195_test/ecran02.png"
+    },
+    {
+      "localPath": "/images/test/ecran01.png",
+      "storageKey": "hero-images/1767707395459_test/ecran01.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707395459_test/ecran01.png"
+    },
+    {
+      "localPath": "/images/messes/messe01.png",
+      "storageKey": "hero-images/1767707398230_messes/messe01.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707398230_messes/messe01.png"
+    },
+    {
+      "localPath": "/images/messes/messe01.jpeg",
+      "storageKey": "hero-images/1767707402713_messes/messe01.jpeg",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707402713_messes/messe01.jpeg"
+    },
+    {
+      "localPath": "/images/messes/mess02.jpeg",
+      "storageKey": "hero-images/1767707403739_messes/mess02.jpeg",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707403739_messes/mess02.jpeg"
+    },
+    {
+      "localPath": "/images/homelies/homelies03.png",
+      "storageKey": "hero-images/1767707404438_homelies/homelies03.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707404438_homelies/homelies03.png"
+    },
+    {
+      "localPath": "/images/homelies/homelies03.jpeg",
+      "storageKey": "hero-images/1767707407838_homelies/homelies03.jpeg",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707407838_homelies/homelies03.jpeg"
+    },
+    {
+      "localPath": "/images/homelies/homelies02.jpg",
+      "storageKey": "hero-images/1767707409626_homelies/homelies02.jpg",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707409626_homelies/homelies02.jpg"
+    },
+    {
+      "localPath": "/images/homelies/homelies02.jpeg",
+      "storageKey": "hero-images/1767707410962_homelies/homelies02.jpeg",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707410962_homelies/homelies02.jpeg"
+    },
+    {
+      "localPath": "/images/homelies/homelies01.png",
+      "storageKey": "hero-images/1767707411494_homelies/homelies01.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707411494_homelies/homelies01.png"
+    },
+    {
+      "localPath": "/images/homelies/homelies01.jpeg",
+      "storageKey": "hero-images/1767707416071_homelies/homelies01.jpeg",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707416071_homelies/homelies01.jpeg"
+    },
+    {
+      "localPath": "/images/gallery/prieres.png",
+      "storageKey": "hero-images/1767707416748_gallery/prieres.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707416748_gallery/prieres.png"
+    },
+    {
+      "localPath": "/images/gallery/galleries02.jpeg",
+      "storageKey": "hero-images/1767707419824_gallery/galleries02.jpeg",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707419824_gallery/galleries02.jpeg"
+    },
+    {
+      "localPath": "/images/gallery/gallerie01.jpeg",
+      "storageKey": "hero-images/1767707420524_gallery/gallerie01.jpeg",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707420524_gallery/gallerie01.jpeg"
+    },
+    {
+      "localPath": "/images/gallery/ecran01.png",
+      "storageKey": "hero-images/1767707421263_gallery/ecran01.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707421263_gallery/ecran01.png"
+    },
+    {
+      "localPath": "/images/gallery/dons11.png",
+      "storageKey": "hero-images/1767707424595_gallery/dons11.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707424595_gallery/dons11.png"
+    },
+    {
+      "localPath": "/images/gallery/ceremonie.png",
+      "storageKey": "hero-images/1767707430404_gallery/ceremonie.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707430404_gallery/ceremonie.png"
+    },
+    {
+      "localPath": "/images/events/prieres.png",
+      "storageKey": "hero-images/1767707434097_events/prieres.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707434097_events/prieres.png"
+    },
+    {
+      "localPath": "/images/events/noel.png",
+      "storageKey": "hero-images/1767707437193_events/noel.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707437193_events/noel.png"
+    },
+    {
+      "localPath": "/images/events/messe.png",
+      "storageKey": "hero-images/1767707440091_events/messe.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707440091_events/messe.png"
+    },
+    {
+      "localPath": "/images/events/event07.jpeg",
+      "storageKey": "hero-images/1767707444515_events/event07.jpeg",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707444515_events/event07.jpeg"
+    },
+    {
+      "localPath": "/images/events/event06.jpeg",
+      "storageKey": "hero-images/1767707446367_events/event06.jpeg",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707446367_events/event06.jpeg"
+    },
+    {
+      "localPath": "/images/events/event05.jpeg",
+      "storageKey": "hero-images/1767707446874_events/event05.jpeg",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707446874_events/event05.jpeg"
+    },
+    {
+      "localPath": "/images/events/event04.jpeg",
+      "storageKey": "hero-images/1767707447646_events/event04.jpeg",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707447646_events/event04.jpeg"
+    },
+    {
+      "localPath": "/images/events/event03.jpeg",
+      "storageKey": "hero-images/1767707448219_events/event03.jpeg",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707448219_events/event03.jpeg"
+    },
+    {
+      "localPath": "/images/events/event02.jpeg",
+      "storageKey": "hero-images/1767707448790_events/event02.jpeg",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707448790_events/event02.jpeg"
+    },
+    {
+      "localPath": "/images/events/event01.jpeg",
+      "storageKey": "hero-images/1767707449424_events/event01.jpeg",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707449424_events/event01.jpeg"
+    },
+    {
+      "localPath": "/images/events/dons20.png",
+      "storageKey": "hero-images/1767707450453_events/dons20.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707450453_events/dons20.png"
+    },
+    {
+      "localPath": "/images/events/don06.png",
+      "storageKey": "hero-images/1767707455995_events/don06.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707455995_events/don06.png"
+    },
+    {
+      "localPath": "/images/events/don04.png",
+      "storageKey": "hero-images/1767707459321_events/don04.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707459321_events/don04.png"
+    },
+    {
+      "localPath": "/images/events/don02.png",
+      "storageKey": "hero-images/1767707462125_events/don02.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707462125_events/don02.png"
+    },
+    {
+      "localPath": "/images/events/don01.png",
+      "storageKey": "hero-images/1767707462943_events/don01.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707462943_events/don01.png"
+    },
+    {
+      "localPath": "/images/events/ceremonie.png",
+      "storageKey": "hero-images/1767707464706_events/ceremonie.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707464706_events/ceremonie.png"
+    },
+    {
+      "localPath": "/images/events/celebration.png",
+      "storageKey": "hero-images/1767707468735_events/celebration.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707468735_events/celebration.png"
+    },
+    {
+      "localPath": "/images/events/bapteme.png",
+      "storageKey": "hero-images/1767707471912_events/bapteme.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707471912_events/bapteme.png"
+    },
+    {
+      "localPath": "/images/events/analytic.png",
+      "storageKey": "hero-images/1767707476021_events/analytic.png",
+      "publicUrl": "https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-images/1767707476021_events/analytic.png"
+    }
+  ],
+  "summary": {
+    "total": 60,
+    "uploaded": 60,
+    "failed": 0
+  }
+}

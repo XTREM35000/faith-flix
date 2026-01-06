@@ -245,7 +245,7 @@ const CampaignsPage = () => {
         title="Campagnes de financement"
         subtitle="Projets et collectes de la paroisse"
         showBackButton={true}
-        backgroundImage={hero?.image_url || "/images/bapteme.png"}
+        backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
 

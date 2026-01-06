@@ -243,7 +243,7 @@ const AdminUsersPage: React.FC = () => {
       <HeroBanner
         title="Gestion des utilisateurs"
         subtitle="Administrez les utilisateurs et leurs permissions"
-        backgroundImage={hero?.image_url || '/images/gallery.png'}
+        backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
 

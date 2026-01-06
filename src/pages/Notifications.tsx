@@ -356,7 +356,7 @@ const NotificationsPage = () => {
       <HeroBanner
         title="Mes Notifications"
         subtitle="Consultez et gérez toutes vos notifications"
-        backgroundImage={hero?.image_url || "/images/gallery/homelies.png"}
+        backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
 

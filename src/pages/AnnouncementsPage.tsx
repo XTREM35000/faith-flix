@@ -612,7 +612,7 @@ const AnnouncementsPage = () => {
         title="Annonces Paroissiales"
         subtitle="Retrouvez toutes les annonces et actualités de notre paroisse"
         showBackButton={true}
-        backgroundImage={hero?.image_url || "/images/announcements.png"}
+        backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
 

@@ -12,13 +12,11 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header provided by Layout */}
-
       <HeroBanner
         title="Tableau de bord"
         subtitle="Gérez les vidéos, les publications et modérez les commentaires"
         showBackButton={true}
-        backgroundImage={hero?.image_url || '/images/bapteme.png'}
+        backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
 

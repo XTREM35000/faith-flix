@@ -103,7 +103,7 @@ const VideosPage = () => {
         title="Vidéos"
         subtitle="Parcourez tous nos enregistrements de célébrations, enseignements et moments de partage"
         showBackButton={true}
-        backgroundImage={hero?.image_url || '/images/prieres.png'}
+        backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
 

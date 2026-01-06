@@ -8,6 +8,7 @@ import HeroBgEditor from "@/components/HeroBgEditor";
 import { useState, useEffect } from "react";
 import useRoleCheck from '@/hooks/useRoleCheck';
 import usePageHero from '@/hooks/usePageHero';
+import { getHeroImageUrl } from '@/lib/images';
 
 interface HeroBannerProps {
   title: string;
@@ -34,18 +35,27 @@ const HeroBanner = ({
 }: HeroBannerProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [bg, setBg] = useState<string | undefined>(backgroundImage);
+  // Start without a background to avoid showing a local fallback
+  // while we are still resolving the DB-backed hero image.
+  const [bg, setBg] = useState<string | undefined>(undefined);
   const { isAdmin } = useRoleCheck();
   // provide a fallback save for pages that don't pass `onBgSave`
-  const { save: saveHero } = usePageHero(location.pathname);
+  const { data: hero, isLoading: heroLoading, save: saveHero } = usePageHero(location.pathname);
 
-  // Synchroniser quand backgroundImage change (navigation)
-  // Ne pas écraser la valeur locale si la nouvelle valeur est indéfinie/vide
+  // Determine the background in a "user-first" way:
+  // - If the DB has a hero.image_url -> use it immediately
+  // - Otherwise, wait for the hero query to finish; only then use the provided fallback
   useEffect(() => {
-    if (backgroundImage) {
+    if (hero?.image_url) {
+      setBg(hero.image_url);
+      return;
+    }
+    if (!heroLoading) {
+      // Only set the fallback when we know there is no user image
       setBg(backgroundImage);
     }
-  }, [backgroundImage]);
+    // if hero is still loading, keep bg undefined (shows skeleton/gradient)
+  }, [hero?.image_url, heroLoading, backgroundImage]);
 
   const handleBgSave = async (url: string) => {
     // Mettre à jour localement pour un rendu immédiat
@@ -79,8 +89,12 @@ const HeroBanner = ({
         {bg ? (
           <img
             src={bg}
-            alt=""
+            alt="Arrière-plan de la bannière"
             className="w-full h-full object-cover object-center"
+            loading="eager"
+            decoding="sync"
+            width={1920}
+            height={1080}
           />
         ) : (
           <div className="w-full h-full gradient-hero" />

@@ -191,7 +191,7 @@ const DonationsHistoryPage = () => {
         title="Historique des dons"
         subtitle="Vos donations et historique"
         showBackButton={true}
-        backgroundImage={hero?.image_url || "/images/bapteme.png"}
+        backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
 

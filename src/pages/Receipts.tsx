@@ -198,7 +198,7 @@ export default function Receipts() {
         title="Reçus de don"
         subtitle="Gérer et télécharger vos reçus fiscaux"
         showBackButton={true}
-        backgroundImage={hero?.image_url || '/images/donations.png'}
+        backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
 

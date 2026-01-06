@@ -212,7 +212,7 @@ const Podcasts: React.FC = () => {
         title="Podcasts"
         subtitle="Écoutez nos émissions audio"
         showBackButton={true}
-        backgroundImage={hero?.image_url || '/images/podcasts/hero.jpg'}
+        backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
 

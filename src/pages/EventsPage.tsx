@@ -70,7 +70,7 @@ const EventsPage = () => {
         title="Événements"
         subtitle="Retrouvez tous nos événements et activités paroissiales"
         showBackButton={true}
-        backgroundImage={hero?.image_url || '/images/messe.png'}
+        backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
 

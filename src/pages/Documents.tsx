@@ -263,7 +263,7 @@ export default function Documents() {
         title="Documents"
         subtitle="Ressources et documents à télécharger"
         showBackButton={true}
-        backgroundImage={hero?.image_url || '/images/gallery.png'}
+        backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
 

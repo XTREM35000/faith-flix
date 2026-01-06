@@ -111,7 +111,7 @@ const Live: React.FC = () => {
       <HeroBanner
         title="Messe en direct"
         subtitle="Rejoignez notre communauté pour ce moment de prière"
-        backgroundImage={hero?.image_url || '/images/gallery/prieres.png'}
+        backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
 

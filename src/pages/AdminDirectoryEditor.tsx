@@ -236,7 +236,7 @@ const AdminDirectoryEditor: React.FC = () => {
         title="Annuaire - Administration"
         subtitle="Gérez les services, le clergé et les membres"
         showBackButton={true}
-        backgroundImage={hero?.image_url || undefined}
+        backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
 

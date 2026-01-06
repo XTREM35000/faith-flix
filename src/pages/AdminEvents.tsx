@@ -136,7 +136,7 @@ const AdminEvents: React.FC = () => {
         <HeroBanner
           title="Gestion des événements"
           subtitle="Créez et gérez les événements de votre église"
-          backgroundImage={hero?.image_url || '/images/events/prieres.png'}
+          backgroundImage={hero?.image_url}
           onBgSave={saveHero}
         />
 

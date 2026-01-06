@@ -673,7 +673,7 @@ const PrayersPage = () => {
         title="Intentions de prière"
         subtitle="Soumettez et consultez les intentions"
         showBackButton={true}
-        backgroundImage={hero?.image_url || "/images/prayer.png"}
+        backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
 

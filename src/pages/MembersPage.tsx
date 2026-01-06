@@ -125,7 +125,7 @@ const MembersPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <HeroBanner title="Membres" subtitle="Gérez les membres" backgroundImage={hero?.image_url || '/images/prieres.png'} onBgSave={saveHero} />
+      <HeroBanner title="Membres" subtitle="Gérez les membres" backgroundImage={hero?.image_url} onBgSave={saveHero} />
 
       <main className="flex-1 container mx-auto px-4 py-12">
         <div className="mb-6 flex items-center justify-between">

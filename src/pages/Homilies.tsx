@@ -133,7 +133,7 @@ const HomilyPage = () => {
       <HeroBanner
         title="Les Homélies"
         subtitle="Écoutez les prédications spirituelles de nos prêtres"
-        backgroundImage={hero?.image_url || "/images/gallery/homelies.png"}
+        backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
 

@@ -72,7 +72,7 @@ const VideoDetail: React.FC = () => {
           title={video.title ?? "Vidéo"}
           subtitle={video.category || "Vidéo paroissiale"}
           showBackButton={true}
-          backgroundImage={hero?.image_url || video.poster_url || undefined}
+          backgroundImage={hero?.image_url}
           onBgSave={saveHero}
         />
 

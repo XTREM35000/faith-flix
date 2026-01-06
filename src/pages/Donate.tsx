@@ -607,7 +607,7 @@ const DonatePage = () => {
         title="Faire un Don"
         subtitle="Soutenez la paroisse et nos actions communautaires"
         showBackButton={true}
-        backgroundImage={hero?.image_url || "/images/donate.png"}
+        backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
 

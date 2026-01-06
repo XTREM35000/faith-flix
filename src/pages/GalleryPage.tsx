@@ -56,7 +56,7 @@ const GalleryPage = () => {
         title="Galerie"
         subtitle="Découvrez nos plus beaux moments et événements"
         showBackButton={true}
-        backgroundImage={hero?.image_url || '/images/ceremonie.png'}
+        backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
 

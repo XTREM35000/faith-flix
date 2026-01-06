@@ -202,7 +202,7 @@ const ProfilePage = () => {
         title="Mon profil"
         subtitle="Gérez vos informations personnelles"
         showBackButton={true}
-        backgroundImage={hero?.image_url || '/images/bapteme.png'}
+        backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
 
