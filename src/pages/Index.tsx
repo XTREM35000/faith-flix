@@ -19,6 +19,33 @@ import type { Video } from "@/types/database";
 
 // Pas de données mockées en dur pour la galerie — utiliser le contenu dynamique
 
+function getYouTubeEmbedUrl(input?: string) {
+  if (!input) return '';
+  let id: string | null = null;
+  try {
+    const url = new URL(input);
+    const host = url.hostname.replace('www.', '');
+    if (host.includes('youtube.com')) {
+      if (url.pathname.includes('/embed/')) {
+        id = url.pathname.split('/embed/')[1].split('/')[0];
+      } else {
+        id = url.searchParams.get('v');
+      }
+    } else if (host === 'youtu.be') {
+      id = url.pathname.replace('/', '');
+    }
+  } catch (e) {
+    // not a full URL
+  }
+  if (!id) {
+    const m = input.match(/(?:v=|v\/|embed\/|youtu\.be\/|watch\?v=)([A-Za-z0-9_-]{11})/);
+    if (m) id = m[1];
+  }
+  if (id) return `https://www.youtube.com/embed/${id}`;
+  if (input.includes('youtube.com/embed')) return input;
+  return `https://www.youtube.com/embed/${input}`;
+}
+
 const Index = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -44,7 +71,8 @@ const Index = () => {
     latestPhotos,
     latestVideos,
     upcomingEvents,
-    isLoading
+    isLoading,
+    sections,
   } = useHomepageContent();
   const queryClient = useQueryClient();
 
@@ -147,6 +175,43 @@ const Index = () => {
       <main>
         {/* Hero Section - Dynamic from Database */}
         <HomepageHero data={hero} isLoading={isLoading} />
+
+        {/* Last Live Video Section */}
+        {sections && sections.length > 0 && (() => {
+          const liveSection = sections.find((s: any) => s.section_key === 'live_sections');
+          if (liveSection && liveSection.content) {
+            try {
+              const parsed = typeof liveSection.content === 'string' ? JSON.parse(liveSection.content) : liveSection.content;
+              const youtubeSection = Array.isArray(parsed) && parsed.find((s: any) => s.type === 'youtube');
+              if (youtubeSection) {
+                return (
+                  <section className="py-12 lg:py-16">
+                    <div className="container mx-auto px-4">
+                      <SectionTitle
+                        title="Dernière vidéo live"
+                        subtitle="Retrouvez notre dernier moment en direct"
+                        viewAllLink="/live"
+                      />
+                      <div className="relative aspect-video max-w-2xl mx-auto rounded-xl overflow-hidden shadow-2xl">
+                        <iframe
+                          src={getYouTubeEmbedUrl(youtubeSection.content)}
+                          title={youtubeSection.title || 'Vidéo live'}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          className="absolute inset-0 w-full h-full"
+                          style={{ border: 'none' }}
+                        />
+                      </div>
+                    </div>
+                  </section>
+                );
+              }
+            } catch (e) {
+              console.error('Error parsing live sections:', e);
+            }
+          }
+          return null;
+        })()}
 
         {/* Photo Gallery Section */}
         <section className="py-12 lg:py-16">
