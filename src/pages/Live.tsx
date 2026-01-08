@@ -50,7 +50,8 @@ interface ChatMessage {
   author: string;
   message: string;
   timestamp: Date;
-  avatar?: string;
+  avatarUrl?: string | null;
+  avatarInitials?: string | null;
 }
 
 const Live: React.FC = () => {
@@ -101,12 +102,43 @@ const Live: React.FC = () => {
 
       if (error) throw error;
 
-      const msgs: ChatMessage[] = (data || []).map((m) => ({
-        id: m.id,
-        author: m.sender_id === profile.id ? 'Vous' : (m.sender_id || 'Invité'),
-        message: m.content,
-        timestamp: new Date(m.created_at),
-      }));
+      const rows = (data || []);
+      const senderIds = Array.from(new Set(rows.map((r: any) => r.sender_id).filter(Boolean)));
+
+      // Fetch profiles for all senders to display friendly names
+      let profilesMap: Record<string, any> = {};
+      if (senderIds.length > 0) {
+        try {
+          const { data: profs } = await supabase
+            .from('profiles')
+            .select('id, full_name, username, avatar_url')
+            .in('id', senderIds as string[]);
+          (profs || []).forEach((p: any) => { profilesMap[p.id] = p; });
+        } catch (e) {
+          // ignore profile fetch failures, we'll fallback to IDs
+        }
+      }
+
+      const getInitials = (name?: string) => {
+        if (!name) return '';
+        return name.split(' ').map(s => s[0]).slice(0,2).join('').toUpperCase();
+      };
+
+      const msgs: ChatMessage[] = rows.map((m: any) => {
+        const prof = profilesMap[m.sender_id];
+        const isMe = profile && m.sender_id === profile.id;
+        const author = isMe ? 'Vous' : (prof?.full_name || prof?.username || m.sender_id || 'Invité');
+        const avatarUrl = prof?.avatar_url || null;
+        const avatarInitials = avatarUrl ? null : (prof?.full_name ? getInitials(prof.full_name) : (prof?.username ? getInitials(prof.username) : ''));
+        return {
+          id: m.id,
+          author,
+          message: m.content,
+          timestamp: new Date(m.created_at),
+          avatarUrl,
+          avatarInitials,
+        } as ChatMessage;
+      });
 
       setMessages(msgs);
     } catch (e) {
@@ -373,7 +405,11 @@ const Live: React.FC = () => {
                     className="text-sm space-y-1"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-lg">{msg.avatar}</span>
+                      {msg.avatarUrl ? (
+                        <img src={msg.avatarUrl} alt={msg.author} className="w-8 h-8 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold">{msg.avatarInitials}</div>
+                      )}
                       <span className="font-semibold text-foreground">{msg.author}</span>
                       <span className="text-xs text-muted-foreground">
                         {msg.timestamp.toLocaleTimeString("fr-FR", {
