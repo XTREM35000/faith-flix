@@ -48,6 +48,7 @@ import HelpPage from './pages/HelpPage';
 import Unauthorized from './pages/Unauthorized';
 import NotificationProvider from '@/components/ui/notification-system';
 import MembersPage from './pages/MembersPage';
+import LexiquePage from './pages/LexiquePage';
 import Notifications from './pages/Notifications';
 
 const queryClient = new QueryClient();
@@ -73,6 +74,7 @@ const App = () => (
             <Route path="/evenements" element={<Layout><EventsPage /></Layout>} />
             <Route path="/a-propos" element={<Layout><AboutPage /></Layout>} />
             <Route path="/help" element={<Layout><HelpPage /></Layout>} />
+            <Route path="/lexique" element={<Layout><LexiquePage /></Layout>} />
             <Route
               path="/profil"
               element={

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, User, LogOut, HelpCircle, Menu, X, Home, Info, Users, MessageCircle, Bell } from "lucide-react";
+import { Search, User, LogOut, HelpCircle, Menu, X, Home, Info, Users, MessageCircle, Bell, BookOpen } from "lucide-react";
 import AnimatedLogo from "./AnimatedLogo";
 import AuthModal from "./AuthModal";
 import MobileSidebar from "./MobileSidebar";
@@ -149,6 +149,15 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
                   <span>{item.label}</span>
                 </Link>
               ))}
+              {/* Lexique Link - Accessible à tous */}
+              <Link 
+                to="/lexique"
+                className="flex items-center gap-1 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                title="Lexique du site"
+              >
+                <BookOpen className="h-4 w-4" />
+                <span>Lexique</span>
+              </Link>
             </nav>
           </div>
 
