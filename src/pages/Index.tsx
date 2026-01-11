@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useLocation, useNavigate, useNavigationType } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Loader2, BookOpen, Bell, Heart } from "lucide-react";
@@ -84,12 +85,13 @@ const Index = () => {
     const SESSION_KEY = 'homepage_popup_shown';
 
     try {
-      const isOnHome = location.pathname === '/';
+      const isOnHome = window.location.pathname === '/';
       if (!isOnHome) return;
 
       const navEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
       const navEntry = navEntries && navEntries[0];
-      const navType = navEntry?.type ?? (performance && (performance as any).navigation?.type === 1 ? 'reload' : 'navigate');
+      const perfNav = (performance as unknown as Record<string, unknown>)?.navigation as Record<string, unknown> | undefined;
+      const navType = navEntry?.type ?? (perfNav?.type === 1 ? 'reload' : 'navigate');
       const isReload = navType === 'reload';
 
       // If React Router reports a PUSH navigation (link click), do not show
@@ -102,7 +104,7 @@ const Index = () => {
       const hasSeen = !!sessionStorage.getItem(SESSION_KEY);
 
       // Consider referrer: if empty or external, more likely a true direct access
-      const isExternalReferrer = !document.referrer || !document.referrer.startsWith(location.origin);
+      const isExternalReferrer = !document.referrer || !document.referrer.startsWith(window.location.origin);
 
       // Short history often means a direct tab open
       const isHistoryShort = window.history.length <= 1;
@@ -124,7 +126,7 @@ const Index = () => {
     } catch (e) {
       console.error('[WelcomeModal] detection error', e);
     }
-  }, []);
+  }, [navigationType]);
 
   // Advertisement popup: only show on initial page load (or reload) and if ad not seen
   useEffect(() => {
@@ -136,7 +138,8 @@ const Index = () => {
 
       const navEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
       const navEntry = navEntries && navEntries[0];
-      const navType = navEntry?.type ?? (performance && (performance as any).navigation?.type === 1 ? 'reload' : 'navigate');
+      const perfNav2 = (performance as unknown as Record<string, unknown>)?.navigation as Record<string, unknown> | undefined;
+      const navType = navEntry?.type ?? (perfNav2?.type === 1 ? 'reload' : 'navigate');
       const isReload = navType === 'reload';
 
       if (navigationType === 'PUSH' || (navigationType === 'POP' && __INITIAL_PATHNAME !== '/')) {
@@ -154,11 +157,17 @@ const Index = () => {
     } catch (e) {
       console.error('[AdvertisementPopup] detection error', e);
     }
-  }, [latestAd]);
+  }, [latestAd, navigationType]);
   
   const handleWelcomeModalClose = () => {
     console.log('[WelcomeModal] Modal closed by user.');
     setShowWelcomeModal(false);
+  };
+
+  const handleWelcomeOpenAuth = (mode: 'login' | 'register') => {
+    console.log('[WelcomeModal] Opening auth modal with mode:', mode);
+    // Use window.location.hash directly to trigger Header's useEffect
+    window.location.hash = '#auth';
   };
   
   // Get all dynamic content from the hook
@@ -186,7 +195,6 @@ const Index = () => {
   useEffect(() => {
     const fetchHomilies = async () => {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data, error } = await (supabase.from('homilies') as any)
           .select('id, title, priest_name, description, homily_date, video_url')
           .order('homily_date', { ascending: false })
@@ -210,8 +218,7 @@ const Index = () => {
   useEffect(() => {
     const fetchAnnouncements = async () => {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data, error } = await (supabase.from('announcements') as any)
+        const { data, error } = await (supabase as any).from('announcements')
           .select('id, title, content, created_at, image_url')
           .eq('is_active', true)
           .order('created_at', { ascending: false })
@@ -235,8 +242,7 @@ const Index = () => {
   useEffect(() => {
     const fetchPrayers = async () => {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data, error } = await (supabase.from('prayer_intentions') as any)
+        const { data, error } = await (supabase as any).from('prayer_intentions')
           .select('id, title, content, category, created_at')
           .eq('status', 'approved')
           .order('created_at', { ascending: false })
@@ -274,7 +280,10 @@ const Index = () => {
 
       {/* Welcome Modal - Shows on initial page load */}
       {showWelcomeModal && (
-        <WelcomeModal onClose={handleWelcomeModalClose} />
+        <WelcomeModal 
+          onClose={handleWelcomeModalClose} 
+          onOpenAuthModal={handleWelcomeOpenAuth}
+        />
       )}
 
       <VideoPlayerModal
@@ -300,7 +309,7 @@ const Index = () => {
           const liveSection = sections.find((s: any) => s.section_key === 'live_sections');
           if (liveSection && liveSection.content) {
             try {
-              const parsed = typeof liveSection.content === 'string' ? JSON.parse(liveSection.content) : liveSection.content;
+              const parsed = typeof liveSection.content === 'string' ? JSON.parse(liveSection.content as string) : liveSection.content;
               const youtubeSection = Array.isArray(parsed) && parsed.find((s: any) => s.type === 'youtube');
               if (youtubeSection) {
                 return (
@@ -349,7 +358,7 @@ const Index = () => {
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.05 }}
                 >
-                  <GalleryCard image={image} onDeleted={() => queryClient.invalidateQueries({ queryKey: ['homepage-gallery'] })} />
+                  <GalleryCard image={image as any} onDeleted={() => queryClient.invalidateQueries({ queryKey: ['homepage-gallery'] })} />
                 </motion.div>
               ))}
             </div>
@@ -379,8 +388,8 @@ const Index = () => {
                     transition={{ delay: i * 0.1 }}
                   >
                     <VideoCard
-                      video={video}
-                      onOpen={() => handleVideoSelect(video)}
+                      video={video as any}
+                      onOpen={() => handleVideoSelect(video as any)}
                       onDeleted={() => { /* Can refetch if needed */ }}
                     />
                   </motion.div>
@@ -407,18 +416,18 @@ const Index = () => {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {upcomingEvents && upcomingEvents.length > 0 ? (
                 upcomingEvents.map((event: any) => {
-                  const startDate = new Date(event.start_date);
+                  const startDate = new Date(String(event.start_date || ''));
                   return (
                     <EventCard
-                      key={event.id}
-                      id={event.id}
-                      title={event.title || ''}
-                      description={event.description || ''}
-                      date={event.start_date}
-                      time={startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                      location={event.location || 'À définir'}
+                      key={String(event.id)}
+                      id={String(event.id)}
+                      title={String(event.title || '')}
+                      description={String(event.description || '')}
+                      date={String(event.start_date || '')}
+                      time={startDate && !isNaN(startDate.getTime()) ? startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                      location={String(event.location || 'À définir')}
                       attendees={0}
-                      imageUrl={event.image_url}
+                      imageUrl={String(event.image_url || '')}
                     />
                   );
                 })
