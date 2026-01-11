@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import SectionTitle from '@/components/SectionTitle';
+import HeroBanner from '@/components/HeroBanner';
 import { TermCard } from './components/TermCard';
 import { LexiqueSearch } from './components/LexiqueSearch';
 import { CategoryNav } from './components/CategoryNav';
 import { useLexiqueSearch } from './hooks/useLexiqueSearch';
 import { LEXIQUE_TERMS, LEXIQUE_CATEGORIES } from './data/terms';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function LexiquePage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -14,6 +15,17 @@ export default function LexiquePage() {
   const termRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   const filteredTerms = useLexiqueSearch(LEXIQUE_TERMS, searchQuery, activeCategory);
+
+  // Handler pour sauvegarder l'image de fond du hero banner
+  const handleHeroImageSave = async (url: string) => {
+    try {
+      await supabase
+        .from('page_hero_banners')
+        .upsert({ path: '/lexique', image_url: url }, { onConflict: 'path' });
+    } catch (e) {
+      console.error('Erreur de sauvegarde du hero banner:', e);
+    }
+  };
 
   // Scroll vers un terme
   useEffect(() => {
@@ -31,34 +43,28 @@ export default function LexiquePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-      {/* HERO BANNER */}
-      <section className="bg-gradient-to-br from-blue-600 to-blue-800 dark:from-blue-900 dark:to-blue-950 py-16 px-4">
+      {/* HERO BANNER - reuse shared component to match /a-propos */}
+      <HeroBanner
+        title="Lexique du Site Paroissial"
+        subtitle="Découvrez le nom, la fonction et l'utilisation de chaque élément de notre plateforme"
+        backgroundImage={undefined}
+        showBackButton={true}
+        bucket="directory-images"
+        onBgSave={handleHeroImageSave}
+      />
+
+      {/* Search under hero */}
+      <div className="-mt-10 mb-8">
         <div className="container mx-auto max-w-4xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-center"
-          >
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 flex items-center justify-center gap-3">
-              <span>📖</span>
-              Lexique du Site Paroissial
-            </h1>
-            <p className="text-xl text-blue-100 mb-8">
-              Découvrez le nom, la fonction et l'utilisation de chaque élément de notre plateforme
-            </p>
-            
-            {/* Barre de recherche dans le hero */}
-            <div className="max-w-xl mx-auto">
-              <LexiqueSearch
-                value={searchQuery}
-                onChange={setSearchQuery}
-                placeholder="Rechercher un terme... (ex: Hero Banner, Carte, Modal)"
-              />
-            </div>
-          </motion.div>
+          <div className="bg-white dark:bg-slate-800 shadow-lg rounded-lg p-6">
+            <LexiqueSearch
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Rechercher un terme... (ex: Hero Banner, Carte, Modal)"
+            />
+          </div>
         </div>
-      </section>
+      </div>
 
       {/* CONTENU PRINCIPAL */}
       <main className="container mx-auto max-w-7xl px-4 py-16">
