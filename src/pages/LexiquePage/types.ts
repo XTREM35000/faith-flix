@@ -25,6 +25,12 @@ export interface LexiqueScreenshot {
   annotations: AnnotationMarker[];
 }
 
+export interface ImageAnnotation {
+  label: string;
+  description?: string;
+  position: { x: number; y: number }; // pourcentages 0-100
+}
+
 export interface LexiqueUsage {
   admin?: string; // Instructions pour les administrateurs
   user?: string; // Instructions pour les visiteurs
@@ -44,6 +50,10 @@ export interface LexiqueTerm {
     usage: LexiqueUsage; // Comment l'utiliser?
   };
   screenshot?: LexiqueScreenshot; // Capture optionnelle
+  // Nouveau champs pour mapping d'images
+  imagePath?: string; // ex: "interface/banner" (sans extension)
+  imageCaption?: string;
+  imageAnnotations?: ImageAnnotation[];
   relatedTerms: string[]; // IDs des termes liés
   difficulty?: 'beginner' | 'intermediate' | 'advanced'; // Niveau de complexité
 }

@@ -1,0 +1,111 @@
+Structure du projet (exclusions : node_modules, dist, public, nhost, .vscode, .nuxt, .output, .git, .bolt, .next)
+========================================
+
+📄 bapteme.png
+📄 celebration.png
+📄 ceremonie.png
+📄 ecran01 - Copie.png
+📄 ecran01.png
+📁 events
+  📄 analytic.png
+  📄 bapteme.png
+  📄 celebration.png
+  📄 ceremonie.png
+  📄 don01.png
+  📄 don02.png
+  📄 don04.png
+  📄 don06.png
+  📄 dons20.png
+  📄 even.png
+  📄 event01.jpeg
+  📄 event02.jpeg
+  📄 event03.jpeg
+  📄 event04.jpeg
+  📄 event05.jpeg
+  📄 event06.jpeg
+  📄 event07.jpeg
+  📄 event30.png
+  📄 messe.png
+  📄 noel.png
+  📄 prieres.png
+📁 gallery
+  📄 ceremonie.png
+  📄 dons11.png
+  📄 ecran01.png
+  📄 gallerie01.jpeg
+  📄 galleries02.jpeg
+  📄 prieres.png
+📄 hero.jpeg
+📄 hero.png
+📄 hero1.png
+📄 hero3.png
+📄 hero5.png
+📁 homelies
+  📄 homelies01.jpeg
+  📄 homelies01.png
+  📄 homelies02.jpeg
+  📄 homelies02.jpg
+  📄 homelies03.jpeg
+  📄 homelies03.png
+📁 lexique
+  📁 actions
+    📄 .gitkeep
+    📄 bouton.png
+    📄 crud.png
+    📄 form.png
+    📄 notification.png
+    📄 toast.png
+  📁 admin
+    📄 .gitkeep
+    📄 dashboard.png
+  📁 content
+    📄 .gitkeep
+    📄 card.png
+    📄 description.png
+    📄 row.png
+    📄 soustitre.png
+    📄 tableau.png
+    📄 titre.png
+    📄 vignette.png
+  📁 interface
+    📄 .gitkeep
+    📄 banner.png
+    📄 checkbox.png
+    📄 icones.png
+    📄 input.png
+    📄 menuderoulant.png
+    📄 modal.png
+    📄 section.png
+    📄 select.png
+  📁 navigation
+    📄 .gitkeep
+    📄 footer.png
+    📄 header.png
+    📄 menu_horizontal.png
+    📄 sidebar.png
+    📄 user_menu.png
+  📄 README.md
+📄 liste.mjs
+📄 messe.png
+📁 messes
+  📄 mess02.jpeg
+  📄 messe01.jpeg
+  📄 messe01.png
+📄 noel.png
+📄 prieres.png
+📄 project_structure.txt
+📁 test
+  📄 ecran01.png
+  📄 ecran02.png
+  📄 ecran03.png
+  📄 ecran04.png
+  📄 ecran06.png
+📁 videos
+  📄 bapteme.png
+  📄 celebration.png
+  📄 ceremonie.png
+  📄 messe.png
+  📄 noel.png
+  📄 prieres.png
+  📄 video01.jpeg
+  📄 video02.jpeg

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import type { LexiqueTerm } from '../types';
@@ -10,9 +10,14 @@ interface TermCardProps {
 }
 
 export function TermCard({ term, onRelatedTermClick }: TermCardProps) {
+  const [expandedAnnotation, setExpandedAnnotation] = useState<number | null>(null);
+  
   const relatedTermData = term.relatedTerms
     .map(id => LEXIQUE_TERMS.find(t => t.id === id))
     .filter(Boolean) as LexiqueTerm[];
+
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageLoadError, setImageLoadError] = useState(false);
 
   const categoryColors = {
     interface: 'blue',
@@ -23,6 +28,9 @@ export function TermCard({ term, onRelatedTermClick }: TermCardProps) {
   };
 
   const categoryColor = categoryColors[term.category];
+  
+  // Construire le chemin de l'image à partir de imagePath
+  const imageSrc = term.imagePath ? `/images/lexique/${term.imagePath}.png` : null;
 
   return (
     <motion.div
@@ -49,6 +57,127 @@ export function TermCard({ term, onRelatedTermClick }: TermCardProps) {
           </p>
         )}
       </div>
+
+      {/* 🖼️ SECTION IMAGE : Image du terme */}
+      {imageSrc && (
+        <div className="p-4 border-b border-gray-200 dark:border-slate-700">
+          <div className="mb-3 flex items-center justify-between">
+            <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <span className="text-lg">📸</span>
+              Capture réelle
+            </h4>
+            <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
+              {term.imagePath}.png
+            </span>
+          </div>
+
+          {/* Conteneur de l'image */}
+          <div className="relative rounded-lg overflow-hidden border border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-800/50">
+            {imageLoading && (
+              <div className="w-full h-48 flex items-center justify-center bg-gray-100 dark:bg-slate-700/50">
+                <span className="text-sm text-gray-500 dark:text-gray-400">⏳ Chargement...</span>
+              </div>
+            )}
+
+            {!imageLoadError && (
+              <div className="relative">
+                <img
+                  src={imageSrc}
+                  alt={term.imageCaption || `Capture du ${term.term}`}
+                  className="w-full h-auto max-h-64 object-contain"
+                  loading="lazy"
+                  onLoad={() => setImageLoading(false)}
+                  onError={() => {
+                    setImageLoading(false);
+                    setImageLoadError(true);
+                  }}
+                  style={{ display: imageLoading ? 'none' : 'block' }}
+                />
+
+                {/* Annotations - Marqueurs circulaires */}
+                {term.imageAnnotations && term.imageAnnotations.length > 0 && !imageLoading && (
+                  <div className="absolute inset-0 pointer-events-auto">
+                    {term.imageAnnotations.map((anno, idx) => {
+                      return (
+                        <motion.button
+                          key={idx}
+                          onClick={() => setExpandedAnnotation(expandedAnnotation === idx ? null : idx)}
+                          className="absolute w-8 h-8 -ml-4 -mt-4 rounded-full border-2 border-white bg-blue-500 shadow-lg flex items-center justify-center hover:bg-blue-600 transition-colors"
+                          style={{
+                            left: `${anno.position.x}%`,
+                            top: `${anno.position.y}%`,
+                          }}
+                          whileHover={{ scale: 1.2 }}
+                          title={anno.label}
+                        >
+                          <span className="text-white text-xs font-bold">{idx + 1}</span>
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {imageLoadError && (
+              <div className="image-fallback p-8 text-center py-12">
+                <div className="mx-auto w-16 h-16 bg-gray-200 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4">
+                  <span className="text-2xl">📷</span>
+                </div>
+                <p className="text-gray-700 dark:text-gray-300 font-medium mb-2">
+                  Capture d'écran à venir
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  L'image sera ajoutée dans :<br />
+                  <code className="bg-gray-200 dark:bg-slate-700 px-2 py-1 rounded text-xs mt-1 inline-block font-mono">
+                    {imageSrc}
+                  </code>
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Légende et annotations */}
+          <div className="mt-3">
+            {term.imageCaption && (
+              <p className="text-sm text-gray-700 dark:text-gray-300 italic">
+                💡 {term.imageCaption}
+              </p>
+            )}
+
+            {/* Légende des annotations */}
+            {term.imageAnnotations && term.imageAnnotations.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-700">
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 font-semibold">
+                  📍 Points clés sur l'image :
+                </p>
+                <div className="space-y-2">
+                  {term.imageAnnotations.map((anno, idx) => (
+                    <motion.button
+                      key={idx}
+                      onClick={() => setExpandedAnnotation(expandedAnnotation === idx ? null : idx)}
+                      className={`w-full text-left text-xs px-3 py-2 rounded transition-all ${
+                        expandedAnnotation === idx
+                          ? 'bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700'
+                          : 'bg-gray-100 dark:bg-slate-700/50 border border-gray-200 dark:border-slate-600 hover:bg-gray-150 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      <span className="font-semibold text-blue-600 dark:text-blue-300">
+                        {idx + 1}. {anno.label}
+                      </span>
+                      {anno.description && expandedAnnotation === idx && (
+                        <div className="mt-2 text-gray-700 dark:text-gray-300 text-xs whitespace-normal">
+                          {anno.description}
+                        </div>
+                      )}
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Contenu */}
       <div className="p-4 space-y-4">
