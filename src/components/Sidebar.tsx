@@ -1,16 +1,15 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Video, Image, Calendar, Users, CreditCard, Settings, MessageSquare, BarChart3, ChevronLeft, ChevronRight, Bell } from 'lucide-react';
+import { Home, Video, Image, Calendar, Users, CreditCard, Settings, MessageSquare, BarChart3, ChevronLeft, ChevronRight, Bell, Search, X, BookOpen } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import useRoleCheck from '@/hooks/useRoleCheck';
 
 export const MENU_GROUPS = [
   {
     title: 'Tableau de bord',
-    adminOnly: true,
     items: [
       { label: 'Vue d\'ensemble', href: '/dashboard', icon: Home },
-      { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+      { label: 'Lexique', href: '/lexique', icon: BookOpen },
     ],
   },
   // NOTE: this group should be admin-only (same visibility as Administration)
@@ -76,6 +75,49 @@ export interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   const { profile, isAdmin, isModerator } = useRoleCheck();
   const navRef = useRef<HTMLElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter menu items across all groups based on search query
+  const getFilteredGroups = () => {
+    if (!searchQuery.trim()) {
+      // No search: show all groups normally
+      return MENU_GROUPS.map(group => ({
+        ...group,
+        items: group.items,
+      }));
+    }
+
+    // With search: flatten, filter, then group results
+    const query = searchQuery.toLowerCase();
+    const allItems = MENU_GROUPS.flatMap(group =>
+      group.items.map(item => ({ ...item, groupTitle: group.title }))
+    );
+
+    const filteredItems = allItems.filter(item =>
+      item.label.toLowerCase().includes(query) ||
+      item.href.toLowerCase().includes(query)
+    );
+
+    // Group filtered items by their original group
+    const groupedResults: typeof MENU_GROUPS = [];
+    filteredItems.forEach(item => {
+      const existingGroup = groupedResults.find(g => g.title === item.groupTitle);
+      if (existingGroup) {
+        existingGroup.items.push(item);
+      } else {
+        const originalGroup = MENU_GROUPS.find(g => g.title === item.groupTitle);
+        if (originalGroup) {
+          groupedResults.push({
+            title: item.groupTitle,
+            adminOnly: originalGroup.adminOnly,
+            items: [item],
+          });
+        }
+      }
+    });
+
+    return groupedResults;
+  };
 
   // Save scroll position to localStorage on every scroll
   const handleNavScroll = () => {
@@ -136,8 +178,33 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
         </button>
       </div>
 
+      {/* Search bar - only shown when not collapsed */}
+      {!isCollapsed && (
+        <div className="px-2 py-3 border-b border-border">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Rechercher..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-8 pr-8 py-2 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <nav className="px-2 py-4">
-        {MENU_GROUPS.map((group) => {
+        {getFilteredGroups().map((group) => {
           if (group.adminOnly && !isAdmin) return null;
           return (
             <div key={group.title} className="mb-6">

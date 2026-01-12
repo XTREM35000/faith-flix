@@ -1,43 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 
 /**
- * Hook pour gérer le chargement et la vérification des images du lexique
+ * Hook pour gérer le chargement des images du lexique
+ * NOTE: Suppression de la vérification HEAD coûteuse (causait 100+ requêtes réseau en parallèle)
+ * Les images sont maintenant gérées par le tag <img> qui gère lui-même le fallback
  */
 export function useLexiqueImage(category: string, termId: string) {
-  const [imageExists, setImageExists] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  const imagePath = `/images/lexique/${category}/${termId}.png`;
-
-  useEffect(() => {
-    const checkImageExists = async () => {
-      setIsLoading(true);
-      try {
-        // Méthode HEAD pour vérifier l'existence sans charger l'image entièrement
-        const response = await fetch(imagePath, { method: 'HEAD' });
-        setImageExists(response.ok);
-      } catch (error) {
-        // En cas d'erreur (CORS, 404, etc.), on tente une méthode alternative
-        const img = new Image();
-        img.onload = () => {
-          setImageExists(true);
-        };
-        img.onerror = () => {
-          setImageExists(false);
-        };
-        img.src = imagePath;
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkImageExists();
-  }, [category, termId, imagePath]);
+  const imagePath = useMemo(() => `/images/lexique/${category}/${termId}.png`, [category, termId]);
 
   return {
     imagePath,
-    imageExists,
-    isLoading,
+    imageExists: true, // Toujours true : le tag img gère les erreurs
+    isLoading: false,  // Pas de vérification préalable
   };
 }
 
