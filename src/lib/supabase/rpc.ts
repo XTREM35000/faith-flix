@@ -17,3 +17,20 @@ export async function updateProfileRole(targetId: string, role: string) {
     throw e;
   }
 }
+export async function deleteProfile(targetId: string) {
+  try {
+    const res = await supabase.rpc('delete_profile', { target_id: targetId });
+    if (res.error) {
+      const msg = res.error.message || JSON.stringify(res.error);
+      const err = new Error(`RPC delete_profile failed: ${msg}`);
+      // attach original response for debugging
+      (err as any).status = res.status;
+      (err as any).details = res.error;
+      throw err;
+    }
+    return res.data;
+  } catch (e) {
+    console.error('RPC delete_profile error', e);
+    throw e;
+  }
+}

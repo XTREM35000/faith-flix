@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
+import ChangePasswordForm from '@/components/ChangePasswordForm';
 import type { Database } from '@/integrations/supabase/types';
 
 interface UserData {
@@ -57,10 +58,11 @@ const ProfilePage = () => {
         role: (function normalize(r?: string | null){
           if(!r) return null;
           const lower = r.toLowerCase();
-          if(lower === 'membre' || lower === 'member') return 'member';
-          if(lower === 'moderateur' || lower === 'moderator') return 'moderator';
+          if(lower === 'membre' || lower === 'member') return 'membre';
+          if(lower === 'moderateur' || lower === 'moderator') return 'moderateur';
           if(lower === 'admin' || lower === 'administrateur') return 'admin';
-          if(lower === 'super_admin' || lower === 'superadmin' || lower === 'super-admin') return 'super_admin';
+          if(lower === 'pretre' || lower === 'priest') return 'pretre';
+          if(lower === 'diacre') return 'diacre';
           return lower;
         })(profile.role),
       });
@@ -74,10 +76,11 @@ const ProfilePage = () => {
         role: (function normalize(r?: string | null){
           if(!r) return prev.role || null;
           const lower = r.toLowerCase();
-          if(lower === 'membre' || lower === 'member') return 'member';
-          if(lower === 'moderateur' || lower === 'moderator') return 'moderator';
+          if(lower === 'membre' || lower === 'member') return 'membre';
+          if(lower === 'moderateur' || lower === 'moderator') return 'moderateur';
           if(lower === 'admin' || lower === 'administrateur') return 'admin';
-          if(lower === 'super_admin' || lower === 'superadmin' || lower === 'super-admin') return 'super_admin';
+          if(lower === 'pretre' || lower === 'priest') return 'pretre';
+          if(lower === 'diacre') return 'diacre';
           return lower;
         })(user.user_metadata?.role),
       }));
@@ -125,19 +128,20 @@ const ProfilePage = () => {
 
       // Update profile in database
       const normalize = (r?: string | null) => {
-        if(!r) return undefined;
+        if(!r) return 'membre';
         const lower = r.toLowerCase();
-        if(lower === 'membre' || lower === 'member') return 'member';
-        if(lower === 'moderateur' || lower === 'moderator') return 'moderator';
+        if(lower === 'membre' || lower === 'member') return 'membre';
+        if(lower === 'moderateur' || lower === 'moderator') return 'moderateur';
         if(lower === 'admin' || lower === 'administrateur') return 'admin';
-        if(lower === 'super_admin' || lower === 'superadmin' || lower === 'super-admin') return 'super_admin';
-        return lower;
+        if(lower === 'pretre' || lower === 'priest') return 'pretre';
+        if(lower === 'diacre') return 'diacre';
+        return 'membre'; // Default
       };
 
       const profileUpdates: Database['public']['Tables']['profiles']['Update'] = {
         full_name: userData.full_name,
         avatar_url: updatedAvatarUrl,
-        role: normalize(userData.role ?? null) ?? undefined,
+        role: normalize(userData.role ?? null),
       };
       
       const { error: updateError } = await supabase
@@ -332,9 +336,10 @@ const ProfilePage = () => {
               className="lg:col-span-2"
             >
               <Tabs defaultValue="infos" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="infos">Mes informations</TabsTrigger>
                   <TabsTrigger value="account">Compte</TabsTrigger>
+                  <TabsTrigger value="security">Sécurité</TabsTrigger>
                 </TabsList>
 
                 {/* Informations Personnelles */}
@@ -428,6 +433,11 @@ const ProfilePage = () => {
                       </div>
                     </CardContent>
                   </Card>
+                </TabsContent>
+
+                {/* Sécurité */}
+                <TabsContent value="security" className="space-y-6">
+                  <ChangePasswordForm />
                 </TabsContent>
               </Tabs>
             </motion.div>

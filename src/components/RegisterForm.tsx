@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Camera, Eye, EyeOff } from "lucide-react";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
@@ -11,11 +12,13 @@ import { EmailFieldPro } from "@/components/ui/email-field-pro";
 
 interface RegisterFormProps {
   onSuccess?: () => void;
+  onSwitchToLogin?: () => void;
 }
 
-const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess }) => {
+const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin }) => {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -100,103 +103,55 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess }) => {
         throw new Error('User not available after registration; profile creation aborted');
       }
 
-      let avatar_url: string | undefined;
-
-      // 2) Si on a un user.id et un fichier avatar, uploader dans le dossier userId/
+      // 2) Stocker l'avatar dans sessionStorage pour upload au premier login
+      // (On ne peut pas uploader immédiatement car pas de session après signUp)
       if (createdUser && avatarFile) {
-        const fileExt = avatarFile.name.split('.').pop();
-        const fileName = `${createdUser.id}/${Date.now()}_avatar.${fileExt}`;
         try {
-          const bucket = import.meta.env.VITE_BUCKET_AVATAR || 'avatars';
-          const { error: uploadError } = await supabase.storage
-            .from(bucket)
-            .upload(fileName, avatarFile, { upsert: true });
-          if (uploadError) throw uploadError;
-
-          const { data: publicData } = await supabase.storage.from(bucket).getPublicUrl(fileName);
-          avatar_url = publicData?.publicUrl;
-        } catch (err) {
-          console.error('Upload avatar failed:', err);
-        }
-      }
-
-      // 3) Créer l'entrée dans la table profiles
-      if (createdUser) {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const mapRoleToDb = (r?: string) => {
-            if (!r) return undefined;
-            const s = String(r).toLowerCase();
-            // Map to canonical French values accepted by profiles_role_check constraint
-            if (s.includes('admin') || s.includes('super')) return 'admin';
-            if (s.includes('moder')) return 'moderateur';
-            if (s.includes('pretre') || s.includes('priest')) return 'pretre';
-            if (s.includes('diacre')) return 'diacre';
-            if (s.includes('membre') || s.includes('member')) return 'membre';
-            return undefined;
-          };
-
-          // Always use canonical French role or fall back to 'membre'
-          const dbRole = mapRoleToDb(createdUser?.user_metadata?.role) ?? mapRoleToDb(assignedRole) ?? 'membre';
-
-          const insertData: any = {
-            id: createdUser.id,
-            email: createdUser.email,
-            full_name: fullName || null,
-            phone: fullPhone || null,
-            role: dbRole,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
+          console.log('💾 Stockage de l\'avatar en sessionStorage pour upload ultérieur...');
           
-          if (avatar_url) {
-            insertData.avatar_url = avatar_url;
-          }
-
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data: profileData, error: profileInsertErr } = await (supabase as any)
-            .from('profiles')
-            .insert(insertData);
-
-          if (profileInsertErr) {
-            console.error('Profile insert error (attempting fallback via auth metadata):', profileInsertErr);
-            // Fallback: update auth.user metadata so profile info is available
-            try {
-              const { error: metaErr } = await supabase.auth.updateUser({
-                data: {
-                  full_name: fullName || null,
-                  phone: fullPhone || null,
-                  avatar_url: avatar_url || null,
-                },
-              });
-              if (metaErr) console.error('Failed to update auth user metadata as fallback:', metaErr);
-            } catch (metaEx) {
-              console.error('Exception while updating auth metadata fallback:', metaEx);
-            }
-          }
-
-          // Fermer le modal si callback existe
-          if (onSuccess) {
-            setTimeout(() => {
-              onSuccess();
-              // Rediriger vers la page d'accueil
-              setTimeout(() => navigate("/"), 300);
-            }, 500);
-          } else {
-            navigate('/');
-          }
-        } catch (profileErr) {
-          console.error('Profile creation failed:', profileErr);
-          if (onSuccess) {
-            setTimeout(() => {
-              onSuccess();
-              setTimeout(() => navigate("/"), 300);
-            }, 500);
-          } else {
-            navigate('/');
-          }
+          // Convertir le fichier en base64 pour stockage
+          const reader = new FileReader();
+          reader.onload = () => {
+            const avatarData = {
+              fileData: reader.result, // base64
+              fileName: `${createdUser.id}/${Date.now()}_avatar.${avatarFile.name.split('.').pop()}`,
+              mimeType: avatarFile.type,
+            };
+            sessionStorage.setItem('pending_avatar_upload', JSON.stringify(avatarData));
+            console.log('✅ Avatar stocké en sessionStorage');
+          };
+          reader.readAsDataURL(avatarFile);
+        } catch (err) {
+          console.error('Erreur stockage avatar en sessionStorage:', err);
         }
       }
+
+      // 3) Les données sont déjà sauvegardées dans les metadata lors du register() dans useAuth
+      // On affiche juste le toast de confirmation
+      toast({
+        title: '✅ Inscription réussie',
+        description: 'Un email de confirmation a été envoyé. Veuillez vérifier votre boîte mail pour confirmer votre compte.',
+        variant: 'default',
+      });
+      
+      if (onSuccess) {
+        setTimeout(() => {
+          // Revenir à l'onglet connexion au lieu de fermer
+          onSwitchToLogin?.();
+        }, 500);
+      } else {
+        setTimeout(() => {
+          navigate('/');
+        }, 500);
+      }
+    } catch (err) {
+      console.error('❌ Erreur lors de l\'enregistrement:', err);
+      // Afficher quand même le toast car l'utilisateur peut être créé même avec une erreur partielle
+      toast({
+        title: '⚠️ Erreur lors de l\'inscription',
+        description: 'Une erreur est survenue, mais votre compte peut avoir été créé. Veuillez vérifier votre email.',
+        variant: 'default',
+      });
     } finally {
       setLoading(false);
     }

@@ -13,9 +13,8 @@ Get-ChildItem -Recurse $baseDir -Filter "*.png" | ForEach-Object {
   $category = $_.Directory.Name
   $fileName = $_.BaseName
     
-  # Déterminer la couleur en fonction de la catégorie
-  $color = $categoryColors[$category]
-  if (-not $color) { $color = [System.Drawing.Color]::Gray }
+  # Déterminer la couleur en fonction de la catégorie (couleur par défaut: Gray)
+  $color = [System.Drawing.Color]::Gray
     
   # Créer une nouvelle image 200x150
   $bitmap = New-Object System.Drawing.Bitmap(200, 150)

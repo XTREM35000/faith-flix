@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { updateProfileRole } from '@/lib/supabase/rpc';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 
 interface Member {
   id: string;
@@ -21,7 +22,9 @@ const MembersPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<Member | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [form, setForm] = useState({ full_name: '', email: '', role: 'membre' });
+  const { toast } = useToast();
 
   const fetchMembers = async () => {
     setLoading(true);
@@ -104,12 +107,37 @@ const MembersPage: React.FC = () => {
   };
 
   const remove = async (id: string) => {
-    if (!confirm('Supprimer ce membre ?')) return;
+    setDeleteConfirmId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmId) return;
     try {
-      const { error } = await supabase.from('profiles').delete().eq('id', id);
-      if (error) throw error;
+      console.debug('Deleting member', { memberId: deleteConfirmId });
+      // Delete directly using Supabase SDK
+      // RLS policy on profiles table will allow this if user is admin
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', deleteConfirmId);
+
+      if (error) {
+        console.error('Supabase delete error', { error, status: (error as any).status, details: (error as any).details });
+        if ((error as any).status === 403 || error.message.includes('permission')) {
+          throw new Error(`Permission refusée: Vous ne disposez pas des droits suffisants. ${error.message}`);
+        }
+        throw error;
+      }
+
       await fetchMembers();
-    } catch (err) { console.error('Erreur delete member', err); }
+      toast({ title: 'Succès', description: 'Membre supprimé avec succès' });
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Erreur inconnue lors de la suppression';
+      console.error('Erreur delete member', { error: err, message: errorMsg });
+      toast({ title: 'Erreur', description: `Suppression échouée: ${errorMsg}`, variant: 'destructive' });
+    } finally {
+      setDeleteConfirmId(null);
+    }
   };
 
   const createMember = async () => {
@@ -208,6 +236,28 @@ const MembersPage: React.FC = () => {
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={close}>Annuler</Button>
               <Button onClick={save}>Enregistrer</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteConfirmId !== null} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <DialogContent aria-describedby="delete-confirm-desc">
+          <DialogHeader>
+            <DialogTitle>Confirmer la suppression</DialogTitle>
+          </DialogHeader>
+          <div id="delete-confirm-desc" className="sr-only">Confirmation de suppression du membre</div>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Êtes-vous sûr de vouloir supprimer ce membre ? Cette action ne peut pas être annulée.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
+                Annuler
+              </Button>
+              <Button variant="destructive" onClick={confirmDelete}>
+                Supprimer
+              </Button>
             </div>
           </div>
         </DialogContent>

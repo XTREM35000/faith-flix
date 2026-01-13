@@ -14,6 +14,7 @@ import GalleryPage from "./pages/GalleryPage";
 import EventsPage from "./pages/EventsPage";
 import AboutPage from "./pages/AboutPage";
 import ProfilePage from "./pages/ProfilePage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -52,6 +53,7 @@ import AdminTutorielsPage from './pages/AdminTutorielsPage';
 import LexiquePage from './pages/LexiquePage';
 import Notifications from './pages/Notifications';
 import { ToastProvider } from '@/contexts/ToastContext';
+import EmailConfirmedPage from './pages/EmailConfirmedPage';
 
 const queryClient = new QueryClient();
 
@@ -71,6 +73,8 @@ const App = () => (
             <Route path="/connexion" element={<Navigate to="/#auth" replace />} />
             <Route path="/inscription" element={<Navigate to="/?mode=register#auth" replace />} />
             <Route path="/auth" element={<Layout><Index /></Layout>} />
+            <Route path="/email-confirmed" element={<EmailConfirmedPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/videos" element={<Layout><VideosPage /></Layout>} />
             <Route path="/videos/:id" element={<Layout><VideoDetail /></Layout>} />
             <Route path="/galerie" element={<Layout><GalleryPage /></Layout>} />

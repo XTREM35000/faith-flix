@@ -12,6 +12,15 @@ interface UserProfile {
   created_at?: string | null;
 }
 
+// Fonction utilitaire pour invalider le cache du profil
+export function invalidateProfileCache() {
+  try {
+    localStorage.removeItem('ff_profile_cache');
+  } catch (e) {
+    console.error('Failed to invalidate profile cache:', e);
+  }
+}
+
 export function useUser() {
   const { user } = useAuth();
   // Try to initialize from localStorage to avoid refetch/flash on remount
@@ -89,7 +98,13 @@ export function useUser() {
       }
     };
 
-    fetchProfile();
+    // Vérifier l'email_confirmed pour forcer un revalidation après confirmation email
+    const isEmailConfirmed = (user?.user_metadata?.email_confirmed as boolean | undefined) ?? (user?.email_confirmed ?? false);
+    
+    // Forcer une revalidation du profil si l'email vient d'être confirmé (pas de cache)
+    if (!hasCache || isEmailConfirmed) {
+      fetchProfile();
+    }
 
     return () => {
       isMounted = false;

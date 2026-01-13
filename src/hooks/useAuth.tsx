@@ -40,6 +40,14 @@ export function AuthProvider({ children }: React.PropsWithChildren): React.JSX.E
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
       setUser(session?.user ?? null);
+      
+      // Invalider le cache du profil quand l'authentification change
+      try {
+        localStorage.removeItem('ff_profile_cache');
+      } catch (e) {
+        console.error('Failed to invalidate profile cache:', e);
+      }
+      
       // After auth state changes, ensure roles consistency (first user = admin)
       if (session?.user) {
         (async () => {
@@ -93,7 +101,14 @@ export function AuthProvider({ children }: React.PropsWithChildren): React.JSX.E
   ) => {
     setLoading(true);
     try {
-      const res = await supabase.auth.signUp({ email, password, options: { data: metadata } });
+      const res = await supabase.auth.signUp({ 
+        email, 
+        password, 
+        options: { 
+          data: metadata,
+          emailRedirectTo: `${window.location.origin}/email-confirmed`,
+        } 
+      });
       if (res.error) throw res.error;
       setUser(res.data?.user ?? null);
       return res;

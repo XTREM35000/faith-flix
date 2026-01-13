@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, User, LogOut, HelpCircle, Menu, X, Home, Info, Users, MessageCircle, Bell, BookOpen } from "lucide-react";
 import AnimatedLogo from "./AnimatedLogo";
 import AuthModal from "./AuthModal";
+import ForgotPasswordModal from "./ForgotPasswordModal";
 import MobileSidebar from "./MobileSidebar";
 import { MENU_GROUPS } from "./Sidebar";
 import ThemeToggle from "./ThemeToggle";
@@ -30,6 +31,7 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   
   const location = useLocation();
   const authMode = new URLSearchParams(location.search).get("mode") === "register" ? "register" : "login";
@@ -435,6 +437,20 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
         isOpen={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)}
         defaultMode="login"
+        onForgotPassword={() => {
+          setIsAuthModalOpen(false);
+          setIsForgotPasswordOpen(true);
+        }}
+      />
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+        onBackToLogin={() => {
+          setIsForgotPasswordOpen(false);
+          setIsAuthModalOpen(true);
+        }}
       />
     </header>
   );

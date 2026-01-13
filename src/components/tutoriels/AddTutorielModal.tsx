@@ -205,11 +205,11 @@ export default function AddTutorielModal({ isOpen, onClose, onCreated }: Props) 
     : { left: '50%', top: '50%', transform: 'translate(-50%, -50%)', position: 'fixed' };
 
   return (
-    <div className="fixed inset-0 z-60 bg-black/40 pointer-events-none" aria-modal="true" role="dialog">
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center pointer-events-auto" aria-modal="true" role="dialog">
       <div
         ref={modalRef}
         style={modalStyle}
-        className="w-full max-w-2xl bg-card border border-border rounded-lg shadow-lg pointer-events-auto z-70"
+        className="w-full max-w-2xl bg-card border border-border rounded-lg shadow-lg pointer-events-auto z-50 relative"
       >
         <div
           onMouseDown={onMouseDownHeader}
@@ -230,7 +230,7 @@ export default function AddTutorielModal({ isOpen, onClose, onCreated }: Props) 
             <input
               value={youtubeUrl}
               onChange={(e) => setYoutubeUrl(e.target.value)}
-              className="w-full mt-1 px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground"
+              className="w-full mt-1 px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground relative z-10"
               placeholder="https://www.youtube.com/watch?v=..."
             />
           </div>
@@ -240,7 +240,7 @@ export default function AddTutorielModal({ isOpen, onClose, onCreated }: Props) 
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full mt-1 px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground"
+              className="w-full mt-1 px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground relative z-10"
               placeholder="Titre du tutoriel"
             />
           </div>
@@ -250,14 +250,14 @@ export default function AddTutorielModal({ isOpen, onClose, onCreated }: Props) 
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full mt-1 px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground"
+              className="w-full mt-1 px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground relative z-10"
               rows={3}
             />
           </div>
 
           <div>
             <label className="text-xs text-muted-foreground block mb-1">Miniature (optionnel)</label>
-            <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)} className="mt-1" />
+            <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)} className="mt-1 relative z-10" />
           </div>
 
           <div className="flex justify-end gap-2 mt-4">

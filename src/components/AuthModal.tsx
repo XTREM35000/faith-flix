@@ -10,9 +10,10 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultMode?: 'login' | 'register';
+  onForgotPassword?: () => void;
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMode = 'login' }) => {
+const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMode = 'login', onForgotPassword }) => {
   const [mode, setMode] = useState<'login' | 'register'>(defaultMode);
 
   useEffect(() => {
@@ -125,7 +126,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMode = 'l
                   transition={{ duration: 0.3 }}
                   className="flex-1"
                 >
-                  {mode === 'login' ? <LoginForm onSuccess={onClose} /> : <RegisterForm onSuccess={onClose} />}
+                  {mode === 'login' ? <LoginForm onSuccess={onClose} onForgotPassword={onForgotPassword} /> : <RegisterForm onSuccess={onClose} onSwitchToLogin={() => setMode('login')} />}
                 </motion.div>
               </AnimatePresence>
 

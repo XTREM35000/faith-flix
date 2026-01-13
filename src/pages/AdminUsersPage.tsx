@@ -62,13 +62,29 @@ const AdminUsersPage: React.FC = () => {
   const confirmDelete = async () => {
     if (!deleteConfirmId) return;
     try {
-      const { error } = await supabase.from('profiles').delete().eq('id', deleteConfirmId);
-      if (error) throw error;
+      console.debug('Deleting user', { userId: deleteConfirmId });
+      // Try to delete directly using Supabase SDK
+      // RLS policy on profiles table will allow this if user is admin
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', deleteConfirmId);
+
+      if (error) {
+        console.error('Supabase delete error', { error, status: (error as any).status, details: (error as any).details });
+        // Check if it's a permission error
+        if ((error as any).status === 403 || error.message.includes('permission')) {
+          throw new Error(`Permission refusée: Vous ne disposez pas des droits suffisants pour supprimer cet utilisateur. ${error.message}`);
+        }
+        throw error;
+      }
+
       await fetchUsers();
       toast({ title: 'Succès', description: 'Utilisateur supprimé avec succès' });
     } catch (err) {
-      console.error('Erreur delete user', err);
-      toast({ title: 'Erreur', description: 'Erreur lors de la suppression', variant: 'destructive' });
+      const errorMsg = err instanceof Error ? err.message : 'Erreur inconnue lors de la suppression';
+      console.error('Erreur delete user', { error: err, message: errorMsg });
+      toast({ title: 'Erreur', description: `Suppression échouée: ${errorMsg}`, variant: 'destructive' });
     } finally {
       setDeleteConfirmId(null);
     }
@@ -79,26 +95,27 @@ const AdminUsersPage: React.FC = () => {
   }, []);
 
   const normalize = (r?: string | null) => {
+    // Normaliser vers les valeurs acceptées par le CHECK constraint
     if (!r) return 'membre';
     const lower = r.toLowerCase();
     if (['member', 'membre'].includes(lower)) return 'membre';
     if (['moderator', 'moderateur'].includes(lower)) return 'moderateur';
     if (['admin', 'administrateur'].includes(lower)) return 'admin';
-    if (['pretre'].includes(lower)) return 'pretre';
+    if (['pretre', 'priest'].includes(lower)) return 'pretre';
     if (['diacre'].includes(lower)) return 'diacre';
-    if (['super_admin', 'superadmin', 'super-admin'].includes(lower)) return 'admin';
-    return lower;
+    return 'membre';
   };
 
   const displayRole = (r?: string | null) => {
+    // Afficher un label lisible pour l'utilisateur
     if (!r) return 'Membre';
     const lower = r.toLowerCase();
     if (['member', 'membre'].includes(lower)) return 'Membre';
     if (['moderator', 'moderateur'].includes(lower)) return 'Modérateur';
     if (['admin', 'administrateur'].includes(lower)) return 'Admin';
-    if (lower === 'pretre') return 'Prêtre';
-    if (lower === 'diacre') return 'Diacre';
-    return r;
+    if (['pretre', 'priest'].includes(lower)) return 'Prêtre';
+    if (['diacre'].includes(lower)) return 'Diacre';
+    return 'Membre';
   };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
