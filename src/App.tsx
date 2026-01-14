@@ -54,6 +54,8 @@ import LexiquePage from './pages/LexiquePage';
 import Notifications from './pages/Notifications';
 import { ToastProvider } from '@/contexts/ToastContext';
 import EmailConfirmedPage from './pages/EmailConfirmedPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import DataDeletionPage from './pages/DataDeletionPage';
 
 const queryClient = new QueryClient();
 
@@ -75,6 +77,8 @@ const App = () => (
             <Route path="/auth" element={<Layout><Index /></Layout>} />
             <Route path="/email-confirmed" element={<EmailConfirmedPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+            <Route path="/data-deletion" element={<DataDeletionPage />} />
             <Route path="/videos" element={<Layout><VideosPage /></Layout>} />
             <Route path="/videos/:id" element={<Layout><VideoDetail /></Layout>} />
             <Route path="/galerie" element={<Layout><GalleryPage /></Layout>} />
