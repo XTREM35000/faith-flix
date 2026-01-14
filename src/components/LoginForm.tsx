@@ -1,12 +1,11 @@
-import React, { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Eye, EyeOff } from 'lucide-react';
-import { EmailFieldPro } from "@/components/ui/email-field-pro";
-import { ensureProfileExists } from "@/utils/ensureProfileExists";
+import { EmailFieldPro } from '@/components/ui/email-field-pro';
+import PasswordField from '@/components/ui/password-field';
+import { ensureProfileExists } from '@/utils/ensureProfileExists';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -16,10 +15,9 @@ interface LoginFormProps {
 const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) => {
   const { login, signInWithProvider } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,18 +25,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
     try {
       const res: unknown = await login(email, password);
       const loggedUser = (res as Record<string, unknown>)?.data?.user as Record<string, unknown> | undefined;
-      
-      // Créer le profil s'il n'existe pas
+
       if (loggedUser?.id) {
-        console.log('🔍 Vérification/création du profil pour:', loggedUser.id);
         await ensureProfileExists(loggedUser.id as string);
       }
-      
-      // Fermer le modal si callback existe
+
       if (onSuccess) {
         setTimeout(() => {
           onSuccess();
-          // Rediriger selon le rôle (admin/user) après avoir vérifié le profil
           setTimeout(async () => {
             try {
               const uid = loggedUser?.id as string | undefined || (await supabase.auth.getUser()).data?.user?.id;
@@ -57,11 +51,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
           }, 300);
         }, 500);
       } else {
-        navigate("/");
+        navigate('/');
       }
     } catch (err: unknown) {
       console.error('Login error', err);
-      // afficher une erreur simple
       try {
         const errorMsg = (err as Record<string, unknown>).message || 'Erreur lors de la connexion';
         alert(errorMsg);
@@ -80,25 +73,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
         required
         onValidationChange={() => {}}
       />
+
       <div>
         <label className="block text-xs font-medium mb-0.5">Mot de passe</label>
-        <div className="relative">
-          <Input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            type={showPassword ? 'text' : 'password'}
-            required
-            className="pr-8 h-8 text-xs"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword((s) => !s)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            aria-label={showPassword ? 'Cacher mot de passe' : 'Afficher mot de passe'}
-          >
-            {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-          </button>
-        </div>
+        <PasswordField value={password} onChange={(e) => setPassword(e.target.value)} required className="h-8 text-xs" />
         <button
           type="button"
           onClick={() => {
@@ -109,12 +87,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
           Mot de passe oublié ?
         </button>
       </div>
+
       <div className="flex gap-2 pt-1">
-        <Button type="submit" disabled={loading} className="flex-1 h-8 text-xs">{loading ? "Connexion..." : "Se connecter"}</Button>
-        <Button variant="outline" type="button" onClick={() => signInWithProvider("google")} className="h-8 text-xs">Google</Button>
+        <Button type="submit" disabled={loading} className="flex-1 h-8 text-xs">{loading ? 'Connexion...' : 'Se connecter'}</Button>
+        <Button variant="outline" type="button" onClick={() => signInWithProvider('google')} className="h-8 text-xs">Google</Button>
       </div>
     </form>
   );
 };
 
 export default LoginForm;
+*** End Patch

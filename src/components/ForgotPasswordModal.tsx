@@ -4,6 +4,7 @@ import { X, GripVertical, CheckCircle, AlertCircle } from 'lucide-react';
 import DraggableModal from './DraggableModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { EmailFieldPro } from '@/components/ui/email-field-pro';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -184,18 +185,13 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {/* Email Input */}
                   <div>
-                    <label className="block text-sm font-medium mb-1.5">Adresse email *</label>
-                    <Input
-                      type="email"
+                    <EmailFieldPro
                       value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        setError('');
-                      }}
-                      placeholder="exemple@email.com"
+                      onChange={(v) => setEmail(v)}
+                      label="Adresse email"
                       required
-                      className="h-9 text-sm"
-                      disabled={loading}
+                      onValidationChange={() => {}}
+                      className="h-9"
                     />
                   </div>
 

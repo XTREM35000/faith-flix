@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Camera, Eye, EyeOff } from "lucide-react";
+import { Camera } from "lucide-react";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
+import PasswordField from '@/components/ui/password-field';
 import PhoneInputWithCountry from "@/components/PhoneInputWithCountry";
 import { EmailFieldPro } from "@/components/ui/email-field-pro";
 
@@ -231,27 +232,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin 
           {/* Mot de passe avec indicateur */}
           <div>
             <label className="block text-xs font-medium mb-0.5">Mot de passe *</label>
-            <div className="relative">
-              <Input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                type={showPassword ? "text" : "password"}
-                placeholder="Au moins 8 caractères"
-                required
-                className="h-9 pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
-            </div>
+            <PasswordField
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Au moins 8 caractères"
+              required
+              className="h-9"
+            />
             <PasswordStrengthMeter password={password} />
           </div>
 

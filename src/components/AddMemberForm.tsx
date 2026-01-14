@@ -6,6 +6,7 @@ import { useUser } from '@/hooks/useUser';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import PasswordField from '@/components/ui/password-field';
 import { useToast } from '@/hooks/use-toast';
 
 const AddMemberForm: React.FC = () => {
@@ -90,7 +91,7 @@ const AddMemberForm: React.FC = () => {
           </div>
           <div>
             <label className="text-sm block mb-1">Mot de passe temporaire</label>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <PasswordField value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
 
           <div>

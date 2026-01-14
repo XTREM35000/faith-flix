@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import PasswordStrengthMeter from '@/components/PasswordStrengthMeter';
 import { AlertCircle, CheckCircle, Lock } from 'lucide-react';
+import PasswordField from '@/components/ui/password-field';
 
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
@@ -162,8 +163,7 @@ export default function ResetPasswordPage() {
             {/* Password Input */}
             <div>
               <label className="block text-sm font-medium mb-1.5">Nouveau mot de passe *</label>
-              <Input
-                type="password"
+              <PasswordField
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
@@ -182,8 +182,7 @@ export default function ResetPasswordPage() {
             {/* Confirm Password Input */}
             <div>
               <label className="block text-sm font-medium mb-1.5">Confirmer le mot de passe *</label>
-              <Input
-                type="password"
+              <PasswordField
                 value={passwordConfirm}
                 onChange={(e) => {
                   setPasswordConfirm(e.target.value);
