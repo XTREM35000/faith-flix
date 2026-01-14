@@ -8,6 +8,7 @@ import { EmailFieldPro } from '@/components/ui/email-field-pro';
 import PasswordField from '@/components/ui/password-field';
 import { ensureProfileExists } from '@/utils/ensureProfileExists';
 import { Facebook } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -17,6 +18,7 @@ interface LoginFormProps {
 const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) => {
   const { login, signInWithProvider } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -84,7 +86,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
           onClick={() => {
             onForgotPassword?.();
           }}
-          className="text-xs text-blue-600 hover:text-blue-700 mt-1"
+          className="text-xs font-medium text-blue-400 hover:text-blue-700 mt-3"
         >
           Mot de passe oublié ?
         </button>
@@ -100,20 +102,24 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
         <p className="text-xs text-muted-foreground text-center">Ou continuer avec</p>
         <div className="flex gap-2">
           <Button 
-            variant="outline" 
             type="button" 
             onClick={() => signInWithProvider('facebook')} 
-            className="flex-1 h-8 text-xs flex items-center justify-center gap-1"
+            className="flex-1 h-8 text-xs flex items-center justify-center gap-1 bg-blue-600 text-white hover:bg-blue-700"
             disabled={loading}
           >
             <Facebook className="w-4 h-4" />
             Facebook
           </Button>
           <Button 
-            variant="outline" 
             type="button" 
-            onClick={() => signInWithProvider('google')} 
-            className="flex-1 h-8 text-xs"
+            onClick={() => {
+              toast({
+                title: 'ℹ️ Information',
+                description: 'Provider sera implémenter sous peu...',
+                variant: 'default',
+              });
+            }}
+            className="flex-1 h-8 text-xs flex items-center justify-center gap-1 bg-red-500 text-white hover:bg-red-600"
             disabled={loading}
           >
             Google

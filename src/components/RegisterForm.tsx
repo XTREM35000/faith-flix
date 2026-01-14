@@ -269,20 +269,24 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin 
         <p className="text-xs text-muted-foreground text-center">Ou continuer avec</p>
         <div className="flex gap-2">
           <Button 
-            variant="outline" 
             type="button" 
             onClick={() => signInWithProvider('facebook')} 
-            className="flex-1 h-8 text-xs flex items-center justify-center gap-1"
+            className="flex-1 h-8 text-xs flex items-center justify-center gap-1 bg-blue-600 text-white hover:bg-blue-700"
             disabled={loading}
           >
             <Facebook className="w-4 h-4" />
             Facebook
           </Button>
           <Button 
-            variant="outline" 
             type="button" 
-            onClick={() => signInWithProvider('google')} 
-            className="flex-1 h-8 text-xs"
+            onClick={() => {
+              toast({
+                title: 'ℹ️ Information',
+                description: 'Provider sera implémenter sous peu...',
+                variant: 'default',
+              });
+            }}
+            className="flex-1 h-8 text-xs flex items-center justify-center gap-1 bg-red-500 text-white hover:bg-red-600"
             disabled={loading}
           >
             Google
