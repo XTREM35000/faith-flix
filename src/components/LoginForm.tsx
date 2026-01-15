@@ -28,7 +28,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
     setLoading(true);
     try {
       const res: unknown = await login(email, password);
-      const loggedUser = (res as Record<string, unknown>)?.data?.user as Record<string, unknown> | undefined;
+      const data = (res as Record<string, unknown>)?.data as Record<string, unknown> | undefined;
+      const loggedUser = data?.user as Record<string, unknown> | undefined;
 
       if (loggedUser?.id) {
         await ensureProfileExists(loggedUser.id as string);
@@ -62,7 +63,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
       try {
         const errorMsg = (err as Record<string, unknown>).message || 'Erreur lors de la connexion';
         alert(errorMsg);
-      } catch {}
+      } catch {
+        // Silently ignore error message parsing
+      }
     } finally {
       setLoading(false);
     }
