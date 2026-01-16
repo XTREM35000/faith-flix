@@ -13,8 +13,13 @@ export interface PageHero {
 
 // Reuse main supabase client to avoid multiple GoTrue instances
 
-const fetchHero = async (path: string): Promise<PageHero | null> => {
+const fetchHero = async (path: string, signal?: AbortSignal): Promise<PageHero | null> => {
   try {
+    // Check if signal is aborted before making request
+    if (signal?.aborted) {
+      return null;
+    }
+
     // Use untyped client to avoid TypeScript schema mismatch
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabaseClient as any)
@@ -23,13 +28,23 @@ const fetchHero = async (path: string): Promise<PageHero | null> => {
       .eq('path', path)
       .maybeSingle();
 
+    // Check again after async operation
+    if (signal?.aborted) {
+      return null;
+    }
+
     if (error) {
       console.error('Error fetching hero:', error);
       return null;
     }
     
     return data ? (data as PageHero) : null;
-  } catch (err) {
+  } catch (err: unknown) {
+    // Ignore abort errors
+    if (err && typeof err === 'object' && 'name' in err && err.name === 'AbortError') {
+      console.log('Hero query cancelled');
+      return null;
+    }
     console.error('Error in fetchHero:', err);
     return null;
   }
@@ -40,9 +55,11 @@ export default function usePageHero(path: string) {
 
   const query = useQuery({
     queryKey: ['page-hero', path],
-    queryFn: () => fetchHero(path),
+    queryFn: ({ signal }) => fetchHero(path, signal),
     enabled: !!path,
     retry: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
   });
 
   const mutation = useMutation({

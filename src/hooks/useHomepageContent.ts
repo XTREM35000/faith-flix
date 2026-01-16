@@ -32,33 +32,65 @@ export const useHomepageContent = () => {
   // Récupérer les 4 dernières photos de la galerie
   const { data: latestPhotos = [], isLoading: photosLoading } = useQuery({
     queryKey: ['homepage-gallery'],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.from('gallery_images') as any)
-        .select('id, title, description, thumbnail_url, image_url, created_at')
-        .eq('is_public', true)
-        .order('created_at', { ascending: false })
-        .limit(4);
+      try {
+        // Check if signal is aborted before making request
+        if (signal?.aborted) {
+          return [];
+        }
 
-      if (error) {
-        console.error('Erreur galerie:', error);
+        const { data, error } = await (supabase.from('gallery_images') as any)
+          .select('id, title, description, thumbnail_url, image_url, created_at')
+          .eq('is_public', true)
+          .order('created_at', { ascending: false })
+          .limit(4);
+
+        // Check again after async operation
+        if (signal?.aborted) {
+          return [];
+        }
+
+        if (error) {
+          console.error('Erreur galerie:', error);
+          return [];
+        }
+
+        return data || [];
+      } catch (e: unknown) {
+        // Ignore abort errors
+        if (e && typeof e === 'object' && 'name' in e && e.name === 'AbortError') {
+          console.log('Gallery query cancelled');
+          return [];
+        }
+        console.error('Exception galerie:', e);
         return [];
       }
-
-      return data || [];
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
   });
 
   // Récupérer les 4 dernières vidéos
   const { data: latestVideos = [], isLoading: videosLoading } = useQuery({
     queryKey: ['homepage-videos'],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       try {
+        // Check if signal is aborted before making request
+        if (signal?.aborted) {
+          return [];
+        }
+
         const { data, error } = await (supabase.from('videos') as any)
           .select('id, title, description, thumbnail_url, video_url, video_storage_path, views, created_at')
           .order('created_at', { ascending: false })
           .limit(4);
+
+        // Check again after async operation
+        if (signal?.aborted) {
+          return [];
+        }
 
         if (error) {
           // If a column is missing (42703), retry with a reduced selection
@@ -75,23 +107,40 @@ export const useHomepageContent = () => {
         }
 
         return data || [];
-      } catch (e) {
+      } catch (e: unknown) {
+        // Ignore abort errors
+        if (e && typeof e === 'object' && 'name' in e && e.name === 'AbortError') {
+          console.log('Videos query cancelled');
+          return [];
+        }
         console.error('Exception vidéos:', e);
         return [];
       }
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
   });
 
   // Récupérer les 2 derniers événements (créés ou à venir)
   const { data: upcomingEvents = [], isLoading: eventsLoading } = useQuery({
     queryKey: ['homepage-events'],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       try {
+        // Check if signal is aborted before making request
+        if (signal?.aborted) {
+          return [];
+        }
+
         const { data, error } = await (supabase.from('events') as any)
           .select('id, title, description, start_date, end_date, location, image_url')
           .order('created_at', { ascending: false })
           .limit(2);
+
+        // Check again after async operation
+        if (signal?.aborted) {
+          return [];
+        }
 
         if (error) {
           if (error.code === '42703') {
@@ -107,11 +156,18 @@ export const useHomepageContent = () => {
         }
 
         return data || [];
-      } catch (e) {
+      } catch (e: unknown) {
+        // Ignore abort errors
+        if (e && typeof e === 'object' && 'name' in e && e.name === 'AbortError') {
+          console.log('Events query cancelled');
+          return [];
+        }
         console.error('Exception événements:', e);
         return [];
       }
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
   });
 
   // Extraire et parser les sections spécifiques
