@@ -1,11 +1,12 @@
 import { motion } from 'framer-motion';
-import { Heart, MessageCircle, Maximize2, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Maximize2, Trash2, Clock } from 'lucide-react';
 import { useState } from 'react';
 import type { GalleryImage } from '@/types/database';
 import { useUser } from '@/hooks/useUser';
 import { deleteGalleryImage } from '@/lib/supabase/galleryQueries';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { Badge } from '@/components/ui/badge';
 
 interface GalleryCardProps {
   image?: GalleryImage | null;
@@ -126,6 +127,16 @@ const GalleryCard = ({ image, onOpen, onDeleted }: GalleryCardProps) => {
           loading="lazy"
           className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
         />
+        
+        {/* Badge de statut */}
+        {image.status === 'pending' && (
+          <div className="absolute top-3 right-3 z-10">
+            <Badge className="bg-orange-500/90 text-white flex items-center gap-1 border-0">
+              <Clock className="w-3 h-3" />
+              En attente
+            </Badge>
+          </div>
+        )}
       </div>
 
       <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300">

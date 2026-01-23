@@ -51,11 +51,14 @@ const VideosPage = () => {
   const isAdmin = profile?.role === 'admin' || (user as any)?.user_metadata?.role === 'admin';
   console.debug('📹 VideosPage rendered:', { userId: user?.id, profileRole: profile?.role, authRole: (user as any)?.user_metadata?.role, isAdmin });
 
-  // Filtrer les vidéos par recherche
-  const filteredVideos = videos.filter((video) =>
-    video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (video.description?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
-  );
+  // Filtrer les vidéos par recherche et statut
+  const filteredVideos = videos.filter((video) => {
+    const matchesSearch = video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (video.description?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+    // Chacun voit ses propres vidéos (même pending) + les vidéos approuvées + admin voit tout
+    const isVisible = isAdmin || video.status === 'approved' || video.user_id === user?.id;
+    return matchesSearch && isVisible;
+  });
 
   const displayVideos = searchTerm ? filteredVideos : videos;
 

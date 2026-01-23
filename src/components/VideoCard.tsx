@@ -1,11 +1,12 @@
 import { motion } from 'framer-motion';
-import { Trash2, Eye, AlertCircle, CheckCircle, Play } from 'lucide-react';
+import { Trash2, Eye, AlertCircle, CheckCircle, Play, Clock } from 'lucide-react';
 import { useState } from 'react';
 import type { Video } from '@/types/database';
 import { useUser } from '@/hooks/useUser';
 import { deleteVideo } from '@/lib/supabase/videoQueries';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 interface VideoCardProps {
   video?: Video | null;
@@ -100,6 +101,17 @@ const VideoCard = ({ video, onOpen, onDeleted }: VideoCardProps) => {
           loading="lazy"
           className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
         />
+        
+        {/* Badge de statut */}
+        {video.status === 'pending' && (
+          <div className="absolute top-3 right-3 z-10">
+            <Badge className="bg-orange-500/90 text-white flex items-center gap-1 border-0">
+              <Clock className="w-3 h-3" />
+              En attente
+            </Badge>
+          </div>
+        )}
+        
         {/* Play icon overlay */}
         <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors flex items-center justify-center pointer-events-none">
           <div className="w-16 h-16 rounded-full bg-primary/80 flex items-center justify-center backdrop-blur-sm group-hover:bg-primary transition-colors">

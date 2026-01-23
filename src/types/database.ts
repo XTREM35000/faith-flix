@@ -309,7 +309,52 @@ export interface GalleryImage {
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at?: string | null;
+  // Approval status fields
+  status?: 'pending' | 'approved' | 'rejected';
+  submitted_at?: string | null;
+  approved_at?: string | null;
+  approved_by?: string | null;
+  rejection_reason?: string | null;
   // Relations
   category?: GalleryCategory;
   user?: Profile;
+}
+
+// =====================================================
+// Approval system types
+// =====================================================
+
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
+export type ContentType = 'video' | 'gallery';
+
+export interface ContentApproval {
+  id: string;
+  content_type: ContentType;
+  content_id: string;
+  user_id: string;
+  submitted_at: string;
+  expires_at: string;
+  status: ApprovalStatus;
+  title?: string | null;
+  description?: string | null;
+  rejection_reason?: string | null;
+  created_at: string;
+  // Relations
+  user?: Profile;
+  video?: Video;
+  gallery?: GalleryImage;
+}
+
+export interface PendingApprovalItem {
+  id: string;
+  type: ContentType;
+  title: string;
+  description?: string | null;
+  thumbnail?: string | null;
+  user_id: string;
+  user_name?: string | null;
+  submitted_at: string;
+  expires_at: string;
+  time_remaining?: string;
+  content?: Video | GalleryImage;
 }

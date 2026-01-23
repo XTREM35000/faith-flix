@@ -25,6 +25,7 @@ import AdminAboutEditor from './pages/AdminAboutEditor';
 import AdminDirectoryEditor from './pages/AdminDirectoryEditor';
 import AdminLiveEditor from './pages/AdminLiveEditor';
 import AdminNotificationsEditor from './pages/AdminNotificationsEditor';
+import AdminContentApprovals from './pages/AdminContentApprovals';
 import AddMemberForm from '@/components/AddMemberForm';
 import ChatPage from './pages/ChatPage';
 import AnnouncementsPage from './pages/AnnouncementsPage';
@@ -127,6 +128,14 @@ const App = () => (
               element={
                 <ProtectedRoute requiredRole="admin">
                   <Layout><AdminNotificationsEditor /></Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/approvals"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <Layout><AdminContentApprovals /></Layout>
                 </ProtectedRoute>
               }
             />

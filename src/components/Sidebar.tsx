@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Video, Image, Calendar, Users, CreditCard, Settings, MessageSquare, BarChart3, ChevronLeft, ChevronRight, Bell, Search, X, BookOpen, FileText } from 'lucide-react';
+import { Home, Video, Image, Calendar, Users, CreditCard, Settings, MessageSquare, BarChart3, ChevronLeft, ChevronRight, Bell, Search, X, BookOpen, FileText, CheckCircle2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import useRoleCheck from '@/hooks/useRoleCheck';
 
@@ -53,6 +53,7 @@ export const MENU_GROUPS = [
     title: 'Administration',
     adminOnly: true,
     items: [
+      { label: 'Approbations', href: '/admin/approvals', icon: CheckCircle2 },
       { label: 'En Ligne', href: '/admin/live', icon: Video },
       { label: 'Notifications', href: '/admin/notifications', icon: Bell },
       { label: 'Publicité', href: '/admin/ads', icon: Image },

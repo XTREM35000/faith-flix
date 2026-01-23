@@ -7,6 +7,9 @@ import { uploadFile, uploadVideoFile } from '@/lib/supabase/storage';
 import { useNotification } from './ui/notification-system';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import useContentSubmission from '@/hooks/useContentSubmission';
+import SubmissionStatusAlert from '@/components/SubmissionStatusAlert';
+import type { ContentApproval } from '@/types/database';
 
 interface EditingVideo {
   id: string;
@@ -71,9 +74,11 @@ const VideoModalForm: React.FC<VideoModalFormProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [submission, setSubmission] = useState<ContentApproval | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const { notifySuccess, notifyError } = useNotification();
+  const { submitContent, checkSubmissionStatus } = useContentSubmission();
 
   // Pré-remplir si édition
   useEffect(() => {
@@ -262,6 +267,15 @@ const VideoModalForm: React.FC<VideoModalFormProps> = ({
       }
 
       await onSave(videoData);
+      
+      // Si nouvelle vidéo (pas édition), soumettre pour approbation
+      if (!editingVideo && videoData.id) {
+        await submitContent('video', videoData.id as string, formData.title, formData.description);
+        const { submission: newSubmission } = await checkSubmissionStatus('video', videoData.id as string);
+        setSubmission(newSubmission);
+        notifySuccess('Succès', 'Votre vidéo a été soumise pour approbation. Elle sera visible une fois approuvée par un admin.');
+      }
+      
       setSuccess(true);
 
       setTimeout(() => {
@@ -344,6 +358,8 @@ const VideoModalForm: React.FC<VideoModalFormProps> = ({
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">
+              {submission && <SubmissionStatusAlert submission={submission} />}
+              
               {error && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}

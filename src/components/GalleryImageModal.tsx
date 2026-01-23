@@ -5,7 +5,9 @@ import BaseModal from './base-modal';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadFile, testStorageConnection } from '@/lib/supabase/storage';
 import { useNotification } from './ui/notification-system';
-import type { GalleryImage } from '@/types/database';
+import { useContentSubmission } from '@/hooks/useContentSubmission';
+import SubmissionStatusAlert from './SubmissionStatusAlert';
+import type { GalleryImage, ContentApproval } from '@/types/database';
 
 interface GalleryImageModalProps {
   open: boolean;
@@ -38,8 +40,10 @@ const GalleryImageModal: React.FC<GalleryImageModalProps> = ({ open, onClose, on
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [submission, setSubmission] = useState<ContentApproval | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { notifySuccess, notifyError } = useNotification();
+  const { submitContent } = useContentSubmission();
 
   // Gérer les changements du formulaire
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -175,7 +179,13 @@ const GalleryImageModal: React.FC<GalleryImageModalProps> = ({ open, onClose, on
       }
 
       setSuccess(true);
-      notifySuccess('Succès', 'Image ajoutée à la galerie');
+      notifySuccess('Succès', 'Image soumise pour approbation');
+      
+      // Soumettre l'image pour approbation
+      if (data) {
+        const submissionRecord = await submitContent('gallery', data.id, formData.title, formData.description);
+        setSubmission(submissionRecord);
+      }
       
       // Appeler le callback
       if (onImageAdded && data) {
@@ -435,6 +445,9 @@ const GalleryImageModal: React.FC<GalleryImageModalProps> = ({ open, onClose, on
                       <span>{error}</span>
                     </motion.div>
                   )}
+
+                  {/* Afficher le statut de soumission */}
+                  {submission && <SubmissionStatusAlert submission={submission} />}
 
                   {/* Onglets */}
                   <div className="flex gap-2 mb-6">
