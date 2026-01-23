@@ -111,6 +111,14 @@ const VideoCard = ({ video, onOpen, onDeleted }: VideoCardProps) => {
             </Badge>
           </div>
         )}
+        {video.status === 'approved' && (
+          <div className="absolute top-3 right-3 z-10">
+            <Badge className="bg-green-500/90 text-white flex items-center gap-1 border-0">
+              <CheckCircle className="w-3 h-3" />
+              Approuvée
+            </Badge>
+          </div>
+        )}
         
         {/* Play icon overlay */}
         <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors flex items-center justify-center pointer-events-none">

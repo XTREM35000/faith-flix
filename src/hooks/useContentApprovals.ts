@@ -41,6 +41,9 @@ export const useContentApprovals = () => {
 
       if (imagesError) throw imagesError;
 
+      console.log('Pending videos:', pendingVideos?.length);
+      console.log('Pending images:', pendingImages?.length);
+
       // Combiner et formater les résultats
       const combined: PendingContent[] = [
         ...(pendingVideos || []).map(v => ({
@@ -64,6 +67,7 @@ export const useContentApprovals = () => {
         })),
       ];
 
+      console.log('Total pending items:', combined.length);
       setPendingItems(combined);
       setError(null);
     } catch (err) {
@@ -80,22 +84,35 @@ export const useContentApprovals = () => {
   const approveContent = useCallback(
     async (contentType: ContentType, contentId: string) => {
       try {
-        const { error: updateError } = await supabase
+        const userId = (await supabase.auth.getUser()).data.user?.id;
+        console.log('Approving', contentType, contentId, 'by user', userId);
+
+        const { data, error: updateError } = await supabase
           .from(contentType === 'video' ? 'videos' : 'gallery_images')
           .update({
             status: 'approved',
             approved_at: new Date().toISOString(),
-            approved_by: (await supabase.auth.getUser()).data.user?.id,
+            approved_by: userId,
           })
-          .eq('id', contentId);
+          .eq('id', contentId)
+          .select();
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('Update error:', updateError);
+          throw updateError;
+        }
 
-        // Rafraîchir la liste
-        await fetchPendingApprovals();
+        console.log('Update result:', data);
+
+        // Attendre un bit et rafraîchir la liste
+        setTimeout(() => {
+          fetchPendingApprovals();
+        }, 500);
+        
         return { success: true };
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Erreur lors de l\'approbation';
+        console.error('Approval error:', message);
         return { success: false, error: message };
       }
     },
@@ -106,18 +123,27 @@ export const useContentApprovals = () => {
   const rejectContent = useCallback(
     async (contentType: ContentType, contentId: string, reason: string = '') => {
       try {
+        const userId = (await supabase.auth.getUser()).data.user?.id;
+        console.log('Rejecting', contentType, contentId, 'by user', userId, 'reason:', reason);
+
         // D'abord, mettre à jour le statut
-        const { error: updateError } = await supabase
+        const { data: updateData, error: updateError } = await supabase
           .from(contentType === 'video' ? 'videos' : 'gallery_images')
           .update({
             status: 'rejected',
             rejection_reason: reason,
             approved_at: new Date().toISOString(),
-            approved_by: (await supabase.auth.getUser()).data.user?.id,
+            approved_by: userId,
           })
-          .eq('id', contentId);
+          .eq('id', contentId)
+          .select();
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('Update error:', updateError);
+          throw updateError;
+        }
+
+        console.log('Update result:', updateData);
 
         // Ensuite, supprimer immédiatement le contenu rejeté
         const { error: deleteError } = await supabase
@@ -125,13 +151,22 @@ export const useContentApprovals = () => {
           .delete()
           .eq('id', contentId);
 
-        if (deleteError) throw deleteError;
+        if (deleteError) {
+          console.error('Delete error:', deleteError);
+          throw deleteError;
+        }
 
-        // Rafraîchir la liste
-        await fetchPendingApprovals();
+        console.log('Deleted successfully');
+
+        // Attendre un bit et rafraîchir la liste
+        setTimeout(() => {
+          fetchPendingApprovals();
+        }, 500);
+        
         return { success: true };
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Erreur lors du rejet';
+        console.error('Rejection error:', message);
         return { success: false, error: message };
       }
     },

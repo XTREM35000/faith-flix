@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Heart, MessageCircle, Maximize2, Trash2, Clock } from 'lucide-react';
+import { Heart, MessageCircle, Maximize2, Trash2, Clock, CheckCircle } from 'lucide-react';
 import { useState } from 'react';
 import type { GalleryImage } from '@/types/database';
 import { useUser } from '@/hooks/useUser';
@@ -134,6 +134,14 @@ const GalleryCard = ({ image, onOpen, onDeleted }: GalleryCardProps) => {
             <Badge className="bg-orange-500/90 text-white flex items-center gap-1 border-0">
               <Clock className="w-3 h-3" />
               En attente
+            </Badge>
+          </div>
+        )}
+        {image.status === 'approved' && (
+          <div className="absolute top-3 right-3 z-10">
+            <Badge className="bg-green-500/90 text-white flex items-center gap-1 border-0">
+              <CheckCircle className="w-3 h-3" />
+              Approuvée
             </Badge>
           </div>
         )}

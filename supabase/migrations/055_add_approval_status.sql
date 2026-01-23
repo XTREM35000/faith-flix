@@ -112,12 +112,12 @@ $$ LANGUAGE plpgsql;
 ALTER TABLE public.videos ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Admin peut voir tous les contenus
+-- Policy: Admin peut voir tous les contenus (vérifie le rôle dans la table profiles)
 CREATE POLICY "Admin can view all videos" ON public.videos
   FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM public.admin_users
-      WHERE user_id = auth.uid()
+      SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'
     )
   );
 
@@ -142,14 +142,12 @@ CREATE POLICY "Admin can update video status" ON public.videos
   FOR UPDATE
   USING (
     EXISTS (
-      SELECT 1 FROM public.admin_users
-      WHERE user_id = auth.uid()
+      SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'
     )
   )
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM public.admin_users
-      WHERE user_id = auth.uid()
+      SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'
     )
   );
 
@@ -160,8 +158,7 @@ CREATE POLICY "Admin can view all gallery images" ON public.gallery_images
   FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM public.admin_users
-      WHERE user_id = auth.uid()
+      SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'
     )
   );
 
@@ -183,27 +180,24 @@ CREATE POLICY "Admin can update gallery image status" ON public.gallery_images
   FOR UPDATE
   USING (
     EXISTS (
-      SELECT 1 FROM public.admin_users
-      WHERE user_id = auth.uid()
+      SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'
     )
   )
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM public.admin_users
-      WHERE user_id = auth.uid()
+      SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'
     )
   );
 
 -- ===== RLS POLICIES POUR CONTENT_APPROVALS =====
 ALTER TABLE public.content_approvals ENABLE ROW LEVEL SECURITY;
 
--- Policy: Admin peut voir et modifier tous les contenus en attente
+-- Policy: Admin peut voir et modifier tous les contenus en attente (vérifie la table profiles)
 CREATE POLICY "Admin can view all approvals" ON public.content_approvals
   FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM public.admin_users
-      WHERE user_id = auth.uid()
+      SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'
     )
   );
 
@@ -211,14 +205,12 @@ CREATE POLICY "Admin can update approval status" ON public.content_approvals
   FOR UPDATE
   USING (
     EXISTS (
-      SELECT 1 FROM public.admin_users
-      WHERE user_id = auth.uid()
+      SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'
     )
   )
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM public.admin_users
-      WHERE user_id = auth.uid()
+      SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'
     )
   );
 
