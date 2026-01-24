@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Play, Pause, Download, Radio, Clock } from 'lucide-react';
 import SaveButton from '@/components/SaveButton';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchActiveLiveStream, type LiveStream } from '@/lib/supabase/mediaQueries';
 
 interface Episode {
   id: string;
@@ -31,6 +32,10 @@ const Podcasts: React.FC = () => {
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const { notifyError } = useNotification();
+
+  // Live radio stream from Supabase
+  const [activeLiveStream, setActiveLiveStream] = useState<LiveStream | null>(null);
+  const [loadingLiveStream, setLoadingLiveStream] = useState(true);
 
   // live stream URL - Stream MP3 public gratuit pour test
   const LIVE_STREAM_URL = 'https://media-ssl.podbean.com/pb/d5a87c02e4e88f9f35d46b857e8c9f31/653c7dd9e1f99c11446db5bb/stream.m3u8';
@@ -66,6 +71,33 @@ const Podcasts: React.FC = () => {
     } catch (e) {
       console.warn('Failed to restore saved podcast', e);
     }
+  }, []);
+
+  // Fetch active live radio stream from Supabase
+  useEffect(() => {
+    const fetchLiveRadio = async () => {
+      try {
+        setLoadingLiveStream(true);
+        const stream = await fetchActiveLiveStream();
+        // Only set if it's a radio stream
+        if (stream && stream.stream_type === 'radio') {
+          setActiveLiveStream(stream);
+        } else {
+          setActiveLiveStream(null);
+        }
+      } catch (err) {
+        console.error('Error fetching live radio stream:', err);
+        setActiveLiveStream(null);
+      } finally {
+        setLoadingLiveStream(false);
+      }
+    };
+
+    fetchLiveRadio();
+    // Refresh every 30 seconds to check for new streams
+    const interval = setInterval(fetchLiveRadio, 30000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const location = useLocation();
@@ -242,6 +274,40 @@ const Podcasts: React.FC = () => {
       />
 
       <section className="container mx-auto px-4 py-12">
+        {/* Live Radio Section - Display only if active stream exists */}
+        {!loadingLiveStream && activeLiveStream && (
+          <div className="mb-12 bg-gradient-to-r from-red-50 to-red-50/50 dark:from-red-950/30 dark:to-red-950/20 border-2 border-red-300 dark:border-red-700 rounded-lg p-6 shadow-lg">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-red-500 rounded-full animate-pulse">
+                    <Radio className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-wider">● EN DIRECT</span>
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold text-foreground">{activeLiveStream.title}</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Écoutez notre radio paroissiale en direct</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-background rounded-lg p-4 border border-border">
+              <audio
+                controls
+                controlsList="nodownload"
+                className="w-full"
+                src={activeLiveStream.stream_url}
+              >
+                Votre navigateur ne supporte pas le lecteur audio HTML5.
+              </audio>
+              <p className="text-xs text-muted-foreground mt-3">
+                ✓ Flux en direct depuis {new Date(activeLiveStream.updated_at).toLocaleDateString('fr-FR')}
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left column - Live / Player */}
           <div className="lg:col-span-1 space-y-6">

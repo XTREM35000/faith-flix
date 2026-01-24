@@ -8,7 +8,16 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import DraggableModal from '@/components/DraggableModal';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import useRoleCheck from '@/hooks/useRoleCheck';
@@ -32,6 +41,7 @@ const AdminLiveEditor = () => {
   const [liveStreams, setLiveStreams] = useState<LiveStream[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleteStreamId, setDeleteStreamId] = useState<string | null>(null);
 
   // Load live streams
   const loadLiveStreams = useCallback(async () => {
@@ -133,12 +143,12 @@ const AdminLiveEditor = () => {
   };
 
   // Delete stream
-  const handleDeleteStream = async (id: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce direct ?')) return;
+  const handleDeleteStream = async () => {
+    if (!deleteStreamId) return;
 
     try {
       setSaving(true);
-      await deleteLiveStream(id);
+      await deleteLiveStream(deleteStreamId);
       toast({
         title: 'Succès',
         description: 'Direct supprimé',
@@ -153,6 +163,7 @@ const AdminLiveEditor = () => {
       });
     } finally {
       setSaving(false);
+      setDeleteStreamId(null);
     }
   };
 
@@ -225,105 +236,116 @@ const AdminLiveEditor = () => {
               <p className="text-sm text-muted-foreground mt-1">Créez et gérez les diffusions live de votre paroisse</p>
             </div>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) resetForm();
-          }}>
-            <DialogTrigger asChild>
-              <Button onClick={handleAddNew} size="lg">
-                <Plus className="w-4 h-4 mr-2" />
-                Nouveau Direct
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingStream ? 'Modifier le Direct' : 'Créer un Nouveau Direct'}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                {/* Title */}
-                <div className="space-y-2">
-                  <Label htmlFor="title">Titre du direct</Label>
-                  <Input
-                    id="title"
-                    placeholder="Ex: Messe Dominicale - 1er Février"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  />
-                </div>
-
-                {/* Stream Type */}
-                <div className="space-y-2">
-                  <Label htmlFor="type">Type de diffusion</Label>
-                  <Select value={formData.stream_type} onValueChange={(value) => setFormData({ ...formData, stream_type: value as 'tv' | 'radio' })}>
-                    <SelectTrigger id="type">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="tv">
-                        <div className="flex items-center gap-2">
-                          <Tv className="w-4 h-4" />
-                          TV (Messe en direct)
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="radio">
-                        <div className="flex items-center gap-2">
-                          <Radio className="w-4 h-4" />
-                          Radio (Podcast en direct)
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Stream URL */}
-                <div className="space-y-2">
-                  <Label htmlFor="url">URL du direct ou ID YouTube</Label>
-                  <Input
-                    id="url"
-                    placeholder={formData.stream_type === 'tv'
-                      ? "Ex: https://youtube.com/watch?v=ABCD1234 ou ABCD1234"
-                      : "Ex: https://example.com/live-audio-stream"}
-                    value={formData.stream_url}
-                    onChange={(e) => setFormData({ ...formData, stream_url: e.target.value })}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {formData.stream_type === 'tv'
-                      ? 'Lien YouTube ou ID vidéo à 11 caractères'
-                      : 'URL du flux audio en direct (m3u8, mp3, etc.)'}
-                  </p>
-                </div>
-
-                {/* Active Status */}
-                <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <div>
-                    <Label className="text-base font-medium">Activer ce direct</Label>
-                    <p className="text-xs text-muted-foreground">Les autres directs seront désactivés</p>
-                  </div>
-                  <Switch
-                    checked={formData.is_active}
-                    onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-                  />
-                </div>
-              </div>
-              <DialogFooter className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsDialogOpen(false);
-                    resetForm();
-                  }}
-                >
-                  Annuler
-                </Button>
-                <Button onClick={handleSaveStream} disabled={saving}>
-                  {saving ? 'Enregistrement...' : 'Enregistrer'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button onClick={handleAddNew} size="lg">
+            <Plus className="w-4 h-4 mr-2" />
+            Nouveau Direct
+          </Button>
         </div>
+
+        {/* Create/Edit Dialog - Draggable */}
+        <DraggableModal open={isDialogOpen} onClose={() => {
+          setIsDialogOpen(false);
+          resetForm();
+        }} dragHandleOnly={true}>
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border" data-drag-handle>
+            <h2 className="text-lg font-semibold">
+              {editingStream ? 'Modifier le Direct' : 'Créer un Nouveau Direct'}
+            </h2>
+            <button
+              onClick={() => {
+                setIsDialogOpen(false);
+                resetForm();
+              }}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Fermer"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="space-y-4 py-4 px-6 max-h-[calc(100vh-300px)] overflow-y-auto">
+            {/* Title */}
+            <div className="space-y-2">
+              <Label htmlFor="title">Titre du direct</Label>
+              <Input
+                id="title"
+                placeholder="Ex: Messe Dominicale - 1er Février"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              />
+            </div>
+
+            {/* Stream Type */}
+            <div className="space-y-2">
+              <Label htmlFor="type">Type de diffusion</Label>
+              <Select value={formData.stream_type} onValueChange={(value) => setFormData({ ...formData, stream_type: value as 'tv' | 'radio' })}>
+                <SelectTrigger id="type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="tv">
+                    <div className="flex items-center gap-2">
+                      <Tv className="w-4 h-4" />
+                      TV (Messe en direct)
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="radio">
+                    <div className="flex items-center gap-2">
+                      <Radio className="w-4 h-4" />
+                      Radio (Podcast en direct)
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Stream URL */}
+            <div className="space-y-2">
+              <Label htmlFor="url">URL du direct ou ID YouTube</Label>
+              <Input
+                id="url"
+                placeholder={formData.stream_type === 'tv'
+                  ? "Ex: https://youtube.com/watch?v=ABCD1234 ou ABCD1234"
+                  : "Ex: https://example.com/live-audio-stream"}
+                value={formData.stream_url}
+                onChange={(e) => setFormData({ ...formData, stream_url: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                {formData.stream_type === 'tv'
+                  ? 'Lien YouTube ou ID vidéo à 11 caractères'
+                  : 'URL du flux audio en direct (m3u8, mp3, etc.)'}
+              </p>
+            </div>
+
+            {/* Active Status */}
+            <div className="flex items-center justify-between rounded-lg border border-border p-3">
+              <div>
+                <Label className="text-base font-medium">Activer ce direct</Label>
+                <p className="text-xs text-muted-foreground">Les autres directs seront désactivés</p>
+              </div>
+              <Switch
+                checked={formData.is_active}
+                onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2 px-6 py-4 border-t border-border">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDialogOpen(false);
+                resetForm();
+              }}
+              className="flex-1"
+            >
+              Annuler
+            </Button>
+            <Button onClick={handleSaveStream} disabled={saving} className="flex-1">
+              {saving ? 'Enregistrement...' : 'Enregistrer'}
+            </Button>
+          </div>
+        </DraggableModal>
 
         {/* Content */}
         <div className="space-y-6">
@@ -404,7 +426,7 @@ const AdminLiveEditor = () => {
                       variant="destructive"
                       size="sm"
                       className="flex-1"
-                      onClick={() => handleDeleteStream(stream.id)}
+                      onClick={() => setDeleteStreamId(stream.id)}
                       disabled={saving}
                     >
                       <Trash2 className="w-4 h-4 mr-1" />
@@ -416,6 +438,32 @@ const AdminLiveEditor = () => {
             </div>
           )}
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteStreamId !== null} onOpenChange={(open) => {
+          if (!open) setDeleteStreamId(null);
+        }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+              <AlertDialogDescription>
+                Êtes-vous sûr de vouloir supprimer ce direct ? Cette action est irréversible.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="flex gap-3 justify-end">
+              <AlertDialogCancel disabled={saving}>
+                Annuler
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteStream}
+                disabled={saving}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {saving ? 'Suppression...' : 'Supprimer'}
+              </AlertDialogAction>
+            </div>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
