@@ -1,5 +1,6 @@
 import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import PresenceDot from '@/components/chat/PresenceDot';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import type { ChatRoom, Profile } from '@/types/database';
@@ -9,6 +10,7 @@ interface ChatHeaderProps {
   memberCount?: number;
   onBack?: () => void;
   showBackButton?: boolean;
+  otherUserId?: string | null;
 }
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({
@@ -16,6 +18,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   memberCount,
   onBack,
   showBackButton = false,
+  otherUserId = null,
 }) => {
   const getInitials = (name: string) => {
     return name
@@ -41,12 +44,17 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
         )}
 
         {/* Avatar */}
-        <Avatar className="h-10 w-10">
-          <AvatarImage src={undefined} alt={room.name} />
-          <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
-            {getInitials(room.name)}
-          </AvatarFallback>
-        </Avatar>
+        <div className="relative">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={undefined} alt={room.name} />
+            <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+              {getInitials(room.name)}
+            </AvatarFallback>
+          </Avatar>
+          {otherUserId && (
+            <PresenceDot userId={otherUserId} />
+          )}
+        </div>
 
         {/* Room Info */}
         <div className="flex-1 min-w-0">

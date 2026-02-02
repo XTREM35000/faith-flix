@@ -24,7 +24,9 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "types": ["vitest/globals"]
   },
-  "include": ["src"]
+  "include": ["src", "tests"],
+  "files": ["tests/shims.d.ts"]
 }

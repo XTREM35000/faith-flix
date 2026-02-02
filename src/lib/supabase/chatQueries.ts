@@ -44,20 +44,50 @@ export async function sendChatMessage(message: {
   room_id: string;
   sender_id: string;
   content: string;
+  attachments?: { file_url: string; file_type?: string; file_name?: string; file_size?: number }[];
 }) {
   const { data, error } = await supabase
     .from('chat_messages')
-    .insert([message])
+    .insert([{ room_id: message.room_id, sender_id: message.sender_id, content: message.content, type: 'text', is_deleted: false, is_edited: false }])
     .select('*')
     .single();
 
   if (error) throw error;
+
+  // Insert attachments if provided
+  if (message.attachments && message.attachments.length > 0 && data && data.id) {
+    const attachmentsToInsert = message.attachments.map(att => ({
+      message_id: data.id,
+      room_id: message.room_id,
+      file_url: att.file_url,
+      file_type: att.file_type || null,
+      file_name: att.file_name || null,
+      file_size: att.file_size || null,
+    }));
+
+    const { error: attachErr } = await supabase.from('chat_attachments').insert(attachmentsToInsert);
+    if (attachErr) console.warn('Erreur insertion attachments:', attachErr);
+  }
 
   await supabase
     .from('chat_rooms')
     .update({ last_message_at: new Date().toISOString() })
     .eq('id', message.room_id);
 
+  return data as ChatMessage;
+}
+
+export async function deleteMessage(messageId: string, userId: string) {
+  // Soft delete: set is_deleted and deleted_at, and optionally replace content
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .update({ is_deleted: true, deleted_at: new Date().toISOString(), content: '🗑️ Message supprimé' })
+    .eq('id', messageId)
+    .eq('sender_id', userId)
+    .select('*')
+    .single();
+
+  if (error) throw error;
   return data as ChatMessage;
 }
 

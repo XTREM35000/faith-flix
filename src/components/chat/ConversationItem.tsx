@@ -1,5 +1,6 @@
 import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import PresenceDot from '@/components/chat/PresenceDot';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { ChatRoom } from '@/types/database';
@@ -55,13 +56,14 @@ export const ConversationItem: React.FC<ConversationItemProps> = ({
     >
       <div className="flex gap-3 items-start">
         {/* Avatar */}
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 relative">
           <Avatar className="h-12 w-12">
             <AvatarImage src={room.avatar_url || ''} alt={room.name} />
             <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
               {getInitials(room.name)}
             </AvatarFallback>
           </Avatar>
+          {room.type === 'direct' && room.id && <PresenceDot userId={String(room.id)} />}
         </div>
 
         {/* Content */}

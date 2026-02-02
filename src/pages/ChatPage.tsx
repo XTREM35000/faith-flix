@@ -119,10 +119,19 @@ export default function ChatPage() {
   // Effet: Chargement des messages
   // ====================================
   useEffect(() => {
+    let cleanup: (() => void) | undefined;
     if (selectedRoomId) {
+      // subscribe asynchronously to the DB room id derived from the recipient id
+      (async () => {
+        cleanup = await subscribeToMessageUpdates(selectedRoomId);
+      })();
+
       fetchMessages(selectedRoomId);
-      subscribeToMessageUpdates(selectedRoomId);
     }
+
+    return () => {
+      if (cleanup) cleanup();
+    };
   }, [selectedRoomId]);
 
   // ====================================
@@ -167,11 +176,63 @@ export default function ChatPage() {
         email: profile.email,
       })) as ExtendedChatRoom[];
 
-      setRooms(enrichedRooms);
+      // Enrich rooms with latest message and unread count if a private room exists
+      const enrichedWithMeta = await Promise.all(
+        enrichedRooms.map(async (r) => {
+          try {
+            const roomIdentifier = [user?.id, r.id].sort().join('_');
+            const { data: existingRooms } = await supabase
+              .from('chat_rooms')
+              .select('id')
+              .ilike('name', `%${roomIdentifier}%`)
+              .limit(1);
+
+            if (existingRooms && existingRooms.length > 0) {
+              const roomId = existingRooms[0].id;
+
+              // last message
+              const { data: lastMsg } = await supabase
+                .from('chat_messages')
+                .select('*')
+                .eq('room_id', roomId)
+                .eq('is_deleted', false)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              // unread since user's last read
+              let unreadCount = 0;
+              if (profile?.last_read_messages_at) {
+                const { count } = await supabase
+                  .from('chat_messages')
+                  .select('id', { count: 'exact', head: true })
+                  .eq('room_id', roomId)
+                  .eq('is_deleted', false)
+                  .gt('created_at', profile.last_read_messages_at);
+                unreadCount = count || 0;
+              }
+
+              return {
+                ...r,
+                room_id: roomId,
+                lastMessage: lastMsg?.content || r.lastMessage,
+                lastMessageTime: lastMsg ? new Date(lastMsg.created_at) : r.lastMessageTime,
+                unreadCount: unreadCount,
+              };
+            }
+          } catch (e) {
+            console.warn('fetchChatRooms: enrich meta error', e);
+          }
+
+          return r;
+        })
+      );
+
+      setRooms(enrichedWithMeta);
 
       // Sélectionner le premier membre par défaut
-      if (enrichedRooms.length > 0 && !selectedRoomId) {
-        setSelectedRoomId(enrichedRooms[0].id);
+      if (enrichedWithMeta.length > 0 && !selectedRoomId) {
+        setSelectedRoomId(enrichedWithMeta[0].id);
       }
     } catch (err: any) {
       console.error('Erreur lors de la récupération des membres:', err);
@@ -217,10 +278,23 @@ export default function ChatPage() {
           .in('id', senderIds);
 
         const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
-        const enrichedMessages = data.map(msg => ({
+        let enrichedMessages = data.map(msg => ({
           ...msg,
           sender: profileMap.get(msg.sender_id) || null,
         })) as ExtendedChatMessage[];
+
+        // Fetch attachments for these messages
+        const messageIds = enrichedMessages.map(m => m.id);
+        if (messageIds.length > 0) {
+          const { data: atts } = await supabase.from('chat_attachments').select('*').in('message_id', messageIds);
+          const attsByMsg = new Map<string, any[]>();
+          (atts || []).forEach(a => {
+            if (!attsByMsg.has(a.message_id)) attsByMsg.set(a.message_id, []);
+            attsByMsg.get(a.message_id).push(a);
+          });
+
+          enrichedMessages = enrichedMessages.map(m => ({ ...m, attachments: attsByMsg.get(m.id) || [] }));
+        }
 
         setMessages(enrichedMessages);
       } else {
@@ -246,8 +320,9 @@ export default function ChatPage() {
   // ====================================
   // Envoi d'un message
   // ====================================
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !user || !selectedRoomId) return;
+  const handleSendMessage = async (content?: string, attachments?: File[]) => {
+    const messageContent = (typeof content === 'string' ? content : newMessage).trim();
+    if (!messageContent && (!attachments || attachments.length === 0) || !user || !selectedRoomId) return;
 
     try {
       setSendingMessage(true);
@@ -258,23 +333,40 @@ export default function ChatPage() {
         throw new Error('Impossible de créer la salle de conversation');
       }
 
-      // Envoyer le message dans la salle privée
-      const { data, error: err } = await supabase
-        .from('chat_messages')
-        .insert([
-          {
-            room_id: roomId,
-            sender_id: user.id,
-            content: newMessage.trim(),
-            type: 'text',
-            is_deleted: false,
-            is_edited: false,
-          },
-        ])
-        .select('*')
-        .single();
+      // Upload attachments if any
+      let uploadedAttachments: Array<{ file_url: string; file_name?: string; file_type?: string; file_size?: number }> = [];
+      if (attachments && attachments.length > 0) {
+        // Validate client-side
+        const { validateFiles, uploadChatFiles } = await import('@/hooks/useChatAttachments');
+        const errs = await validateFiles(attachments);
+        if (errs.length > 0) {
+          notifyError('Fichier invalide', errs.join('\n'));
+          setSendingMessage(false);
+          return;
+        }
 
-      if (err) throw err;
+        uploadedAttachments = await uploadChatFiles(roomId, attachments);
+      }
+
+      // Use helper to send message and attach metadata
+      const { sendChatMessage } = await import('@/lib/supabase/chatQueries');
+
+      const created = await sendChatMessage({
+        room_id: roomId,
+        sender_id: user.id,
+        content: messageContent,
+        attachments: uploadedAttachments,
+      });
+
+      // Optimistically append the created message so the user sees it immediately
+      setMessages(prev => [
+        ...prev,
+        {
+          ...created,
+          sender: profile || null,
+          attachments: uploadedAttachments || [],
+        } as ExtendedChatMessage,
+      ]);
 
       // Mettre à jour last_message_at de la salle
       await supabase
@@ -320,7 +412,11 @@ export default function ChatPage() {
   // ====================================
   // Subscription: Mises à jour des messages
   // ====================================
-  const subscribeToMessageUpdates = (roomId: string) => {
+  const subscribeToMessageUpdates = async (recipientId: string) => {
+    // Ensure we subscribe to the DB room id (may differ from recipientId which can be a profile id)
+    const roomId = await getOrCreatePrivateRoom(recipientId);
+    if (!roomId) return () => {};
+
     const channel = supabase
       .channel(`public:chat_messages:room_${roomId}`)
       .on(
@@ -340,9 +436,13 @@ export default function ChatPage() {
             .eq('id', newMsg.sender_id)
             .single();
 
+          // Récupérer attachments éventuels
+          const { data: atts } = await supabase.from('chat_attachments').select('*').eq('message_id', newMsg.id);
+
           const enrichedMessage: ExtendedChatMessage = {
             ...newMsg,
             sender: senderProfile,
+            attachments: atts || [],
           };
 
           setMessages(prev => [...prev, enrichedMessage]);
@@ -437,6 +537,7 @@ export default function ChatPage() {
               room={selectedRoom}
               memberCount={selectedRoom.member_count || 0}
               showBackButton={true}
+              otherUserId={selectedRoom.type === 'direct' ? selectedRoom.id : null}
               onBack={() => setSelectedRoomId(null)}
             />
 
@@ -486,6 +587,19 @@ export default function ChatPage() {
                             senderAvatar={senderAvatar}
                             timestamp={new Date(message.created_at)}
                             showAvatar={true}
+                            attachments={(message as any).attachments || []}
+                            canDelete={isOwn}
+                            onDelete={async () => {
+                              try {
+                                const { deleteMessage } = await import('@/lib/supabase/chatQueries');
+                                const deleted = await deleteMessage(message.id, user.id);
+                                setMessages(prev => prev.map(m => (m.id === message.id ? { ...m, ...deleted } : m)));
+                                notifySuccess('Message supprimé');
+                              } catch (e) {
+                                console.error('Erreur suppression message', e);
+                                notifyError('Erreur', 'Impossible de supprimer ce message');
+                              }
+                            }}
                           />
                         </motion.div>
                       );

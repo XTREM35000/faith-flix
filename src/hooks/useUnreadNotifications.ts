@@ -34,49 +34,87 @@ export const useUnreadNotifications = () => {
     loadCount();
 
     // Subscribe to realtime changes on notifications table (NO FILTER - filter manually)
-    const channel = supabase
-      .channel(`public:notifications:user_${profile.id}`)
-      .on('postgres_changes', 
-        { 
-          event: '*',  // Listen to all events (INSERT, UPDATE, DELETE)
-          schema: 'public', 
-          table: 'notifications'
-        }, 
-        (payload) => {
-          console.log('[useUnreadNotifications] Realtime event received:', payload.eventType, 'new:', payload.new, 'old:', payload.old);
-          
-          // Filter manually: only react to events for THIS user
-          const isForThisUser = (payload.new?.user_id === profile.id) || (payload.old?.user_id === profile.id);
-          
-          if (!isForThisUser) {
-            console.log('[useUnreadNotifications] Event is not for this user, ignoring');
+    let channel: any = null;
+    try {
+      channel = supabase
+        .channel(`public:notifications:user_${profile.id}`)
+        .on('postgres_changes', 
+          { 
+            event: '*',  // Listen to all events (INSERT, UPDATE, DELETE)
+            schema: 'public', 
+            table: 'notifications'
+          }, 
+          (payload: any) => {
+            console.log('[useUnreadNotifications] Realtime event received:', payload.eventType, 'new:', payload.new, 'old:', payload.old);
+            
+            // Filter manually: only react to events for THIS user
+            const isForThisUser = (payload.new?.user_id === profile.id) || (payload.old?.user_id === profile.id);
+            
+            if (!isForThisUser) {
+              console.log('[useUnreadNotifications] Event is not for this user, ignoring');
+              return;
+            }
+
+            // Reload the count whenever there's a change for this user
+            (async () => {
+              try {
+                const { count, error } = await supabase
+                  .from('notifications')
+                  .select('id', { count: 'exact', head: true })
+                  .eq('user_id', profile.id)
+                  .eq('is_read', false);
+
+                if (error) throw error;
+                console.log('[useUnreadNotifications] Updated count after realtime event:', count);
+                setUnreadCount(count || 0);
+              } catch (e) {
+                console.error('[useUnreadNotifications] realtime count error', e);
+              }
+            })();
+          }
+        );
+
+      // attempt to subscribe and handle potential errors
+      const subRes = channel.subscribe();
+      // If subscription returns a status or throws, handle it
+      if (subRes && typeof subRes.then === 'function') {
+        subRes.catch((err: any) => {
+          console.warn('[useUnreadNotifications] Realtime subscribe failed, falling back to polling:', err);
+          // fallthrough to polling fallback
+        });
+      }
+    } catch (e) {
+      console.warn('[useUnreadNotifications] Failed to set up realtime subscription, falling back to polling:', e);
+    }
+
+    // Polling fallback in case realtime is unavailable
+    let pollingInterval: number | null = null;
+    if (!channel) {
+      pollingInterval = window.setInterval(async () => {
+        try {
+          const { count, error } = await supabase
+            .from('notifications')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', profile.id)
+            .eq('is_read', false);
+
+          if (error) {
+            console.warn('[useUnreadNotifications] Polling error', error);
             return;
           }
 
-          // Reload the count whenever there's a change for this user
-          (async () => {
-            try {
-              const { count, error } = await supabase
-                .from('notifications')
-                .select('id', { count: 'exact', head: true })
-                .eq('user_id', profile.id)
-                .eq('is_read', false);
-
-              if (error) throw error;
-              console.log('[useUnreadNotifications] Updated count after realtime event:', count);
-              setUnreadCount(count || 0);
-            } catch (e) {
-              console.error('[useUnreadNotifications] realtime count error', e);
-            }
-          })();
+          setUnreadCount(count || 0);
+        } catch (err) {
+          console.error('[useUnreadNotifications] Polling unexpected error', err);
         }
-      )
-      .subscribe();
+      }, 30 * 1000); // every 30s
+    }
 
     return () => {
       console.log('[useUnreadNotifications] Cleanup: removing channel');
       try {
-        supabase.removeChannel(channel);
+        if (channel) supabase.removeChannel(channel);
+        if (pollingInterval) window.clearInterval(pollingInterval);
       } catch (e) {
         // ignore cleanup errors
       }

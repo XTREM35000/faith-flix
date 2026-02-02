@@ -31,10 +31,17 @@
         console.log('✅ Facebook SDK initialized');
         
         // Sur mobile, s'assurer que le SDK est pleinement prêt
-        if (typeof FB !== 'undefined') {
-          FB.getLoginStatus(function(response) {
-            console.log('📱 Facebook login status:', response.status);
-          });
+        try {
+          // Only call FB.getLoginStatus on secure contexts (https) or localhost during development
+          if (typeof FB !== 'undefined' && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname.startsWith('127.'))) {
+            FB.getLoginStatus(function(response) {
+              console.log('📱 Facebook login status:', response.status);
+            });
+          } else if (typeof FB !== 'undefined') {
+            console.warn('Facebook SDK present but page not secure; skipping getLoginStatus to avoid errors (use https in production)');
+          }
+        } catch (e) {
+          console.warn('Facebook getLoginStatus error (guarded):', e);
         }
       };
 

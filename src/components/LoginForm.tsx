@@ -77,11 +77,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
   const handleFacebookLogin = async () => {
     console.log('🔵 Facebook login button clicked');
     
-    // Sur mobile, vérifier que le SDK est prêt
-    if (typeof FB !== 'undefined') {
-      FB.getLoginStatus((response: any) => {
-        console.log('📱 Facebook status before login:', response?.status);
-      });
+    // Sur mobile, vérifier que le SDK est prêt (sécurisé)
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { safeGetLoginStatus } = require('@/lib/facebook');
+      safeGetLoginStatus();
+    } catch (e) {
+      /* ignore: helper may not be available in SSR build */
     }
     
     setFacebookLoading(true);
