@@ -1,9 +1,10 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Calendar, MapPin, Users, ChevronRight } from "lucide-react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useEventModal } from '@/contexts/EventModalContext';
 
 interface EventCardProps {
   id: string;
@@ -30,8 +31,7 @@ const EventCard = ({
   imageUrl,
   featured = false,
 }: EventCardProps) => {
-  const navigate = useNavigate();
-  const routerLocation = useLocation();
+  const { open } = useEventModal();
 
   const formattedDate = new Date(date).toLocaleDateString("fr-FR", {
     day: "numeric",
@@ -41,11 +41,18 @@ const EventCard = ({
   const [day, month] = formattedDate.split(" ");
 
   const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    // Let ctrl/cmd/shift/middle clicks open in a new tab
+    // Let ctrl/cmd/shift/middle clicks open in a new tab (allow default)
     if (e.metaKey || e.ctrlKey || e.shiftKey || (e as any).button !== 0) return;
     e.preventDefault();
-    // Push the event URL so Index can detect and open the modal
-    navigate(`/evenements/${slug ?? id}`, { state: { background: routerLocation } });
+    // If slug is an empty string we must fallback to id ('' is not nullish, so ?? would pick it)
+    const target = slug && typeof slug === 'string' && slug.trim() !== '' ? slug : id;
+    if (!target || (typeof target === 'string' && target.trim() === '')) {
+      // Defensive: log and do not attempt to open modal with empty identifier
+      console.warn('EventCard: attempted to open event with empty slug/id', { id, slug });
+      return;
+    }
+    // Open the event modal directly (no navigation)
+    open(target);
   };
 
   return (
@@ -112,10 +119,18 @@ const EventCard = ({
           {/* Action */}
           <div className="mt-4">
             <Button asChild variant="ghost" size="sm" className="text-primary hover:text-primary p-0 h-auto">
-              <Link to={`/evenements/${slug ?? id}`} onClick={handleLinkClick} className="flex items-center gap-1">
-                En savoir plus
-                <ChevronRight className="w-4 h-4" />
-              </Link>
+              {
+                (() => {
+                  const target = slug && typeof slug === 'string' && slug.trim() !== '' ? slug : id;
+                  const to = target ? `/evenements/${target}` : '#';
+                  return (
+                    <Link to={to} onClick={handleLinkClick} className="flex items-center gap-1" aria-disabled={!target}>
+                      En savoir plus
+                      <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  );
+                })()
+              }
             </Button>
           </div>
         </div>

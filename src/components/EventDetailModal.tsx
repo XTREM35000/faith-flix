@@ -5,7 +5,7 @@ import type { Event } from '@/types/database';
 import { Button } from '@/components/ui/button';
 
 interface EventDetailModalProps {
-  slugOrId: string;
+  slugOrId?: string | null;
   open: boolean;
   onClose: () => void;
 }
@@ -17,6 +17,13 @@ const EventDetailModal: React.FC<EventDetailModalProps> = ({ slugOrId, open, onC
 
   useEffect(() => {
     if (!open) return;
+    if (!slugOrId || (typeof slugOrId === 'string' && slugOrId.trim() === '')) {
+      setError('Identifiant d\'événement manquant');
+      setEvent(null);
+      setLoading(false);
+      return;
+    }
+
     let mounted = true;
     const fetchEvent = async () => {
       setLoading(true);
@@ -47,9 +54,12 @@ const EventDetailModal: React.FC<EventDetailModalProps> = ({ slugOrId, open, onC
         setEvent(data);
         if (data) {
           document.title = data.seo_title || data.title;
+        } else {
+          setError('Événement non trouvé');
         }
       } catch (e) {
         if (!mounted) return;
+        console.error('Exception fetch event detail:', e);
         setError('Impossible de charger l\'événement');
       } finally {
         if (mounted) setLoading(false);

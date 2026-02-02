@@ -24,6 +24,7 @@ import { useUser } from "@/hooks/useUser";
 import { supabase } from "@/integrations/supabase/client";
 import type { Video } from "@/types/database";
 import EventDetailModal from '@/components/EventDetailModal';
+import { useEventModal } from '@/contexts/EventModalContext';
 
 // Pas de données mockées en dur pour la galerie — utiliser le contenu dynamique
 
@@ -192,27 +193,31 @@ const Index = () => {
     sections,
   } = useHomepageContent();
 
-  // Modal for event detail when route contains /evenements/:slug
-  const [modalEventSlug, setModalEventSlug] = useState<string | null>(null);
-  const [isEventModalOpen, setEventModalOpen] = useState(false);
+  // Modal integration with route — use global EventModalContext
+  const { open: openEventModal, close: closeEventModal, isOpen: isEventModalOpen } = useEventModal();
+  const [modalOpenedByRoute, setModalOpenedByRoute] = useState(false);
 
   useEffect(() => {
     const match = location.pathname.match(/^\/evenements\/(.+)$/);
     if (match) {
-      setModalEventSlug(match[1]);
-      setEventModalOpen(true);
-    } else {
-      setEventModalOpen(false);
-      setModalEventSlug(null);
+      const target = match[1];
+      if (!target || (typeof target === 'string' && target.trim() === '')) {
+        console.warn('Index: matched /evenements/ route but slug is empty', { pathname: location.pathname });
+        return;
+      }
+      // Open modal directly via context
+      openEventModal(target);
+      setModalOpenedByRoute(true);
     }
-  }, [location.pathname]);
+  }, [location.pathname, openEventModal]);
 
-  const closeEventModal = () => {
-    // Close modal and navigate explicitly to the events listing page
-    navigate('/evenements');
-    setEventModalOpen(false);
-    setModalEventSlug(null);
-  };
+  // If modal was opened by route and then closed, navigate to listing
+  useEffect(() => {
+    if (!isEventModalOpen && modalOpenedByRoute) {
+      navigate('/evenements');
+      setModalOpenedByRoute(false);
+    }
+  }, [isEventModalOpen, modalOpenedByRoute, navigate]);
 
 
   
@@ -379,10 +384,6 @@ const Index = () => {
           return null;
         })()}
 
-        {/* Event detail modal opened from route */}
-        {isEventModalOpen && modalEventSlug && (
-          <EventDetailModal slugOrId={modalEventSlug} open={isEventModalOpen} onClose={closeEventModal} />
-        )}
 
         {/* Photo Gallery Section */}
         <section className="py-12 lg:py-16">

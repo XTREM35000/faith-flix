@@ -13,6 +13,11 @@ const EventDetail = () => {
     const fetch = async () => {
       setLoading(true);
       try {
+        if (!slug || (typeof slug === 'string' && slug.trim() === '')) {
+          setEvent(null);
+          setLoading(false);
+          return;
+        }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const client = supabase as unknown as any;
         // Try slug first
