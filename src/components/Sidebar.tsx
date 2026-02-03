@@ -181,7 +181,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
       {/* Search bar - only shown when not collapsed */}
       {!isCollapsed && (
-        <div className="px-2 py-3 border-b border-border">
+        <div className="sticky top-0 z-20 bg-card/95 backdrop-blur-sm border-b border-border px-2 py-3 shadow-sm">
           <div className="relative">
             <input
               type="text"
@@ -189,6 +189,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-8 pr-8 py-2 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+              aria-label="Rechercher dans le menu"
             />
             <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             {searchQuery && (
