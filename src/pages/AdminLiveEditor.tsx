@@ -21,7 +21,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import useRoleCheck from '@/hooks/useRoleCheck';
-import { fetchAllLiveStreams, upsertLiveStream, deleteLiveStream, deactivateOtherLiveStreams, type LiveStream } from '@/lib/supabase/mediaQueries';
+import { fetchAllLiveStreams, upsertLiveStream, deleteLiveStream, deactivateOtherLiveStreams, getLiveStats, type LiveStream, type LiveStats } from '@/lib/supabase/mediaQueries';
 
 const AdminLiveEditor = () => {
   const navigate = useNavigate();
@@ -37,7 +37,10 @@ const AdminLiveEditor = () => {
     stream_type: 'tv' as 'tv' | 'radio',
     provider: 'youtube' as 'youtube' | 'api_video' | 'radio_stream',
     is_active: false,
+    scheduled_at: '' as string | '',
   });
+
+  const [statsMap, setStatsMap] = useState<Record<string, LiveStats | null>>({});
 
   const [liveStreams, setLiveStreams] = useState<LiveStream[]>([]);
   const [loading, setLoading] = useState(false);
@@ -50,6 +53,16 @@ const AdminLiveEditor = () => {
       setLoading(true);
       const result = await fetchAllLiveStreams({ limit: 50 });
       setLiveStreams(result.data);
+
+      // load stats for these streams
+      try {
+        const statsResults = await Promise.all(result.data.map(async (s) => ({ id: s.id, stats: await getLiveStats(s.id) })));
+        const map: Record<string, LiveStats | null> = {};
+        statsResults.forEach(r => { map[r.id] = r.stats; });
+        setStatsMap(map);
+      } catch (e) {
+        console.warn('Unable to fetch live stats', e);
+      }
     } catch (e) {
       console.error('Error loading live streams:', e);
       toast({
@@ -75,6 +88,7 @@ const AdminLiveEditor = () => {
       stream_type: 'tv',
       provider: 'youtube',
       is_active: false,
+      scheduled_at: '',
     });
   }; 
 
@@ -93,6 +107,7 @@ const AdminLiveEditor = () => {
       stream_type: stream.stream_type,
       provider: stream.provider ?? (stream.stream_type === 'tv' ? 'youtube' : 'radio_stream'),
       is_active: stream.is_active,
+      scheduled_at: stream.scheduled_at ?? '',
     });
     setIsDialogOpen(true);
   }; 
@@ -134,6 +149,8 @@ const AdminLiveEditor = () => {
         }
       }
 
+      const scheduledAtISO = formData.scheduled_at ? new Date(formData.scheduled_at).toISOString() : null;
+
       const result = await upsertLiveStream({
         id: editingStream?.id,
         title: formData.title,
@@ -141,6 +158,7 @@ const AdminLiveEditor = () => {
         stream_type: formData.stream_type,
         provider: formData.provider,
         is_active: formData.is_active,
+        scheduled_at: scheduledAtISO,
       });
 
       toast({
@@ -362,6 +380,18 @@ const AdminLiveEditor = () => {
               </p>
             </div>
 
+            {/* Scheduled at */}
+            <div className="space-y-2">
+              <Label htmlFor="scheduled_at">Programmation (date & heure)</Label>
+              <Input
+                id="scheduled_at"
+                type="datetime-local"
+                value={formData.scheduled_at}
+                onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">Laisser vide pour pas de programmation. Utilisez la timezone locale; la valeur sera stockée en UTC.</p>
+            </div>
+
             {/* Active Status */}
             <div className="flex items-center justify-between rounded-lg border border-border p-3"> 
               <div>
@@ -457,6 +487,17 @@ const AdminLiveEditor = () => {
                         </span>
                       </div>
                     </div>
+
+                    {/* Small stats */}
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold text-muted-foreground">Statistiques</p>
+                      <div className="flex items-center gap-3 text-sm">
+                        <span>En ce moment: <strong>{statsMap[stream.id]?.viewers_count ?? 0}</strong></span>
+                        <span>Record: <strong>{statsMap[stream.id]?.peak_viewers ?? 0}</strong></span>
+                        <span>Vues: <strong>{statsMap[stream.id]?.total_views ?? 0}</strong></span>
+                      </div>
+                    </div>
+
                     <div className="text-xs text-muted-foreground">
                       Créé le {new Date(stream.created_at).toLocaleDateString('fr-FR')}
                     </div>

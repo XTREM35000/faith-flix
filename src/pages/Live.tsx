@@ -5,10 +5,12 @@ import HeroBanner from '@/components/HeroBanner';
 import { useLocation } from 'react-router-dom';
 import usePageHero from '@/hooks/usePageHero';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import DraggableModal from '@/components/DraggableModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { fetchActiveLiveStream, type LiveStream } from '@/lib/supabase/mediaQueries';
+import useLiveSession from '@/hooks/useLiveSession';
+import LiveChatSidebar from '@/components/live/LiveChatSidebar';
 
 /**
  * Extract YouTube ID from various URL formats
@@ -76,6 +78,24 @@ const Live: React.FC = () => {
   const [liveStream, setLiveStream] = useState<LiveStream | null>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showChatMobile, setShowChatMobile] = useState(false);
+
+  // live session tracking (increments/decrements viewers)
+  const liveSession = useLiveSession(liveStream?.id);
+
+  useEffect(() => {
+    if (!liveStream?.id) return;
+
+    if (isModalOpen) {
+      liveSession.join();
+    } else {
+      liveSession.leave();
+    }
+
+    return () => {
+      liveSession.leave();
+    };
+  }, [isModalOpen, liveStream?.id, liveSession]);
 
   // Load active live stream on mount
   useEffect(() => {
@@ -286,12 +306,17 @@ const Live: React.FC = () => {
         )}
       </div>
 
-      {/* Player Modal */}
+      {/* Player Modal (Draggable) */}
       {liveStream && (
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="w-full max-w-4xl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
+        <DraggableModal open={isModalOpen} onClose={() => setIsModalOpen(false)} dragHandleOnly={false} verticalOnly={false} draggableOnMobile={true} initialY={80}>
+          {/* Header (drag handle) */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border cursor-grab select-none" data-drag-handle role="button" aria-label="Poignée de déplacement">
+            <div className="flex items-center gap-4">
+              <div className="flex flex-col items-start mr-2">
+                <div className="w-16 h-1.5 bg-muted rounded-full shadow-sm mb-1" aria-hidden />
+                <div className="text-xs text-muted-foreground">Déplacer</div>
+              </div>
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
                 {liveStream.stream_type === 'tv' ? (
                   <>
                     <Tv className="w-5 h-5 text-blue-500" />
@@ -303,99 +328,138 @@ const Live: React.FC = () => {
                     Écouter en direct
                   </>
                 )}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="w-full space-y-4">
-              {liveStream.stream_type === 'tv' ? (
-                // SWITCH POUR LES SOURCES VIDÉO (priorise `provider`, fallback sur détection d'URL)
-                (() => {
-                  const videoSource = (liveStream.provider as 'youtube' | 'api_video' | 'radio_stream') ?? determineVideoSource(liveStream.stream_url);
-                  
-                  switch(videoSource) {
-                    case 'youtube':
-                      return (
-                        <div className="w-full bg-black rounded-lg overflow-hidden">
-                          <div className="aspect-video w-full">
-                            <iframe
-                              width="100%"
-                              height="100%"
-                              src={`https://www.youtube.com/embed/${getYouTubeId(liveStream.stream_url)}?autoplay=1&rel=0&modestbranding=1`}
-                              title={liveStream.title}
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowFullScreen
-                              className="border-0"
-                            />
-                          </div>
-                        </div>
-                      );
-
-                    case 'api_video':
-                      return (
-                        <div className="w-full bg-black rounded-lg overflow-hidden">
-                          <div className="aspect-video w-full">
-                            <iframe
-                              width="100%"
-                              height="100%"
-                              src={liveStream.stream_url} // URL d'embed api.video
-                              title={liveStream.title}
-                              allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-                              allowFullScreen
-                              className="border-0"
-                              // Note: api.video nécessite parfois un token d'authentification
-                              // Si besoin, ajoutez: `?token=${VOTRE_TOKEN}`
-                            />
-                          </div>
-                        </div>
-                      );
-
-                    default:
-                      return (
-                        <div className="text-center py-12 bg-muted rounded-lg">
-                          <Tv className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                          <p className="text-foreground font-medium">Source vidéo non prise en charge</p>
-                          <p className="text-sm text-muted-foreground mt-2">
-                            {liveStream.stream_url}
-                          </p>
-                        </div>
-                      );
-                  }
-                })()
-              ) : (
-                // Audio Player for Radio
-                <div className="w-full bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-lg p-8 flex flex-col items-center justify-center">
-                  <Radio className="w-12 h-12 text-green-500 mb-4" />
-                  <h3 className="text-lg font-semibold mb-2 text-foreground">
-                    {liveStream.title}
-                  </h3>
-                  <audio
-                    controls
-                    autoPlay
-                    className="w-full mt-4"
-                    style={{
-                      filter:
-                        'sepia(20%) hue-rotate(10deg) saturate(1.2) brightness(1.1)',
-                    }}
-                  >
-                    <source src={liveStream.stream_url} type="audio/mpeg" />
-                    Votre navigateur ne supporte pas le lecteur audio.
-                  </audio>
-                  <p className="text-sm text-muted-foreground mt-4 text-center">
-                    En direct maintenant • {new Date().toLocaleTimeString('fr-FR')}
-                  </p>
-                </div>
-              )}
-
-              <div className="rounded-lg bg-muted/50 p-4">
-                <p className="text-sm text-muted-foreground">
-                  {liveStream.stream_type === 'tv'
-                    ? '✨ Profitez pleinement du direct. Pour une meilleure expérience, nous recommandons une connexion Internet stable.'
-                    : '🎙️ Écoutez en direct. Vous pouvez mettre en pause et reprendre quand vous le souhaitez.'}
-                </p>
-              </div>
+              </h2>
             </div>
-          </DialogContent>
-        </Dialog>
+
+            <button
+              onClick={() => setIsModalOpen(false)}
+              aria-label="Fermer le lecteur"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="w-full p-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              {/* Left: Player / Audio */}
+              <div className="flex-1">
+                {liveStream.stream_type === 'tv' ? (
+                  // SWITCH POUR LES SOURCES VIDÉO (priorise `provider`, fallback sur détection d'URL)
+                  (() => {
+                    const videoSource = (liveStream.provider as 'youtube' | 'api_video' | 'radio_stream') ?? determineVideoSource(liveStream.stream_url);
+
+                    switch (videoSource) {
+                      case 'youtube':
+                        return (
+                          <div className="w-full bg-black rounded-lg overflow-hidden">
+                            <div className="aspect-video w-full">
+                              <iframe
+                                width="100%"
+                                height="100%"
+                                src={`https://www.youtube.com/embed/${getYouTubeId(liveStream.stream_url)}?autoplay=1&rel=0&modestbranding=1`}
+                                title={liveStream.title}
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                                className="border-0"
+                              />
+                            </div>
+                          </div>
+                        );
+
+                      case 'api_video':
+                        return (
+                          <div className="w-full bg-black rounded-lg overflow-hidden">
+                            <div className="aspect-video w-full">
+                              <iframe
+                                width="100%"
+                                height="100%"
+                                src={liveStream.stream_url} // URL d'embed api.video
+                                title={liveStream.title}
+                                allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+                                className="border-0"
+                                // Note: api.video nécessite parfois un token d'authentification
+                                // Si besoin, ajoutez: `?token=${VOTRE_TOKEN}`
+                              />
+                            </div>
+                          </div>
+                        );
+
+                      default:
+                        return (
+                          <div className="text-center py-12 bg-muted rounded-lg">
+                            <Tv className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                            <p className="text-foreground font-medium">Source vidéo non prise en charge</p>
+                            <p className="text-sm text-muted-foreground mt-2">
+                              {liveStream.stream_url}
+                            </p>
+                          </div>
+                        );
+                    }
+                  })()
+                ) : (
+                  // Audio Player for Radio
+                  <div className="w-full bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-lg p-8 flex flex-col items-center justify-center">
+                    <Radio className="w-12 h-12 text-green-500 mb-4" />
+                    <h3 className="text-lg font-semibold mb-2 text-foreground">
+                      {liveStream.title}
+                    </h3>
+                    <audio
+                      controls
+                      autoPlay
+                      className="w-full mt-4"
+                      style={{
+                        filter:
+                          'sepia(20%) hue-rotate(10deg) saturate(1.2) brightness(1.1)',
+                      }}
+                    >
+                      <source src={liveStream.stream_url} type="audio/mpeg" />
+                      Votre navigateur ne supporte pas le lecteur audio.
+                    </audio>
+                    <p className="text-sm text-muted-foreground mt-4 text-center">
+                      En direct maintenant • {new Date().toLocaleTimeString('fr-FR')}
+                    </p>
+                  </div>
+                )}
+
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <div className="rounded-lg bg-muted/50 p-4 flex-1">
+                    <p className="text-sm text-muted-foreground">
+                      {liveStream.stream_type === 'tv'
+                        ? '✨ Profitez pleinement du direct. Pour une meilleure expérience, nous recommandons une connexion Internet stable.'
+                        : '🎙️ Écoutez en direct. Vous pouvez mettre en pause et reprendre quand vous le souhaitez.'}
+                    </p>
+                  </div>
+
+                  <div className="md:hidden">
+                    <Button variant="outline" size="sm" onClick={() => setShowChatMobile((s) => !s)}>
+                      {showChatMobile ? 'Cacher le chat' : 'Afficher le chat'}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Mobile chat */}
+                {showChatMobile && (
+                  <div className="mt-4 md:hidden">
+                    <LiveChatSidebar liveId={liveStream.id} title={liveStream.title} />
+                  </div>
+                )}
+              </div>
+
+              {/* Right: Chat Sidebar (desktop) */}
+              <div className="hidden md:block w-64">
+                <LiveChatSidebar liveId={liveStream.id} title={liveStream.title} />
+              </div> 
+            </div>
+
+            {/* Small stats line for admins/moderators */}
+            <div className="mt-4 flex items-center gap-3">
+              <p className="text-sm text-muted-foreground">
+                {/* viewers badge */}
+                En direct • {liveSession.stats ? `${liveSession.stats.viewers_count} connecté(s)` : '—'}
+              </p>
+            </div>
+          </div>
+        </DraggableModal>
       )}
     </div>
   );

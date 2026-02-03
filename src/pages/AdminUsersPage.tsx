@@ -5,7 +5,7 @@ import { useLocation } from 'react-router-dom';
 import usePageHero from '@/hooks/usePageHero';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Trash2, Edit, Upload } from 'lucide-react';
 import { updateProfileRole } from '@/lib/supabase/rpc';
@@ -468,9 +468,10 @@ const AdminUsersPage: React.FC = () => {
       </Dialog>
       {/* Confirmation suppression utilisateur */}
       <Dialog open={!!deleteConfirmId} onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md" aria-describedby="delete-user-desc">
           <DialogHeader>
             <DialogTitle>Confirmer la suppression</DialogTitle>
+            <DialogDescription id="delete-user-desc">Cette action supprimera définitivement l'utilisateur sélectionné.</DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <p>Voulez-vous vraiment supprimer cet utilisateur ? Cette action est irréversible.</p>

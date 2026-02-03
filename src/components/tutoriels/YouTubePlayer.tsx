@@ -17,8 +17,7 @@ export function YouTubePlayer({ videoId, title, autoplay = false }: YouTubePlaye
           height="100%"
           src={`https://www.youtube.com/embed/${videoId}?autoplay=${autoplay ? 1 : 0}&rel=0&modestbranding=1`}
           title={title}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
           className="border-0"
         />
       </div>

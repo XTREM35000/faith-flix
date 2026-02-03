@@ -14,11 +14,15 @@ interface Props {
 export default function DraggableModal({ open, onClose, children, verticalOnly = true, draggableOnMobile = false, dragHandleOnly = false, initialY = 0 }: Props) {
   const ref = useRef<HTMLDivElement | null>(null)
   const [posY, setPosY] = useState(initialY)
+  const [posX, setPosX] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
   const dragging = useRef(false)
   const startY = useRef(0)
+  const startX = useRef(0)
 
   useEffect(() => {
     setPosY(initialY)
+    setPosX(0)
   }, [initialY, open])
 
   function isTouchDevice() {
@@ -52,25 +56,45 @@ export default function DraggableModal({ open, onClose, children, verticalOnly =
         if (!handle) return
       } catch (err) { void err; return }
     }
-    // Only block drag when interacting with form controls if drag must be initiated from the handle
-    if (isInteractiveTarget(e.target) && dragHandleOnly) return
+    // If interacting with inputs/buttons etc, don't start a drag (even when full-surface drag is enabled)
+    if (isInteractiveTarget(e.target)) return
     dragging.current = true
+    setIsDragging(true)
+    // store start offsets for both axes
     startY.current = e.clientY - posY
+    startX.current = e.clientX - posX
     try { (e.target as Element).setPointerCapture(e.pointerId) } catch (err) { void err; }
+    try { document.body.style.userSelect = 'none' } catch { /* ignore */ }
   }
 
   function onPointerMove(e: React.PointerEvent) {
     if (!dragging.current) return
+
+    // Vertical movement
     let newY = e.clientY - startY.current
-    // Limit vertical movement so modal stays visible; allow larger range so user can move it higher/lower
-    const max = Math.max(200, window.innerHeight - 160)
-    newY = Math.max(-max, Math.min(max, newY))
+    const vMax = Math.max(200, window.innerHeight - 160)
+    newY = Math.max(-vMax, Math.min(vMax, newY))
+
+    if (verticalOnly) {
+      setPosY(newY)
+      return
+    }
+
+    // Horizontal movement (only if verticalOnly is false)
+    let newX = e.clientX - startX.current
+    // compute reasonable horizontal bounds so the modal stays visible
+    const hMax = Math.max(200, Math.floor(window.innerWidth / 2) - 80)
+    newX = Math.max(-hMax, Math.min(hMax, newX))
+
     setPosY(newY)
+    setPosX(newX)
   }
 
   function onPointerUp(e: React.PointerEvent) {
     dragging.current = false
+    setIsDragging(false)
     try { (e.target as Element).releasePointerCapture(e.pointerId) } catch (err) { void err; }
+    try { document.body.style.userSelect = '' } catch { /* ignore */ }
   }
 
   if (!open) return null
@@ -82,8 +106,8 @@ export default function DraggableModal({ open, onClose, children, verticalOnly =
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        style={{ transform: `translateY(${posY}px)`, touchAction: 'none' as const }}
-        className="bg-background rounded-lg shadow max-w-2xl w-full p-0 overflow-hidden"
+        style={{ transform: `translate(${posX}px, ${posY}px)`, touchAction: 'none' as const }}
+        className={"bg-background rounded-lg shadow max-w-4xl w-full p-0 overflow-hidden " + (isDragging ? 'cursor-grabbing' : 'cursor-grab')}
       >
         {children}
       </div>

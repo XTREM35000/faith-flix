@@ -1,0 +1,12 @@
+{
+  "functions": {
+    "live-scheduler": {
+      "enabled": true,
+      "cron": "*/1 * * * *"
+    },
+    "replay-worker": {
+      "enabled": true,
+      "cron": "*/5 * * * *"
+    }
+  }
+}

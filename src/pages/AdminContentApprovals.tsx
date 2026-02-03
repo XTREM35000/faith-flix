@@ -247,10 +247,10 @@ export default function AdminContentApprovals() {
 
       {/* Reject Dialog */}
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
-        <DialogContent>
+        <DialogContent aria-describedby="reject-desc">
           <DialogHeader>
             <DialogTitle>Rejeter le contenu</DialogTitle>
-            <DialogDescription>
+            <DialogDescription id="reject-desc">
               {selectedItem && getContentTitle(selectedItem)}
             </DialogDescription>
           </DialogHeader>

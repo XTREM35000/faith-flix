@@ -64,8 +64,7 @@ const VideoPlayer: React.FC<Props> = ({ url, poster }) => {
           title="youtube-player" 
           src={src} 
           frameBorder={0} 
-          allowFullScreen 
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
           className="w-full h-full" 
         />
       </div>
@@ -76,7 +75,7 @@ const VideoPlayer: React.FC<Props> = ({ url, poster }) => {
     const src = toVimeoEmbed(url);
     return (
       <div className="aspect-video w-full">
-        <iframe title="vimeo-player" src={src} frameBorder={0} allowFullScreen className="w-full h-full" />
+        <iframe title="vimeo-player" src={src} frameBorder={0} allow="fullscreen; picture-in-picture; web-share" className="w-full h-full" />
       </div>
     );
   }

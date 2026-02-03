@@ -212,6 +212,8 @@ export interface LiveStream {
   stream_type: 'tv' | 'radio';
   provider?: 'youtube' | 'api_video' | 'radio_stream';
   is_active: boolean;
+  scheduled_at?: string | null;
+  replay_created?: boolean;
   created_at: string;
   updated_at: string;
 } 
@@ -269,6 +271,8 @@ export async function upsertLiveStream(stream: Omit<LiveStream, 'created_at' | '
       stream_url: stream.stream_url,
       stream_type: stream.stream_type,
       is_active: stream.is_active,
+      scheduled_at: (stream as any).scheduled_at ?? null,
+      replay_created: (stream as any).replay_created ?? false,
       updated_at: new Date().toISOString(),
     };
 
@@ -290,6 +294,8 @@ export async function upsertLiveStream(stream: Omit<LiveStream, 'created_at' | '
       stream_type,
       provider: stream.provider ?? 'youtube',
       is_active,
+      scheduled_at: (stream as any).scheduled_at ?? null,
+      replay_created: (stream as any).replay_created ?? false,
       updated_at: new Date().toISOString(),
     };
 
@@ -324,4 +330,144 @@ export async function deactivateOtherLiveStreams(activeId: string) {
 
   if (error) throw error;
   return true;
+}
+
+// =====================================================
+// LIVE HELPERS: RPCs and stats
+// =====================================================
+
+export interface LiveStats {
+  live_id: string;
+  viewers_count: number;
+  peak_viewers: number;
+  total_views: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Wrapper for the server RPC that increments/decrements viewers and updates peaks/totals.
+ */
+export async function rpcIncrementViewer(liveId: string, delta = 1, userId?: string) {
+  const { data, error } = await supabase.rpc('rpc_increment_viewer', { p_live_id: liveId, p_delta: delta, p_user_id: userId ?? null });
+  if (error) throw error;
+  // rpc returns a recordset
+  return (data && data[0]) as LiveStats | null;
+}
+
+/**
+ * Fetch live stats row
+ */
+export async function getLiveStats(liveId: string) {
+  const { data, error } = await supabase
+    .from('live_stats')
+    .select('*')
+    .eq('live_id', liveId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data as LiveStats | null;
+}
+
+/**
+ * Get or create a chat room dedicated to a live stream
+ */
+export async function getOrCreateLiveChatRoom(liveId: string, title?: string, currentUserId?: string) {
+  // 1) Try to find an existing room tied to this live by name or by explicit pattern
+  const patterns = [`live_${liveId}`, `Live: ${liveId}`, `%${liveId}%`];
+
+  for (const p of patterns) {
+    const query = supabase
+      .from('chat_rooms')
+      .select('*');
+
+    if (p.includes('%')) {
+      // broad search
+      query.ilike('name', p);
+    } else {
+      query.ilike('name', `%${p}%`).limit(1);
+    }
+
+    const { data: existing, error: qErr } = await query.limit(1);
+    if (qErr) console.warn('getOrCreateLiveChatRoom search error', qErr);
+    if (existing && existing.length > 0) {
+      // If an old automatically named room exists ("live_<id>"), attempt to make its
+      // name friendlier by using the stream title or the creator's display name.
+      const room = existing[0];
+      if (room.name?.startsWith('live_') && (title || currentUserId)) {
+        let newName = room.name;
+        if (title) newName = `Live: ${title}`;
+        else if (currentUserId) {
+          try {
+            const { data: profile } = await supabase.from('profiles').select('display_name').eq('id', currentUserId).maybeSingle();
+            if (profile?.display_name) newName = `Live: ${profile.display_name}`;
+          } catch (e) { /* ignore */ }
+        }
+        if (newName !== room.name) {
+          try {
+            const { data: updated } = await supabase.from('chat_rooms').update({ name: newName }).eq('id', room.id).select().single();
+            return updated || room;
+          } catch (e) {
+            console.warn('getOrCreateLiveChatRoom rename error', e);
+            return room;
+          }
+        }
+      }
+      return room;
+    }
+  }
+
+  // 2) If no room found and no authenticated user, return null so UI can prompt login
+  if (!currentUserId) {
+    return null;
+  }
+
+  // 3) Authenticated user: create an idempotent named room using the stream title or the creator's display name
+  let roomName = `live_${liveId}`;
+  let description = `Chat en direct pour la diffusion ${title ?? liveId}`;
+
+  if (title) {
+    roomName = `Live: ${title}`;
+    description = `Chat en direct pour la diffusion ${title}`;
+  } else if (currentUserId) {
+    // try to fetch the creator's display name to make the room friendlier
+    try {
+      const { data: profile } = await supabase.from('profiles').select('display_name').eq('id', currentUserId).maybeSingle();
+      if (profile?.display_name) {
+        roomName = `Live: ${profile.display_name}`;
+        description = `Chat en direct animé par ${profile.display_name}`;
+      }
+    } catch (e) {
+      // ignore and fallback to live_<id>
+    }
+  }
+
+  const payload = {
+    name: roomName,
+    description,
+    type: 'live',
+    is_private: false,
+    created_by: currentUserId,
+  };
+
+  const { data: newRoom, error } = await supabase
+    .from('chat_rooms')
+    .insert([payload])
+    .select()
+    .single();
+
+  if (error) {
+    // re-check in case of race insertion by another process
+    console.warn('getOrCreateLiveChatRoom insert error, trying to find existing', error);
+    const { data: existingAfter, error: eErr } = await supabase
+      .from('chat_rooms')
+      .select('*')
+      .ilike('name', `%${roomName}%`)
+      .limit(1);
+    if (eErr) throw eErr;
+    if (existingAfter && existingAfter.length > 0) return existingAfter[0];
+    throw error;
+  }
+
+  return newRoom as any;
 }

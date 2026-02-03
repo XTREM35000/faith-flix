@@ -366,8 +366,7 @@ const Index = () => {
                         <iframe
                           src={getYouTubeEmbedUrl(youtubeSection.content)}
                           title={youtubeSection.title || 'Vidéo live'}
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                           className="absolute inset-0 w-full h-full"
                           style={{ border: 'none' }}
                         />

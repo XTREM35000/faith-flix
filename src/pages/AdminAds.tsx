@@ -7,7 +7,7 @@ import usePageHero from '@/hooks/usePageHero';
 import SectionTitle from '@/components/SectionTitle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import type { PublicAd } from '@/types/advertisements';
 
 export default function AdminAds() {
@@ -94,9 +94,10 @@ export default function AdminAds() {
             <DialogTrigger asChild>
               <Button onClick={() => { setEditing(null); setFile(null); }}>Nouvelle annonce</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent aria-describedby="ad-form-desc">
               <DialogHeader>
                 <DialogTitle>Créer / éditer une annonce</DialogTitle>
+                <DialogDescription id="ad-form-desc">Formulaire de création et d'édition d'annonce publicitaire</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSave} className="space-y-3">
                 <div>
