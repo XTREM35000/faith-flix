@@ -46,7 +46,20 @@
       };
 
       // Charger le SDK Facebook (optionnel avec Supabase OAuth)
+      // Only load the SDK in secure contexts or when running on localhost for development.
       (function(d, s, id) {
+        try {
+          var isSecure = (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname.startsWith('127.'));
+          if (!isSecure) {
+            console.warn('🔒 Skipping Facebook SDK load on non-secure context to avoid FB.getLoginStatus errors. Use HTTPS in production.');
+            return;
+          }
+        } catch (e) {
+          // If any error accessing location, skip loading the SDK
+          console.warn('Unable to verify secure context for Facebook SDK, skipping load.', e);
+          return;
+        }
+
         var js, fjs = d.getElementsByTagName(s)[0];
         if (d.getElementById(id)) return;
         js = d.createElement(s); js.id = id;

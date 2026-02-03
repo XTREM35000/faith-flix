@@ -18,6 +18,7 @@ import {
 // Types Supabase
 import type { ChatRoom, ChatMessage, Profile } from '@/types/database';
 import { cn } from '@/lib/utils';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 // Extension du type ChatRoom avec métadonnées locales
 interface ExtendedChatRoom extends ChatRoom {
@@ -611,14 +612,16 @@ export default function ChatPage() {
             )}
 
             {/* Zone de saisie */}
-            <MessageInput
-              value={newMessage}
-              onChange={setNewMessage}
-              onSend={handleSendMessage}
-              isLoading={sendingMessage}
-              disabled={loadingMessages}
-              placeholder="Écrivez votre message..."
-            />
+            <ErrorBoundary fallback={<div className="p-3 bg-destructive/10 text-destructive rounded">Le composant de saisie a échoué.</div>}>
+              <MessageInput
+                value={newMessage}
+                onChange={setNewMessage}
+                onSend={handleSendMessage}
+                isLoading={sendingMessage}
+                disabled={loadingMessages}
+                placeholder="Écrivez votre message..."
+              />
+            </ErrorBoundary>
           </div>
         ) : (
           /* Affichage par défaut si aucune conversation n'est sélectionnée */

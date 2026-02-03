@@ -145,7 +145,9 @@ const LiveChatSidebar: React.FC<Props> = ({ liveId, title }) => {
         {!user ? (
           <div className="text-sm text-muted-foreground">Vous devez être connecté pour participer au chat.</div>
         ) : (
-          <MessageInput value={inputValue} onChange={setInputValue} onSend={handleSend} isLoading={sending} placeholder="Envoyer un message au live" />
+          <ErrorBoundary fallback={<div className="p-2 bg-destructive/10 text-destructive rounded">Le composant de saisie est indisponible.</div>}>
+            <MessageInput value={inputValue} onChange={setInputValue} onSend={handleSend} isLoading={sending} placeholder="Envoyer un message au live" />
+          </ErrorBoundary>
         )}
       </div>
     </div>

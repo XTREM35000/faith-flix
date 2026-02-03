@@ -6,13 +6,36 @@ export function usePresence(userId?: string | null) {
   const { profile } = useUser();
   const [lastSeen, setLastSeen] = useState<Date | null>(null);
   const intervalRef = useRef<number | null>(null);
+  // null = unknown, true = column exists, false = column missing
+  const lastSeenColumnAvailable = useRef<boolean | null>(null);
 
   const fetchLastSeen = useCallback(async () => {
     if (!userId) return;
-    // cast to any since profiles typing may not include 'last_seen_at' yet
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await supabase.from('profiles').select('last_seen_at').eq('id', userId).maybeSingle() as any;
-    if (data && data.last_seen_at) setLastSeen(new Date(data.last_seen_at));
+    // If we've previously determined the column is missing, skip requesting it
+    if (lastSeenColumnAvailable.current === false) return;
+
+    try {
+      // cast to any since profiles typing may not include 'last_seen_at' yet
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await supabase.from('profiles').select('last_seen_at').eq('id', userId).maybeSingle() as any;
+
+      if (error) {
+        // PostgREST 42703 -> column does not exist
+        if (String(error?.message || '').includes('does not exist') || String(error?.code || '') === '42703') {
+          lastSeenColumnAvailable.current = false;
+          console.warn('usePresence: last_seen_at column missing, disabling presence checks');
+          return;
+        }
+        console.warn('usePresence: fetchLastSeen query error', error);
+        return;
+      }
+
+      // If we got data successfully, mark column available
+      lastSeenColumnAvailable.current = true;
+      if (data && data.last_seen_at) setLastSeen(new Date(data.last_seen_at));
+    } catch (e) {
+      console.warn('usePresence: fetchLastSeen unexpected error', e);
+    }
   }, [userId]);
 
   // Mark active (only allowed for the current logged-in user)
@@ -23,11 +46,26 @@ export function usePresence(userId?: string | null) {
     if (!profile || profile.id !== userId) return;
 
     try {
+      // If column was previously found missing, skip update attempts
+      if (lastSeenColumnAvailable.current === false) return;
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await supabase.from('profiles').update({ last_seen_at: new Date().toISOString() } as any).eq('id', userId);
+      const { error } = await supabase.from('profiles').update({ last_seen_at: new Date().toISOString() } as any).eq('id', userId);
+      if (error) {
+        if (String(error?.message || '').includes('does not exist') || String(error?.code || '') === '42703') {
+          lastSeenColumnAvailable.current = false;
+          console.warn('usePresence: last_seen_at column missing, disabling presence updates');
+          return;
+        }
+        console.warn('usePresence: markActive update error', error);
+        return;
+      }
+
+      // success
+      lastSeenColumnAvailable.current = true;
       setLastSeen(new Date());
     } catch (e) {
-      console.warn('usePresence: markActive error', e);
+      console.warn('usePresence: markActive unexpected error', e);
     }
   }, [userId, profile]);
 
