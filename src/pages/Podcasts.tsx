@@ -266,7 +266,7 @@ const Podcasts: React.FC = () => {
   return (
     <main className="min-h-screen bg-background">
       <HeroBanner
-        title="Podcasts"
+        title="Radio Paroisse FM"
         subtitle="Écoutez nos émissions audio"
         showBackButton={true}
         backgroundImage={hero?.image_url}

@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { motion } from "framer-motion";
 import { Search, Calendar, Trash2, Edit2, Printer, CalendarDays, Church } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import DraggableModal from '@/components/DraggableModal';
 import HeroBanner from "@/components/HeroBanner";
 import { useLocation } from "react-router-dom";
 import usePageHero from "@/hooks/usePageHero";
@@ -12,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import SectionTitle from '@/components/SectionTitle';
 
 interface Announcement {
   id: string;
@@ -42,7 +44,8 @@ const AnnouncementsPage = () => {
   const [headerConfig, setHeaderConfig] = useState<HeaderConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showForm, setShowForm] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ title: "", content: "" });
   const [dateRange, setDateRange] = useState<{ from: Date | null; to: Date | null }>({
@@ -99,44 +102,65 @@ const AnnouncementsPage = () => {
     const fetchAnnouncements = async () => {
       try {
         setLoading(true);
-        const { data, error } = await supabase
+
+        // Première tentative: essayer la jointure via le cache de schéma (si la FK existe)
+        const attempt = await supabase
           .from("announcements" as any)
-          .select(`
-            id, 
-            title, 
-            content, 
-            created_at, 
-            created_by,
-            image_url,
-            profiles:created_by (full_name)
-          `)
+          .select(`id, title, content, created_at, created_by, image_url, profiles (full_name)`)
           .order("created_at", { ascending: false });
 
+        if (!attempt.error) {
+          const data = attempt.data as any[] || [];
+          const transformedData = data.map((item: any) => ({
+            ...item,
+            author_name: item.profiles?.full_name || 'Auteur inconnu'
+          }));
+          setAnnouncements(transformedData);
+          return;
+        }
+
+        // Si erreur PGRST200 (relation absente), fallback: récupérer annonces puis profils par lot
+        console.warn('Announce relation select failed, falling back to separate queries:', attempt.error, JSON.stringify(attempt.error));
+
+        const { data, error } = await supabase
+          .from('announcements' as any)
+          .select('id, title, content, created_at, created_by, image_url')
+          .order('created_at', { ascending: false });
+
         if (error) {
-          console.error("Query error:", error);
+          console.error('Announcements query failed on fallback:', error, JSON.stringify(error));
           throw error;
         }
-        
-        // Transformer les données pour inclure author_name
-        const transformedData = (Array.isArray(data) ? data as any[] : []).map((item: {
-          id: string;
-          title: string;
-          content: string;
-          created_at: string;
-          created_by: string;
-          image_url?: string;
-          profiles?: { full_name: string } | null;
-        }) => ({
+
+        const announcementsData = Array.isArray(data) ? data as any[] : [];
+        const creatorIds = Array.from(new Set(announcementsData.map(a => a.created_by).filter(Boolean)));
+
+        let profilesMap: Record<string, string> = {};
+        if (creatorIds.length > 0) {
+          const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .in('id', creatorIds);
+
+          if (profilesError) {
+            console.warn('Failed to load profiles for announcements fallback:', profilesError, JSON.stringify(profilesError));
+          } else if (profilesData) {
+            profilesMap = (profilesData as any[]).reduce((acc, p) => ({ ...acc, [p.id]: p.full_name }), {} as Record<string, string>);
+          }
+        }
+
+        const transformedData = announcementsData.map((item: any) => ({
           ...item,
-          author_name: item.profiles?.full_name || "Auteur inconnu"
+          author_name: profilesMap[item.created_by] || 'Auteur inconnu'
         }));
-        
+
         setAnnouncements(transformedData);
       } catch (error) {
-        console.error("Erreur lors du chargement des annonces:", error);
+        console.error("Erreur lors du chargement des annonces:", error, JSON.stringify(error));
+        const msg = (error as any)?.message || JSON.stringify(error) || String(error);
         toast({
           title: "Erreur",
-          description: "Impossible de charger les annonces.",
+          description: `Impossible de charger les annonces. ${msg}`,
           variant: "destructive",
         });
       } finally {
@@ -528,20 +552,12 @@ const AnnouncementsPage = () => {
       }
 
       setFormData({ title: "", content: "" });
-      setShowForm(false);
+      setIsModalOpen(false);
 
       // Refresh list
       const { data } = await supabase
         .from("announcements" as any)
-        .select(`
-          id, 
-          title, 
-          content, 
-          created_at, 
-          created_by,
-          image_url,
-          profiles:created_by (full_name)
-        `)
+        .select(`id, title, content, created_at, created_by, image_url, profiles (full_name)`)
         .order("created_at", { ascending: false });
         
       const transformedData = (Array.isArray(data) ? data as any[] : []).map((item: {
@@ -560,9 +576,10 @@ const AnnouncementsPage = () => {
       setAnnouncements(transformedData);
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error);
+      const msg = (error as any)?.message || JSON.stringify(error) || String(error);
       toast({
         title: "Erreur",
-        description: "Impossible de sauvegarder l'annonce.",
+        description: `Impossible de sauvegarder l'annonce. ${msg}`,
         variant: "destructive",
       });
     }
@@ -586,9 +603,10 @@ const AnnouncementsPage = () => {
       setAnnouncements(announcements.filter((a) => a.id !== id));
     } catch (error) {
       console.error("Erreur lors de la suppression:", error);
+      const msg = (error as any)?.message || JSON.stringify(error) || String(error);
       toast({
         title: "Erreur",
-        description: "Impossible de supprimer l'annonce.",
+        description: `Impossible de supprimer l'annonce. ${msg}`,
         variant: "destructive",
       });
     }
@@ -597,11 +615,11 @@ const AnnouncementsPage = () => {
   const handleEdit = (announcement: Announcement) => {
     setFormData({ title: announcement.title, content: announcement.content });
     setEditingId(announcement.id);
-    setShowForm(true);
+    setIsModalOpen(true);
   };
 
   const handleCancel = () => {
-    setShowForm(false);
+    setIsModalOpen(false);
     setEditingId(null);
     setFormData({ title: "", content: "" });
   };
@@ -622,52 +640,65 @@ const AnnouncementsPage = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-8 p-6 rounded-lg bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20"
+            className="mb-8 p-6 rounded-lg bg-card border border-border"
           >
-            {!showForm ? (
-              <Button
-                onClick={() => setShowForm(true)}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-              >
-                + Nouvelle Annonce
-              </Button>
-            ) : (
-              <div className="space-y-4">
-                <input
-                  type="text"
-                  placeholder="Titre de l'annonce"
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
-                  className="w-full px-4 py-2 rounded-lg bg-white/90 border-2 border-gray-300 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <textarea
-                  placeholder="Contenu de l'annonce"
-                  value={formData.content}
-                  onChange={(e) =>
-                    setFormData({ ...formData, content: e.target.value })
-                  }
-                  rows={5}
-                  className="w-full px-4 py-2 rounded-lg bg-white/90 border-2 border-gray-300 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <div className="flex gap-3">
-                  <Button
-                    onClick={handleSave}
-                    className="flex-1 bg-green-600 hover:bg-green-700"
-                  >
-                    Sauvegarder
-                  </Button>
-                  <Button
-                    onClick={handleCancel}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    Annuler
-                  </Button>
-                </div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold">Administration des Annonces</h3>
+                <p className="text-sm text-muted-foreground">Créer, modifier ou supprimer des annonces paroissiales</p>
               </div>
-            )}
+              <div className="flex items-center gap-3">
+                <Button onClick={() => { setFormData({ title: '', content: '' }); setEditingId(null); setIsModalOpen(true); }} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">+ Nouvelle Annonce</Button>
+                <Button variant="outline" onClick={() => { setFormData({ title: '', content: '' }); setEditingId(null); setIsModalOpen(true); }}>Importer</Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2 flex items-end gap-3">
+                <label className="sr-only">Recherche rapide</label>
+                <Button variant="outline" onClick={() => searchInputRef.current?.focus()}>Rechercher</Button>
+                <span className="text-sm text-muted-foreground">{searchTerm ? `Filtre actif : "${searchTerm}"` : 'Aucun filtre actif'}</span>
+              </div>
+
+              <div className="flex items-end space-x-3">
+                <Button onClick={handlePrintAnnouncements} className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 h-10 w-full md:w-auto"><Printer className="h-4 w-4 mr-2" />Imprimer la Sélection</Button>
+              </div>
+            </div>
+
+            <p className="mt-4 text-xs text-muted-foreground">Utilisez la recherche et les filtres pour trouver rapidement une annonce, ou cliquez sur <strong>+ Nouvelle Annonce</strong> pour en créer une nouvelle.</p>
+
+            {/* Modal for create/edit */}
+            <DraggableModal open={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingId(null); setFormData({ title: '', content: '' }); }} dragHandleOnly={false} verticalOnly={false} draggableOnMobile={true} center={true} maxWidthClass="max-w-2xl">
+              <div className="flex items-center justify-between px-4 py-3 bg-amber-800 text-white rounded-t-lg cursor-grab select-none" data-drag-handle role="button" aria-label="Poignée de déplacement">
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-col items-start mr-2">
+                    <div className="w-14 h-1.5 bg-white/80 rounded-full shadow-sm mb-1" aria-hidden />
+                    <div className="text-xs text-white/90">Déplacer</div>
+                  </div>
+                  <h2 className="text-lg font-semibold">{editingId ? 'Modifier l\'Annonce' : 'Créer une Annonce'}</h2>
+                </div>
+                <button onClick={() => { setIsModalOpen(false); setEditingId(null); setFormData({ title: '', content: '' }); }} className="text-white hover:opacity-90" aria-label="Fermer">✕</button>
+              </div>
+
+              <div className="py-4 px-4 space-y-4 max-h-[calc(100vh-160px)] overflow-y-auto" aria-describedby="announcement-form-desc">
+                <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium">Titre</label>
+                    <Input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Titre de l'annonce" />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">Contenu</label>
+                    <textarea value={formData.content} onChange={(e) => setFormData({ ...formData, content: e.target.value })} rows={6} className="w-full px-4 py-2 rounded-lg bg-white/90 border border-border text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Contenu détaillé de l'annonce" />
+                  </div>
+
+                  <div className="flex gap-3 justify-end">
+                    <Button variant="outline" onClick={() => { setIsModalOpen(false); setEditingId(null); setFormData({ title: '', content: '' }); }}>Annuler</Button>
+                    <Button type="submit">{editingId ? 'Mettre à jour' : 'Créer'}</Button>
+                  </div>
+                </form>
+              </div>
+            </DraggableModal>
           </motion.div>
         )}
 
@@ -682,6 +713,7 @@ const AnnouncementsPage = () => {
           <div className="relative">
             <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
             <Input
+              ref={searchInputRef}
               type="text"
               placeholder="Rechercher une annonce..."
               value={searchTerm}
@@ -757,6 +789,7 @@ const AnnouncementsPage = () => {
         </motion.div>
 
         {/* Announcements List */}
+        <SectionTitle title="Annonces récentes" subtitle="Trouvez et consultez les annonces publiées" />
         {loading ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">Chargement des annonces...</p>
@@ -791,6 +824,13 @@ const AnnouncementsPage = () => {
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
 
                 <div className="relative p-6">
+                  {/* Image (optional) */}
+                  {announcement.image_url && (
+                    <div className="mb-4">
+                      <img src={announcement.image_url} alt={announcement.title} className="w-full h-40 object-cover rounded-md" />
+                    </div>
+                  )}
+
                   {/* Header */}
                   <div className="mb-4">
                     <h3 className="text-xl font-bold text-foreground mb-2 line-clamp-2">

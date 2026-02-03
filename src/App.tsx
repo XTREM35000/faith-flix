@@ -159,10 +159,10 @@ const App = () => (
             />
             <Route path="/chat" element={<Layout><ChatPage /></Layout>} />
             <Route path="/announcements" element={<Layout><AnnouncementsPage /></Layout>} />
-            <Route path="/publicite" element={<Layout><PublicitePage /></Layout>} />
+            <Route path="/affiche" element={<Layout><PublicitePage /></Layout>} />
             <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
             <Route path="/dashboard/analytics" element={<Layout><DashboardAnalytics /></Layout>} />
-            <Route path="/podcasts" element={<Layout><Podcasts /></Layout>} />
+            <Route path="/radio" element={<Layout><Podcasts /></Layout>} />
             <Route path="/documents" element={<Layout><Documents /></Layout>} />
             <Route path="/live" element={<Layout><Live /></Layout>} />
             <Route path="/notifications" element={<ProtectedRoute><Layout><Notifications /></Layout></ProtectedRoute>} />

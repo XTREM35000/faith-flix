@@ -138,7 +138,7 @@ const Live: React.FC = () => {
     <div className="min-h-screen bg-background">
       <HeroBanner
         title="Diffusion En Direct"
-        subtitle="Suivez nos célébrations et podcasts en temps réel"
+        subtitle="Suivez nos célébrations et Radio Paroisse FM en temps réel"
         backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
@@ -310,11 +310,11 @@ const Live: React.FC = () => {
       {liveStream && (
         <DraggableModal open={isModalOpen} onClose={() => setIsModalOpen(false)} dragHandleOnly={false} verticalOnly={false} draggableOnMobile={true} initialY={80}>
           {/* Header (drag handle) */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border cursor-grab select-none" data-drag-handle role="button" aria-label="Poignée de déplacement">
+          <div className="flex items-center justify-between px-6 py-4 bg-amber-900 text-white rounded-t-lg cursor-grab select-none" data-drag-handle role="button" aria-label="Poignée de déplacement">
             <div className="flex items-center gap-4">
               <div className="flex flex-col items-start mr-2">
-                <div className="w-16 h-1.5 bg-muted rounded-full shadow-sm mb-1" aria-hidden />
-                <div className="text-xs text-muted-foreground">Déplacer</div>
+                <div className="w-16 h-1.5 bg-white/80 rounded-full shadow-sm mb-1" aria-hidden />
+                <div className="text-xs text-white/90">Déplacer</div>
               </div>
               <h2 className="flex items-center gap-2 text-lg font-semibold">
                 {liveStream.stream_type === 'tv' ? (
@@ -334,7 +334,7 @@ const Live: React.FC = () => {
             <button
               onClick={() => setIsModalOpen(false)}
               aria-label="Fermer le lecteur"
-              className="text-muted-foreground hover:text-foreground"
+              className="text-white hover:opacity-90"
             >
               <X className="w-4 h-4" />
             </button>

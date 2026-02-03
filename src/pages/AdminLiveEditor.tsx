@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Plus, Trash2, Edit2, Radio, Tv } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Edit2, Radio, Tv, Clipboard } from 'lucide-react';
 import usePageHero from '@/hooks/usePageHero';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -285,26 +285,32 @@ const AdminLiveEditor = () => {
         <DraggableModal open={isDialogOpen} onClose={() => {
           setIsDialogOpen(false);
           resetForm();
-        }} dragHandleOnly={true}>
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border" data-drag-handle>
-            <h2 className="text-lg font-semibold">
-              {editingStream ? 'Modifier le Direct' : 'Créer un Nouveau Direct'}
-            </h2>
+        }} dragHandleOnly={false} verticalOnly={false} draggableOnMobile={true} center={true} maxWidthClass="max-w-2xl">
+          <div className="flex items-center justify-between px-4 py-3 bg-amber-900 text-white rounded-t-lg cursor-grab select-none" data-drag-handle role="button" aria-label="Poignée de déplacement">
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col items-start mr-2">
+                <div className="w-14 h-1.5 bg-white/80 rounded-full shadow-sm mb-1" aria-hidden />
+                <div className="text-xs text-white/90">Déplacer</div>
+              </div>
+              <h2 className="text-lg font-semibold">
+                {editingStream ? 'Modifier le Direct' : 'Créer un Nouveau Direct'}
+              </h2>
+            </div>
             <button
               onClick={() => {
                 setIsDialogOpen(false);
                 resetForm();
               }}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-white hover:opacity-90"
               aria-label="Fermer"
             >
               ✕
             </button>
           </div>
 
-          <div className="space-y-4 py-4 px-6 max-h-[calc(100vh-300px)] overflow-y-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-3 px-4 max-h-[calc(100vh-120px)] overflow-y-auto">
             {/* Title */}
-            <div className="space-y-2">
+            <div className="md:col-span-2 space-y-2">
               <Label htmlFor="title">Titre du direct</Label>
               <Input
                 id="title"
@@ -339,16 +345,37 @@ const AdminLiveEditor = () => {
             </div>
 
             {/* Stream URL */}
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-1">
               <Label htmlFor="url">URL du direct ou ID YouTube</Label>
-              <Input
-                id="url"
-                placeholder={formData.stream_type === 'tv'
-                  ? "Ex: https://youtube.com/watch?v=ABCD1234 ou ABCD1234"
-                  : "Ex: https://example.com/live-audio-stream"}
-                value={formData.stream_url}
-                onChange={(e) => setFormData({ ...formData, stream_url: e.target.value })}
-              />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const text = await navigator.clipboard.readText();
+                      if (text) setFormData({ ...formData, stream_url: text });
+                      else toast({ title: 'Presse-papiers vide', description: 'Aucun texte détecté', variant: 'default' });
+                    } catch (e) {
+                      console.error('clipboard read failed', e);
+                      toast({ title: 'Erreur', description: 'Impossible de lire le presse-papiers', variant: 'destructive' });
+                    }
+                  }}
+                  aria-label="Coller depuis le presse-papiers"
+                  className="inline-flex items-center justify-center rounded border border-border bg-muted/30 p-2 text-muted-foreground hover:bg-muted"
+                >
+                  <Clipboard className="w-4 h-4" />
+                </button>
+
+                <Input
+                  id="url"
+                  placeholder={formData.stream_type === 'tv'
+                    ? "Ex: https://youtube.com/watch?v=ABCD1234 ou ABCD1234"
+                    : "Ex: https://example.com/live-audio-stream"}
+                  value={formData.stream_url}
+                  onChange={(e) => setFormData({ ...formData, stream_url: e.target.value })}
+                />
+              </div>
+
               <p className="text-xs text-muted-foreground">
                 {formData.stream_type === 'tv'
                   ? 'Lien YouTube ou ID vidéo à 11 caractères'
@@ -393,7 +420,7 @@ const AdminLiveEditor = () => {
             </div>
 
             {/* Active Status */}
-            <div className="flex items-center justify-between rounded-lg border border-border p-3"> 
+            <div className="md:col-span-2 flex items-center justify-between rounded-lg border border-border p-3"> 
               <div>
                 <Label className="text-base font-medium">Activer ce direct</Label>
                 <p className="text-xs text-muted-foreground">Les autres directs seront désactivés</p>
@@ -405,8 +432,7 @@ const AdminLiveEditor = () => {
             </div>
           </div>
 
-          <div className="flex gap-2 px-6 py-4 border-t border-border">
-            <Button
+          <div className="flex gap-2 px-4 py-3 border-t border-border">            <Button
               variant="outline"
               onClick={() => {
                 setIsDialogOpen(false);

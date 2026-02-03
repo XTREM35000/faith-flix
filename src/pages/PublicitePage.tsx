@@ -14,7 +14,7 @@ import { PublicAd } from '@/types/advertisements';
 import useRoleCheck from '@/hooks/useRoleCheck';
 
 export default function PublicitePage() {
-  const { data: hero, save: saveHero } = usePageHero('/publicite');
+  const { data: hero, save: saveHero } = usePageHero('/affiche');
   const { ads, loading, latestAd } = useAdvertisements();
   const { isAdmin } = useRoleCheck();
   const { toast } = useToast();
@@ -37,14 +37,14 @@ export default function PublicitePage() {
   return (
     <div className="min-h-screen bg-background">
       <HeroBanner
-        title={hero?.title || 'Publicité'}
+        title={hero?.title || 'Affiches ou Flyers'}
         subtitle={hero?.subtitle}
         backgroundImage={hero?.image_url}
         onBgSave={saveHero}
       />
 
       <main className="container mx-auto px-4 py-12">
-        <SectionTitle title="Affiches" subtitle="Nos dernières affiches publicitaires" />
+        <SectionTitle title="Affiches ou Flyers" subtitle="Nos dernières affiches ou flyers" />
 
         <div className="mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -66,7 +66,7 @@ export default function PublicitePage() {
         </div>
 
         <div className="mt-8">
-          <SectionTitle title="Zone d'impression" subtitle="Sélectionnez des affiches et imprimez" />
+          <SectionTitle title="Zone d'impression" subtitle="Sélectionnez des affiches ou flyers et imprimez" />
           <PrintZone ads={ads} />
         </div>
 

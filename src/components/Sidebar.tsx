@@ -18,7 +18,7 @@ export const MENU_GROUPS = [
     items: [
       { label: 'Vidéos', href: '/videos', icon: Video },
       { label: 'Photos', href: '/galerie', icon: Image },
-      { label: 'Podcasts', href: '/podcasts', icon: MessageSquare },
+      { label: 'Radio Paroisse FM', href: '/radio', icon: MessageSquare },
     ],
   },
   {
@@ -35,7 +35,7 @@ export const MENU_GROUPS = [
     items: [
       { label: 'Chat', href: '/chat', icon: MessageSquare },
           { label: 'Annonces', href: '/announcements', icon: BarChart3 },
-          { label: 'Publicité', href: '/publicite', icon: Image },
+          { label: 'Affiches  & Flyers', href: '/affiche', icon: Image },
       { label: 'Événements', href: '/evenements', icon: Calendar },
       { label: 'Annuaire', href: '/directory', icon: Users },
     ],
@@ -56,7 +56,7 @@ export const MENU_GROUPS = [
       { label: 'Approbations', href: '/admin/approvals', icon: CheckCircle2 },
       { label: 'En Ligne', href: '/admin/live', icon: Video },
       { label: 'Notifications', href: '/admin/notifications', icon: Bell },
-      { label: 'Publicité', href: '/admin/ads', icon: Image },
+      { label: 'Affiches  & Flyers', href: '/admin/ads', icon: Image },
       { label: 'Tutoriels', href: '/admin/tutoriels', icon: Video },
       { label: 'Utilisateurs', href: '/admin/users', icon: Users },
       { label: 'Paramètres généraux', href: '/admin/settings', icon: Settings },

@@ -7,7 +7,7 @@ import usePageHero from '@/hooks/usePageHero';
 import SectionTitle from '@/components/SectionTitle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
+import DraggableModal from '@/components/DraggableModal';
 import type { PublicAd } from '@/types/advertisements';
 
 export default function AdminAds() {
@@ -27,7 +27,7 @@ export default function AdminAds() {
       setAds((data || []) as PublicAd[]);
     } catch (e) {
       console.error(e);
-      toast({ title: 'Erreur', description: 'Impossible de charger les annonces', variant: 'destructive' });
+      toast({ title: 'Erreur', description: 'Impossible de charger les affiches', variant: 'destructive' });
     } finally { setLoading(false); }
   };
 
@@ -71,7 +71,7 @@ export default function AdminAds() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Supprimer cette annonce ?')) return;
+    if (!confirm('Supprimer cette affiche ?')) return;
     try {
       const { error } = await supabase.from('public_advertisements').delete().eq('id', id);
       if (error) throw error;
@@ -85,20 +85,26 @@ export default function AdminAds() {
 
   return (
     <div className="min-h-screen bg-background">
-      <HeroBanner title="Administration des publicités" subtitle="Gérer les affiches" backgroundImage={hero?.image_url} onBgSave={saveHero} />
+      <HeroBanner title="Administration des affiches & flyers" subtitle="Gérer les affiches" backgroundImage={hero?.image_url} onBgSave={saveHero} />
       <main className="container mx-auto px-4 py-12">
-        <SectionTitle title="Publicités" subtitle="Créer, éditer et supprimer" />
+        <SectionTitle title="Affiches ou Flyers" subtitle="Créer, éditer et supprimer" />
 
         <div className="mb-6">
-          <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-            <DialogTrigger asChild>
-              <Button onClick={() => { setEditing(null); setFile(null); }}>Nouvelle annonce</Button>
-            </DialogTrigger>
-            <DialogContent aria-describedby="ad-form-desc">
-              <DialogHeader>
-                <DialogTitle>Créer / éditer une annonce</DialogTitle>
-                <DialogDescription id="ad-form-desc">Formulaire de création et d'édition d'annonce publicitaire</DialogDescription>
-              </DialogHeader>
+          <Button onClick={() => { setEditing(null); setFile(null); setOpenDialog(true); }}>Nouvelle affiche</Button>
+
+          <DraggableModal open={openDialog} onClose={() => { setOpenDialog(false); setEditing(null); setFile(null); }} dragHandleOnly={false} verticalOnly={false} draggableOnMobile={true} center={true} maxWidthClass="max-w-2xl">
+            <div className="flex items-center justify-between px-4 py-3 bg-amber-800 text-white rounded-t-lg cursor-grab select-none" data-drag-handle role="button" aria-label="Poignée de déplacement">
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col items-start mr-2">
+                  <div className="w-14 h-1.5 bg-white/80 rounded-full shadow-sm mb-1" aria-hidden />
+                  <div className="text-xs text-white/90">Déplacer</div>
+                </div>
+                <h2 className="text-lg font-semibold">Créer / éditer une affiche / flyer</h2>
+              </div>
+              <button onClick={() => { setOpenDialog(false); setEditing(null); setFile(null); }} className="text-white hover:opacity-90" aria-label="Fermer">✕</button>
+            </div>
+
+            <div className="space-y-3 py-3 px-4 max-h-[calc(100vh-120px)] overflow-y-auto" aria-describedby="ad-form-desc"> {/* Formulaire de création et d'édition d'affiche ou flyer */}
               <form onSubmit={handleSave} className="space-y-3">
                 <div>
                   <label>Titre</label>
@@ -125,8 +131,8 @@ export default function AdminAds() {
                   <Button type="submit">Sauvegarder</Button>
                 </div>
               </form>
-            </DialogContent>
-          </Dialog>
+            </div>
+          </DraggableModal>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

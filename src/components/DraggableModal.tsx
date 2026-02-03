@@ -9,9 +9,11 @@ interface Props {
   draggableOnMobile?: boolean
   dragHandleOnly?: boolean
   initialY?: number
+  center?: boolean
+  maxWidthClass?: string
 }
 
-export default function DraggableModal({ open, onClose, children, verticalOnly = true, draggableOnMobile = false, dragHandleOnly = false, initialY = 0 }: Props) {
+export default function DraggableModal({ open, onClose, children, verticalOnly = true, draggableOnMobile = false, dragHandleOnly = false, initialY = 0, center = false, maxWidthClass = 'max-w-4xl' }: Props) {
   const ref = useRef<HTMLDivElement | null>(null)
   const [posY, setPosY] = useState(initialY)
   const [posX, setPosX] = useState(0)
@@ -100,14 +102,14 @@ export default function DraggableModal({ open, onClose, children, verticalOnly =
   if (!open) return null
 
   return (
-    <BaseModal open={open} onClose={onClose}>
+    <BaseModal open={open} onClose={onClose} center={center}>
       <div
         ref={ref}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         style={{ transform: `translate(${posX}px, ${posY}px)`, touchAction: 'none' as const }}
-        className={"bg-background rounded-lg shadow max-w-4xl w-full p-0 overflow-hidden " + (isDragging ? 'cursor-grabbing' : 'cursor-grab')}
+        className={"bg-background rounded-lg shadow " + maxWidthClass + " w-full p-0 overflow-hidden " + (isDragging ? 'cursor-grabbing' : 'cursor-grab')}
       >
         {children}
       </div>
