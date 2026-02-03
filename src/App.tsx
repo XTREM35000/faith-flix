@@ -1,3 +1,4 @@
+import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -65,19 +66,36 @@ import DocProjetPage from './pages/DocProjetPage';
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <NotificationProvider>
-        <ThemeProvider>
-        <AuthProvider>
-        <ToastProvider>
-        <BrowserRouter>
-          <ScrollToTop />
-          {/* Router-aware redirect handler: picks up auth redirects without reloading the page */}
-          <RedirectHandler />
+const App = () => {
+  // Debugging: track visibility changes to help diagnose unexpected reloads when tab regains focus
+  // Leave lightweight logging in place for now; can be removed once root cause is identified
+  React.useEffect(() => {
+    const onVisibilityChange = () => {
+      const state = document.visibilityState;
+      const ts = new Date().toISOString();
+      console.debug('visibilitychange', { state, ts, href: window.location.href });
+      if (state === 'visible') {
+        // capture a small stack to help find who triggered reloads
+        console.debug('visibilitychange stack:', new Error('visibilitychange stack').stack);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <NotificationProvider>
+          <ThemeProvider>
+          <AuthProvider>
+          <ToastProvider>
+          <BrowserRouter>
+            <ScrollToTop />
+            {/* Router-aware redirect handler: picks up auth redirects without reloading the page */}
+            <RedirectHandler />
           <Routes>
             <Route path="/" element={<Layout><Index /></Layout>} />
             <Route path="/connexion" element={<Navigate to="/#auth" replace />} />

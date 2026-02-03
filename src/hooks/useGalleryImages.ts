@@ -28,58 +28,15 @@ export function useGalleryImages(initialLimit = 20) {
 
       let data: GalleryImage[] = [];
 
-      if (!currentUser) {
-        // Récupérer IDs approuvés pour la galerie
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const sb = (await import('@/integrations/supabase/client')).supabase as any;
-        const { data: approvedImgs, error: approvedErr } = await sb
-          .from('content_approvals')
-          .select('content_id')
-          .eq('content_type', 'gallery')
-          .eq('status', 'approved');
-
-        if (approvedErr) {
-          console.error('Erreur récupération approbations galerie:', approvedErr);
-          const err = new Error('Impossible de charger la galerie');
-          setError(err);
-          return;
-        }
-
-        const ids = (approvedImgs || []).map((r: any) => r.content_id);
-        if (ids.length === 0) {
-          // Pas d'images approuvées
-          setHasMore(false);
-          setImages((prev) => prev);
-          return;
-        }
-
-        const { data: imgs, error } = await sb
-          .from('gallery_images')
-          .select('*, category:gallery_categories(*)')
-          .in('id', ids)
-          .order('created_at', { ascending: false })
-          .limit(initialLimit)
-          .range(offsetRef.current, offsetRef.current + initialLimit - 1);
-
-        if (error) {
-          console.error('Erreur fetch gallery (approuvées):', error);
-          const err = new Error('Impossible de charger la galerie');
-          setError(err);
-          return;
-        }
-
-        data = (imgs || []).filter((img: any): img is GalleryImage => !!img && typeof img === 'object' && 'id' in img);
-      } else {
-        // Utilisateur connecté : comportement existant
-        const res = await fetchGalleryImages({ limit: initialLimit, offset: offsetRef.current });
-        if (!res) {
-          const err = new Error('Impossible de charger les images - Supabase n\'a pas répondu');
-          setError(err);
-          console.error('❌', err.message);
-          return;
-        }
-        data = (res.data || []).filter((img): img is GalleryImage => !!img && typeof img === 'object' && 'id' in img);
+      // Unified fetch using server-side-aware helper which applies visibility filters
+      const res = await fetchGalleryImages({ limit: initialLimit, offset: offsetRef.current });
+      if (!res) {
+        const err = new Error('Impossible de charger les images - Supabase n\'a pas répondu');
+        setError(err);
+        console.error('❌', err.message);
+        return;
       }
+      data = (res.data || []).filter((img): img is GalleryImage => !!img && typeof img === 'object' && 'id' in img);
 
       console.log(`📸 Images chargées: ${data.length} valides (offset: ${offsetRef.current})`);
       

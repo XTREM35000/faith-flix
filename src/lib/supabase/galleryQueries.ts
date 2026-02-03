@@ -33,10 +33,58 @@ export async function fetchGalleryImages(options?: {
         { count: 'exact' }
       );
 
+    // Basic filters set by caller
     if (options?.categoryId) query = query.eq('category_id', options.categoryId);
     if (options?.userId) query = query.eq('user_id', options.userId);
     if (options?.isPublic !== undefined) query = query.eq('is_public', options.isPublic);
     if (options?.search) query = query.or(`title.ilike.%${options.search}%,description.ilike.%${options.search}%`);
+
+    // === Access control: hide non-approved images for non-admins (client-side guard) ===
+    // Determine current user and role to decide which records are visible
+    let uid: string | null = null;
+    let isAdmin = false;
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      uid = (authData as any)?.user?.id || null;
+      if (uid) {
+        try {
+          const { data: profileData } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
+          const role = (profileData as any)?.role as string | undefined;
+          if (role && typeof role === 'string' && role.toLowerCase() === 'admin') isAdmin = true;
+        } catch (e) {
+          console.error('fetchGalleryImages role lookup failed', e);
+        }
+      }
+    } catch (e) {
+      console.error('fetchGalleryImages auth lookup failed', e);
+    }
+
+    // Apply visibility filters for non-admin users
+    if (!isAdmin) {
+      // If caller requests images for a specific user, keep the user filter but ensure we only
+      // show those user's images that are approved/published/public unless caller is the owner.
+      if (options?.userId) {
+        if (!uid || options.userId !== uid) {
+          // user is querying another user's images: restrict to approved/published/public
+          query = query.or('status.eq.approved,published.eq.true,is_public.eq.true');
+          console.debug('fetchGalleryImages: restricting to approved/published/public for userId:', options.userId);
+        } else {
+          console.debug('fetchGalleryImages: owner requesting own images; no restriction applied');
+        }
+      } else {
+        // General listing for non-admins: allow approved/published/public OR the current user's own images
+        if (!uid) {
+          query = query.or('status.eq.approved,published.eq.true,is_public.eq.true');
+          console.debug('fetchGalleryImages: anonymous listing; restricting to approved/published/public');
+        } else {
+          // include ownership so users can see their own pending uploads
+          query = query.or(`status.eq.approved,published.eq.true,is_public.eq.true,user_id.eq.${uid}`);
+          console.debug('fetchGalleryImages: authenticated non-admin listing; including own images (uid):', uid);
+        }
+      }
+    } else {
+      console.debug('fetchGalleryImages: admin user - no visibility restrictions applied');
+    }
 
     query = query.order('created_at', { ascending: false });
 
