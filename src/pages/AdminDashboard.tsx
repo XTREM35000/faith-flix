@@ -97,7 +97,7 @@ const AdminDashboard: React.FC = () => {
       {/* Hero Banner */}
       <HeroBanner
         title="Tableau de bord administrateur"
-        subtitle="Vue d'ensemble de votre site Faith Flix — Actions et modération en un coup d'œil"
+        subtitle="Vue d'ensemble de votre site média Paroisse — Actions et modération en un coup d'œil"
         showBackButton={false}
         backgroundImage={hero?.image_url}
         onBgSave={saveHero}
