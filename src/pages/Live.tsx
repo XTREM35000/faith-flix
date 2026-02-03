@@ -137,7 +137,7 @@ const Live: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       <HeroBanner
-        title="Diffusion En Direct"
+        title="TV Paroisse Direct"
         subtitle="Suivez nos célébrations et Radio Paroisse FM en temps réel"
         backgroundImage={hero?.image_url}
         onBgSave={saveHero}

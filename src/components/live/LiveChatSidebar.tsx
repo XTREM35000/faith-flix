@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { ChatHeader, MessageBubble, MessageInput } from '@/components/chat';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { fetchChatMessages, sendChatMessage, subscribeToChatMessages, joinChatRoom } from '@/lib/supabase/chatQueries';
 import { getOrCreateLiveChatRoom } from '@/lib/supabase/mediaQueries';
 import type { ChatMessage, ChatRoom } from '@/types/database';

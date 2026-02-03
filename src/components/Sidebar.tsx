@@ -19,12 +19,12 @@ export const MENU_GROUPS = [
       { label: 'Vidéos', href: '/videos', icon: Video },
       { label: 'Photos', href: '/galerie', icon: Image },
       { label: 'Radio Paroisse FM', href: '/radio', icon: MessageSquare },
+      { label: 'TV Paroisse Direct', href: '/live', icon: Home },
     ],
   },
   {
     title: 'Culte & Prière',
     items: [
-      { label: 'Messe en direct', href: '/live', icon: Home },
       { label: 'Homélies', href: '/homilies', icon: Video },
       { label: 'Intentions de prière', href: '/prayers', icon: Home },
       { label: 'Verset du jour', href: '/verse', icon: Home },
