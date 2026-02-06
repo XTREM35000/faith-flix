@@ -178,6 +178,15 @@ export function AuthProvider({ children }: React.PropsWithChildren): React.JSX.E
   };
 
   const signInWithProvider = async (provider: "google" | "github" | "facebook") => {
+    // FIX: Nettoyage forcé de la session avant OAuth pour éviter les jetons corrompus
+    console.log(`[${provider} OAuth] Nettoyage de session en cours...`);
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.warn(`[${provider} OAuth] Avertissement lors du signOut:`, e);
+      // On continue même si le signOut échoue
+    }
+    
     // CORRECTION: Construire le redirectTo avec la vraie URL dynamiquement
     // En cas de doute, utiliser une URL absolue plutôt que relative
     let redirectTo = '';

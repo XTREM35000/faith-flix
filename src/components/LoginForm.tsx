@@ -29,7 +29,16 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
     console.log('🔴 Google login button clicked');
     setGoogleLoading(true);
     try {
-      // CORRECTION: Construire l'URL du callback de manière robuste
+      // FIX: Nettoyage forcé de la session pour éviter les jetons corrompus
+      console.log('🧹 Nettoyage de session Supabase...');
+      await supabase.auth.signOut();
+      
+      // Nettoyer les paramètres d'URL résiduels
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      
+      // Construire l'URL du callback de manière robuste
       const redirectTo = new URL('/auth/callback', window.location.origin).toString();
       console.log('[Google OAuth] redirectTo:', redirectTo);
       
@@ -117,6 +126,19 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
     
     setFacebookLoading(true);
     try {
+      // FIX: Nettoyage forcé de la session pour éviter les jetons corrompus
+      // Cela élimine les erreurs "Stop!" dues aux sessions antérieures
+      console.log('🧹 Nettoyage de session Supabase...');
+      await supabase.auth.signOut();
+      
+      // Nettoyer les paramètres d'URL résiduels
+      console.log('🧹 Nettoyage des URL...');
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      
+      console.log('✅ Session nettoyée, lancement OAuth Facebook...');
+      
       // Supabase gère la vérification du token et la création du profil
       const res = await signInWithProvider('facebook') as any;
       if (res?.error) {
