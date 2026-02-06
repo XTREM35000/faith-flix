@@ -30,9 +30,17 @@ const AuthCallback: React.FC = () => {
             description: userError.message,
             variant: 'destructive',
           });
-          // Rediriger après 2 secondes pour laisser le toast 
+          // Forcer une déconnexion locale & nettoyer l'URL pour redémarrer un flux propre
+          try {
+            await supabase.auth.signOut();
+          } catch (signOutErr) {
+            console.warn('⚠️ AuthCallback: Erreur lors de signOut forcé:', signOutErr);
+          }
+          window.history.replaceState({}, document.title, window.location.pathname);
+
+          // Rediriger après 2 secondes pour laisser le toast
           setTimeout(() => {
-            if (isMounted) window.location.replace('/login?error=oauth');
+            if (isMounted) window.location.replace('/login?error=oauth&retry=1');
           }, 2000);
           return;
         }
@@ -40,8 +48,17 @@ const AuthCallback: React.FC = () => {
         if (!user) {
           console.warn('⚠️ AuthCallback: Aucun utilisateur trouvé');
           if (!isMounted) return;
+
+          // Forcer une déconnexion locale & nettoyer l'URL pour relancer un flux propre
+          try {
+            await supabase.auth.signOut();
+          } catch (signOutErr) {
+            console.warn('⚠️ AuthCallback: Erreur lors de signOut forcé:', signOutErr);
+          }
+          window.history.replaceState({}, document.title, window.location.pathname);
+
           setTimeout(() => {
-            if (isMounted) window.location.replace('/login?error=no_user');
+            if (isMounted) window.location.replace('/login?error=no_user&retry=1');
           }, 2000);
           return;
         }
@@ -77,8 +94,16 @@ const AuthCallback: React.FC = () => {
           description: errorMessage,
           variant: 'destructive',
         });
+        // En cas d'erreur inattendue, forcer une déconnexion locale et nettoyer l'URL
+        try {
+          await supabase.auth.signOut();
+        } catch (signOutErr) {
+          console.warn('⚠️ AuthCallback: Erreur lors de signOut forcé:', signOutErr);
+        }
+        window.history.replaceState({}, document.title, window.location.pathname);
+
         setTimeout(() => {
-          if (isMounted) window.location.replace('/login?error=callback');
+          if (isMounted) window.location.replace('/login?error=callback&retry=1');
         }, 2000);
       }
     };
