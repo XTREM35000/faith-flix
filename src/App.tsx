@@ -64,6 +64,7 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import DataDeletionPage from './pages/DataDeletionPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import DocProjetPage from './pages/DocProjetPage';
+import AuthCallback from './pages/AuthCallback';
 
 const queryClient = new QueryClient();
 
@@ -102,6 +103,7 @@ const App = () => {
             <Route path="/connexion" element={<Navigate to="/#auth" replace />} />
             <Route path="/inscription" element={<Navigate to="/?mode=register#auth" replace />} />
             <Route path="/auth" element={<Layout><Index /></Layout>} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/email-confirmed" element={<EmailConfirmedPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />

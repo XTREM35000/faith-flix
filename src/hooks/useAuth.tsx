@@ -178,18 +178,27 @@ export function AuthProvider({ children }: React.PropsWithChildren): React.JSX.E
   };
 
   const signInWithProvider = async (provider: "google" | "github" | "facebook") => {
+    // CORRECTION: Ajouter redirectTo pour tous les providers pour que l'utilisateur revienne correctement
+    const redirectTo = `${window.location.origin}/auth/callback`;
+    
     // For Facebook, explicitly request the email and public_profile scopes so Supabase receives the user's email
     if (provider === 'facebook') {
       return await supabase.auth.signInWithOAuth({
         provider,
         options: {
+          redirectTo,
           scopes: 'email,public_profile',
         },
       });
     }
 
-    // Default behavior for other providers
-    return await supabase.auth.signInWithOAuth({ provider });
+    // Default behavior for other providers (Google, GitHub, etc.)
+    return await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo,
+      },
+    });
   };
 
   const resetPassword = async (email: string) => {
