@@ -143,8 +143,12 @@ export function AuthProvider({ children }: React.PropsWithChildren): React.JSX.E
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
+      try {
+        console.debug('[useAuth.login] signInWithPassword called with email:', email, 'origin:', typeof window !== 'undefined' ? window.location.origin : 'no-window');
+      } catch (e) { /* ignore logging errors */ }
       const res = await supabase.auth.signInWithPassword({ email, password });
       if (res.error) {
+        console.debug('[useAuth.login] signInWithPassword response error:', res.error);
         throw res.error;
       }
       setUser(res.data?.user ?? null);

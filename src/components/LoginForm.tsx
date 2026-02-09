@@ -112,6 +112,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
     try {
       // EmailFieldPro returns the complete email: identifier + selected domain
       const emailToUse = email;
+      console.log('[LoginForm] Attempting login with email:', emailToUse, 'origin:', typeof window !== 'undefined' ? window.location.origin : 'no-window');
       
       const res: unknown = await login(emailToUse, password);
       const data = (res as Record<string, unknown>)?.data as Record<string, unknown> | undefined;
