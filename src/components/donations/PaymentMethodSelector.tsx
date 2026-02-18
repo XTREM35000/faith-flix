@@ -123,7 +123,7 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
             disabled={loading}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.98 }}
-            className="relative perspective h-64 rounded-2xl overflow-hidden"
+            className="relative perspective h-48 rounded-2xl overflow-hidden"
             style={{
               transformStyle: 'preserve-3d',
               transform: isHovered
