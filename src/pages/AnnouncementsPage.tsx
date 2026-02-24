@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { motion } from "framer-motion";
 import { Search, Calendar, Trash2, Edit2, Printer, CalendarDays, Church } from "lucide-react";
@@ -60,6 +60,12 @@ const AnnouncementsPage = () => {
       String(profile.role).toLowerCase()
     )
   );
+  
+  const closeModal = useCallback(() => {
+    setIsModalOpen(false);
+    setEditingId(null);
+    setFormData({ title: "", content: "" });
+  }, []);
 
   // Fetch header configuration
   useEffect(() => {
@@ -668,7 +674,8 @@ const AnnouncementsPage = () => {
             <p className="mt-4 text-xs text-muted-foreground">Utilisez la recherche et les filtres pour trouver rapidement une annonce, ou cliquez sur <strong>+ Nouvelle Annonce</strong> pour en créer une nouvelle.</p>
 
             {/* Modal for create/edit */}
-            <DraggableModal open={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingId(null); setFormData({ title: '', content: '' }); }} dragHandleOnly={false} verticalOnly={false} draggableOnMobile={true} center={true} maxWidthClass="max-w-2xl">
+            {/** Stable close handler to avoid remount/focus effects during typing */}
+            <DraggableModal open={isModalOpen} onClose={closeModal} dragHandleOnly={false} verticalOnly={false} draggableOnMobile={true} center={true} maxWidthClass="max-w-2xl">
               <div className="flex items-center justify-between px-4 py-3 bg-amber-800 text-white rounded-t-lg cursor-grab select-none" data-drag-handle role="button" aria-label="Poignée de déplacement">
                 <div className="flex items-center gap-3">
                   <div className="flex flex-col items-start mr-2">
@@ -677,7 +684,7 @@ const AnnouncementsPage = () => {
                   </div>
                   <h2 className="text-lg font-semibold">{editingId ? 'Modifier l\'Annonce' : 'Créer une Annonce'}</h2>
                 </div>
-                <button onClick={() => { setIsModalOpen(false); setEditingId(null); setFormData({ title: '', content: '' }); }} className="text-white hover:opacity-90" aria-label="Fermer">✕</button>
+                <button onClick={closeModal} className="text-white hover:opacity-90" aria-label="Fermer">✕</button>
               </div>
 
               <div className="py-4 px-4 space-y-4 max-h-[calc(100vh-160px)] overflow-y-auto" aria-describedby="announcement-form-desc">
@@ -693,7 +700,7 @@ const AnnouncementsPage = () => {
                   </div>
 
                   <div className="flex gap-3 justify-end">
-                    <Button variant="outline" onClick={() => { setIsModalOpen(false); setEditingId(null); setFormData({ title: '', content: '' }); }}>Annuler</Button>
+                    <Button variant="outline" onClick={closeModal}>Annuler</Button>
                     <Button type="submit">{editingId ? 'Mettre à jour' : 'Créer'}</Button>
                   </div>
                 </form>

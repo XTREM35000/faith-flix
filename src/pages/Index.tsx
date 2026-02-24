@@ -433,7 +433,7 @@ const Index = () => {
                     <VideoCard
                       video={video as any}
                       onOpen={() => handleVideoSelect(video as any)}
-                      onDeleted={() => { /* Can refetch if needed */ }}
+                      onDeleted={() => { queryClient.invalidateQueries({ queryKey: ['homepage-videos'] }); }}
                     />
                   </motion.div>
                 ))

@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Upload, Link as LinkIcon, FileText } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { createVideo } from '@/lib/supabase/videoQueries';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +19,43 @@ const VideoModal: React.FC<VideoModalProps> = ({ open, onClose, onVideoAdded }) 
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<TabType>('url');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Draggable logic
+  const modalRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  const handleDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('button, input, textarea, [role="tablist"]')) {
+      return;
+    }
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y });
+  };
+
+  const handleDragMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+    setDragOffset({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y,
+    });
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleDragMove as any);
+      document.addEventListener('mouseup', handleDragEnd);
+      return () => {
+        document.removeEventListener('mousemove', handleDragMove as any);
+        document.removeEventListener('mouseup', handleDragEnd);
+      };
+    }
+  }, [isDragging, dragOffset, dragStart]);
 
   // États du formulaire
   const [videoUrl, setVideoUrl] = useState('');
@@ -127,14 +164,22 @@ const VideoModal: React.FC<VideoModalProps> = ({ open, onClose, onVideoAdded }) 
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl z-50"
+            style={{
+              transform: `translate(calc(-50% + ${dragOffset.x}px), calc(-50% + ${dragOffset.y}px))`,
+            }}
+            ref={modalRef}
+            onMouseMove={handleDragMove}
           >
             <div className="bg-card rounded-xl shadow-2xl border border-border overflow-hidden">
-              {/* Header */}
-              <div className="bg-gradient-to-r from-primary/10 to-primary/5 border-b border-border p-6 flex items-center justify-between">
+              {/* Header - Draggable */}
+              <div 
+                className="bg-amber-900 text-white border-b border-border p-6 flex items-center justify-between cursor-grab active:cursor-grabbing hover:bg-amber-800 transition-colors"
+                onMouseDown={handleDragStart}
+              >
                 <h2 className="text-2xl font-bold">Ajouter une vidéo</h2>
                 <button
                   onClick={handleClose}
-                  className="p-2 hover:bg-foreground/10 rounded-lg transition-colors"
+                  className="p-2 hover:bg-amber-700 rounded-lg transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -146,7 +191,7 @@ const VideoModal: React.FC<VideoModalProps> = ({ open, onClose, onVideoAdded }) 
                   onClick={() => setActiveTab('url')}
                   className={`flex-1 px-6 py-3 font-medium transition-colors border-b-2 ${
                     activeTab === 'url'
-                      ? 'border-primary text-primary'
+                      ? 'border-amber-900 text-amber-900'
                       : 'border-transparent text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -159,7 +204,7 @@ const VideoModal: React.FC<VideoModalProps> = ({ open, onClose, onVideoAdded }) 
                   onClick={() => setActiveTab('details')}
                   className={`flex-1 px-6 py-3 font-medium transition-colors border-b-2 ${
                     activeTab === 'details'
-                      ? 'border-primary text-primary'
+                      ? 'border-amber-900 text-amber-900'
                       : 'border-transparent text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -286,11 +331,11 @@ const VideoModal: React.FC<VideoModalProps> = ({ open, onClose, onVideoAdded }) 
                 <button
                   onClick={handleAddVideo}
                   disabled={isLoading || !videoUrl.trim() || !title.trim()}
-                  className="px-6 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center gap-2"
+                  className="px-6 py-2 rounded-lg bg-amber-900 text-white hover:bg-amber-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center gap-2"
                 >
                   {isLoading ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       Ajout en cours...
                     </>
                   ) : (

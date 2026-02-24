@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNotification } from '@/components/ui/notification-system';
+import { slugify } from '@/lib/slugify';
 // Supabase types can be deeply nested; keep the runtime code simple and use narrow casts where necessary.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as unknown as any;
@@ -8,6 +9,7 @@ const sb = supabase as unknown as any;
 interface Video {
   id: string;
   title: string;
+  slug?: string; // Add slug field
   thumbnail_url: string | null;
   duration: number | null;
   views: number;
@@ -21,6 +23,7 @@ interface Video {
 
 type VideoInsertData = {
   title: string;
+  slug?: string; // Add slug field
   thumbnail_url?: string | null;
   duration?: number | null;
   category?: string;
@@ -40,6 +43,25 @@ export const useVideos = (limit = 4, category?: string) => {
   const [error, setError] = useState<string | null>(null);
   const { notifySuccess, notifyError } = useNotification();
 
+  // Ensure slug uniqueness helper (similar to useEvents)
+  const ensureUniqueSlug = async (base: string) => {
+    let candidate = base;
+    let counter = 1;
+    while (counter < 1000) {
+      const { data, error } = await sb.from('videos').select('id').eq('slug', candidate).limit(1);
+      if (error) {
+        console.warn('Erreur lors de la vérification du slug:', error);
+        return candidate; // Use the slug anyway if check fails
+      }
+      if (!data || data.length === 0) {
+        return candidate; // Slug is unique
+      }
+      candidate = `${base}-${counter}`;
+      counter += 1;
+    }
+    return candidate; // Fallback
+  };
+
   const fetchVideos = useCallback(async () => {
     setLoading(true);
     try {
@@ -56,46 +78,31 @@ export const useVideos = (limit = 4, category?: string) => {
         currentUser = null;
       }
 
-      // Récupérer d'abord les IDs de vidéos approuvées
-      const { data: approvedVids = [], error: approvedErr } = await client
-        .from('content_approvals')
-        .select('content_id')
-        .eq('content_type', 'video')
-        .eq('status', 'approved');
-
-      if (approvedErr) {
-        console.error('Erreur récupération approbations vidéos:', approvedErr);
-        throw approvedErr;
-      }
-
-      const approvedIds = (approvedVids || []).map((r: any) => r.content_id);
-
+      // Récupérer toutes les vidéos (le filtrage est effectué côté composant)
       let query: any;
-
-      // Si aucun utilisateur -> afficher uniquement les vidéos approuvées
+      // apply role-based visibility
       if (!currentUser) {
-        if (approvedIds.length === 0) {
-          setVideos([]);
-          return;
-        }
-        query = client.from('videos').select('*').in('id', approvedIds).order('created_at', { ascending: false });
+        // public visitor: only approved videos
+        query = client.from('videos').select('*').eq('status', 'approved').order('created_at', { ascending: false });
       } else {
         const isAdmin = (currentUser?.user_metadata?.role === 'admin');
         if (isAdmin) {
-          // Admin voit tout
+          // admin sees everything
           query = client.from('videos').select('*').order('created_at', { ascending: false });
         } else {
-          // Utilisateur connecté voit ses vidéos ET les vidéos approuvées
-          if (approvedIds.length > 0) {
-            // Utiliser or pour combiner les conditions
-            const idsList = approvedIds.join(',');
-            query = client.from('videos').select('*').or(`id.in.(${idsList}),user_id.eq.${currentUser.id}`).order('created_at', { ascending: false });
-          } else {
-            // Pas de vidéos approuvées: ne renvoyer que celles de l'utilisateur
-            query = client.from('videos').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
-          }
+          // normal user sees approved videos plus their own
+          query = client
+            .from('videos')
+            .select('*')
+            .or(`status.eq.approved,user_id.eq.${currentUser.id}`)
+            .order('created_at', { ascending: false });
         }
       }
+
+      // appliquer limite/catégorie après
+      if (limit) query = query.limit(limit);
+      if (category) query = query.eq('category', category);
+
 
       const res = await query.limit(limit);
       const { data, error: fetchError } = res as { data: unknown[] | null; error: unknown };
@@ -128,13 +135,29 @@ export const useVideos = (limit = 4, category?: string) => {
 
   const createVideo = async (videoData: VideoInsertData) => {
     try {
+      // Generate slug from title if not provided
+      let slug = videoData.slug;
+      if (!slug && videoData.title) {
+        const baseSlug = slugify(videoData.title);
+        slug = await ensureUniqueSlug(baseSlug);
+      }
+
       // Colonnes de base garanties d'exister dans la table videos
+      // déterminer le statut en fonction du rôle de l'utilisateur
+      const { data: { user: curUser } = {} } = await (supabase as any).auth.getUser();
+      let status = 'pending';
+      if (curUser?.user_metadata?.role === 'admin') {
+        status = 'approved';
+      }
+
       const baseData = {
         title: videoData.title,
         description: videoData.description,
         thumbnail_url: videoData.thumbnail_url,
         duration: videoData.duration,
         created_at: videoData.created_at,
+        status, // pending for members, approved for admins
+        ...(slug && { slug }), // Include slug if generated or provided
       };
 
       // Colonnes optionnelles (ajoutées par migration)

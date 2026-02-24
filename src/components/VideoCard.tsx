@@ -201,24 +201,27 @@ const VideoCard = ({ video, onOpen, onDeleted }: VideoCardProps) => {
                   return;
                 }
               }
-
-              // Fallback: open whatever link we have
-              if (video.video_url) {
-                window.open(video.video_url, '_blank');
-              } else {
-                toast({ title: 'Erreur', description: 'Aucun fichier disponible à télécharger', variant: 'destructive' });
-              }
             } catch (err) {
-              console.error('Error handling download fallback:', err);
-              toast({ title: 'Erreur', description: 'Impossible de télécharger la vidéo', variant: 'destructive' });
+              console.error('Download error', err);
             }
           }}
-          className="inline-flex items-center gap-2 px-3 py-2 bg-primary text-primary-foreground rounded-lg shadow-md z-40"
-          title="Télécharger la vidéo"
         >
           <Download className="w-4 h-4" />
-          <span className="text-sm">📥 Télécharger</span>
         </button>
+        {/* Delete button for admins */}
+        {isAdmin && (
+          <Button
+            size="icon"
+            variant="destructive"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(e as any);
+            }}
+            disabled={isDeleting}
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        )}
 
         {/* Watch button */}
         <motion.button

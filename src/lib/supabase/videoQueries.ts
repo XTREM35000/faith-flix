@@ -1,4 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 import { supabase } from '@/integrations/supabase/client';
 import type { Video } from '@/types/database';
 
@@ -36,9 +35,11 @@ export async function fetchVideos(options?: {
     }
 
     const recordCount = data?.length || 0;
-    const validData = (data || []).filter((video: any): video is Video =>
-      !!video && typeof video === 'object' && 'id' in video && 'title' in video
-    );
+    const validData = (data || []).filter((video: unknown): video is Video => {
+      if (!video || typeof video !== 'object') return false;
+      const v = video as Partial<Video>;
+      return typeof v.id === 'string' && typeof v.title === 'string';
+    });
 
     console.log(`🎥 Videos Query: ${recordCount} records → ${validData.length} valides`);
 
@@ -62,7 +63,7 @@ export async function fetchVideoById(id: string) {
       return null;
     }
 
-    return (data as any as Video) || null;
+    return (data as Video) || null;
   } catch (e) {
     console.error('fetchVideoById unexpected error', e);
     return null;
@@ -80,7 +81,7 @@ export async function createVideo(video: Partial<Video>) {
       console.error('createVideo error', error);
       return null;
     }
-    return (data as any as Video) || null;
+    return (data as Video) || null;
   } catch (e) {
     console.error('createVideo unexpected error', e);
     return null;
@@ -99,7 +100,7 @@ export async function updateVideo(id: string, updates: Partial<Video>) {
       console.error('updateVideo error', error);
       return null;
     }
-    return (data as any as Video) || null;
+    return (data as Video) || null;
   } catch (e) {
     console.error('updateVideo unexpected error', e);
     return null;
@@ -110,8 +111,7 @@ export async function deleteVideo(id: string) {
   try {
     console.debug('🗑️ deleteVideo START for id:', id);
     
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error, count } = await (supabase.from(videosTable) as any)
+    const { error, count } = await (supabase.from(videosTable) as unknown as { delete: () => { eq: (field: string, value: string) => Promise<{ error: Error | null, count: number | null }> } })
       .delete()
       .eq('id', id);
     
@@ -143,7 +143,7 @@ export async function incrementVideoViews(id: string) {
       return null;
     }
 
-    const current = (readData as any).views ?? 0;
+    const current = (readData as { views?: number } | null)?.views ?? 0;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: updData, error: updErr } = await (supabase.from(videosTable) as any)
       .update({ views: current + 1 })
@@ -155,7 +155,7 @@ export async function incrementVideoViews(id: string) {
       console.error('incrementVideoViews update error', updErr);
       return null;
     }
-    return (updData as any) as { views: number } | null;
+    return updData as { views: number } | null;
   } catch (e) {
     console.error('incrementVideoViews unexpected error', e);
     return null;

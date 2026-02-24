@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Upload, Search, AlertCircle, CheckCircle, Image as ImageIcon } from 'lucide-react';
-import BaseModal from './base-modal';
+import { Upload, Search, AlertCircle, CheckCircle, Image as ImageIcon } from 'lucide-react';
+import UnifiedFormModal from '@/components/ui/unified-form-modal';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadFile, testStorageConnection } from '@/lib/supabase/storage';
 import { useNotification } from './ui/notification-system';
@@ -375,171 +375,143 @@ const GalleryImageModal: React.FC<GalleryImageModalProps> = ({ open, onClose, on
   };
 
   return (
-    <BaseModal open={open} onClose={onClose}>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <AnimatePresence>
-          {open && (
-            <>
-              {/* Backdrop */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={onClose}
-                className="absolute inset-0 bg-black/50"
-              />
+    <UnifiedFormModal 
+      open={open} 
+      onClose={onClose}
+      title={
+        activeTab === 'search' ? 'Chercher une image' :
+        activeTab === 'upload' ? 'Télécharger une image' :
+        activeTab === 'url' ? 'Ajouter un lien direct' :
+        'Détails de l\'image'
+      }
+      headerClassName="bg-amber-900"
+      maxWidth="max-w-4xl"
+    >
+      <div className="flex gap-6 py-4">
+        {/* Colonne gauche - Logo et info */}
+        <div className="hidden md:flex flex-col items-center justify-center w-1/4 p-4 border-r border-border">
+          <ImageIcon className="w-12 h-12 text-amber-900 mb-3 opacity-80" />
+          <h3 className="text-lg font-semibold text-foreground text-center">Galerie</h3>
+          <p className="text-xs text-muted-foreground mt-2 text-center">
+            Ajouter un moment spécial à notre communauté
+          </p>
+        </div>
 
-              {/* Modal */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="relative z-10 w-full max-w-2xl bg-background/60 p-6 rounded-lg shadow-lg flex gap-6"
-              >
-                {/* Colonne gauche - Logo et info */}
-                <div className="hidden md:flex flex-col items-center justify-center w-1/3 p-4">
-                  <ImageIcon className="w-16 h-16 text-primary mb-4" />
-                  <h2 className="text-xl font-semibold text-foreground text-center">Galerie</h2>
-                  <p className="text-xs text-muted-foreground mt-2 text-center">
-                    Ajouter un moment spécial à notre communauté
-                  </p>
-                </div>
-
-                {/* Colonne droite - Contenu */}
-                <div className="w-full md:w-2/3">
-                  {/* Header avec bouton fermer */}
-                  <div className="flex items-center justify-between mb-4">
-                    <h1 className="text-2xl font-semibold text-foreground">
-                      {activeTab === 'search' && 'Chercher'}
-                      {activeTab === 'upload' && 'Télécharger'}
-                      {activeTab === 'url' && 'Lien direct'}
-                      {activeTab === 'details' && 'Détails'}
-                    </h1>
-                    <button
-                      onClick={onClose}
-                      className="rounded-lg p-2 hover:bg-muted transition-colors"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-
-                  {/* Messages de succès et erreur */}
-                  {success && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="mb-4 flex items-center gap-3 rounded-lg bg-green-50 p-4 text-green-700"
-                    >
-                      <CheckCircle className="w-5 h-5" />
-                      <span>Image ajoutée avec succès!</span>
-                    </motion.div>
-                  )}
-
-                  {error && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="mb-4 flex items-center gap-3 rounded-lg bg-red-50 p-4 text-red-700"
-                    >
-                      <AlertCircle className="w-5 h-5" />
-                      <span>{error}</span>
-                    </motion.div>
-                  )}
-
-                  {/* Afficher le statut de soumission */}
-                  {submission && <SubmissionStatusAlert submission={submission} />}
-
-                  {/* Onglets */}
-                  <div className="flex gap-2 mb-6">
-                    <button
-                      onClick={() => setActiveTab('search')}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        activeTab === 'search'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-foreground hover:bg-muted/80'
-                      }`}
-                    >
-                      Chercher
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('upload')}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        activeTab === 'upload'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-foreground hover:bg-muted/80'
-                      }`}
-                    >
-                      Télécharger
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('url')}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        activeTab === 'url'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-foreground hover:bg-muted/80'
-                      }`}
-                    >
-                      Lien direct
-                    </button>
-                    {imagePreview && (
-                      <button
-                        onClick={() => setActiveTab('details')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          activeTab === 'details'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-foreground hover:bg-muted/80'
-                        }`}
-                      >
-                        Détails
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Contenu des onglets */}
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    {renderTabContent()}
-
-                    {/* Boutons d'action */}
-                    {activeTab === 'details' && (
-                      <div className="flex gap-3 pt-4">
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('search')}
-                          className="flex-1 rounded-lg border border-input bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-                        >
-                          Retour
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={loading || !formData.imageUrl || !formData.title}
-                          className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          {loading ? 'Ajout en cours...' : 'Ajouter l\'image'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            try {
-                              const res = await testStorageConnection();
-                              alert(res.message || (res.ok ? 'Test OK' : 'Échec'));
-                            } catch (e) {
-                              alert('Erreur lors du test Storage: ' + String(e));
-                            }
-                          }}
-                          className="rounded-lg border border-input bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-                        >
-                          Tester la connexion Storage
-                        </button>
-                      </div>
-                    )}
-                  </form>
-                </div>
-              </motion.div>
-            </>
+        {/* Colonne droite - Contenu */}
+        <div className="w-full md:w-3/4">
+          {/* Messages de succès et erreur */}
+          {success && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 flex items-center gap-3 rounded-lg bg-green-50 p-4 text-green-700"
+            >
+              <CheckCircle className="w-5 h-5" />
+              <span>Image ajoutée avec succès!</span>
+            </motion.div>
           )}
-        </AnimatePresence>
+
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 flex items-center gap-3 rounded-lg bg-red-50 p-4 text-red-700"
+            >
+              <AlertCircle className="w-5 h-5" />
+              <span>{error}</span>
+            </motion.div>
+          )}
+
+          {/* Afficher le statut de soumission */}
+          {submission && <SubmissionStatusAlert submission={submission} />}
+
+          {/* Onglets */}
+          <div className="flex gap-2 mb-6 flex-wrap">
+            <button
+              onClick={() => setActiveTab('search')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === 'search'
+                  ? 'bg-amber-900 text-white'
+                  : 'bg-muted text-foreground hover:bg-muted/80'
+              }`}
+            >
+              Chercher
+            </button>
+            <button
+              onClick={() => setActiveTab('upload')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === 'upload'
+                  ? 'bg-amber-900 text-white'
+                  : 'bg-muted text-foreground hover:bg-muted/80'
+              }`}
+            >
+              Télécharger
+            </button>
+            <button
+              onClick={() => setActiveTab('url')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === 'url'
+                  ? 'bg-amber-900 text-white'
+                  : 'bg-muted text-foreground hover:bg-muted/80'
+              }`}
+            >
+              Lien direct
+            </button>
+            {imagePreview && (
+              <button
+                onClick={() => setActiveTab('details')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  activeTab === 'details'
+                    ? 'bg-amber-900 text-white'
+                    : 'bg-muted text-foreground hover:bg-muted/80'
+                }`}
+              >
+                Détails
+              </button>
+            )}
+          </div>
+
+          {/* Contenu des onglets */}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {renderTabContent()}
+
+            {/* Boutons d'action */}
+            {activeTab === 'details' && (
+              <div className="flex gap-3 pt-4 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('search')}
+                  className="flex-1 rounded-lg border border-input bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                >
+                  ← Retour
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading || !formData.imageUrl || !formData.title}
+                  className="flex-1 rounded-lg bg-amber-900 px-4 py-2 text-sm font-medium text-white hover:bg-amber-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {loading ? '⏳ Ajout en cours...' : '✓ Ajouter l\'image'}
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const res = await testStorageConnection();
+                      alert(res.message || (res.ok ? 'Test OK' : 'Échec'));
+                    } catch (e) {
+                      alert('Erreur lors du test Storage: ' + String(e));
+                    }
+                  }}
+                  className="rounded-lg border border-input bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                >
+                  🔌 Tester Storage
+                </button>
+              </div>
+            )}
+          </form>
+        </div>
       </div>
-    </BaseModal>
+    </UnifiedFormModal>
   );
 };
 

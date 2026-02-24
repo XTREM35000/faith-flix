@@ -102,27 +102,15 @@ export const useHomepageContent = () => {
         if (signal?.aborted) return [];
         const sb = supabase as any;
 
-        // IDs de vidéos approuvées via content_approvals
-        const { data: approvedVids = [], error: approvedErr } = await sb
-          .from('content_approvals')
-          .select('content_id')
-          .eq('content_type', 'video')
-          .eq('status', 'approved');
-
-        if (approvedErr) console.error('Erreur récupération approbations vidéos:', approvedErr);
-        const approvedIds = (approvedVids || []).map((r: any) => r.content_id);
-
-        // Récupérer les vidéos explicitement référencées comme approuvées
-        let approvedData: any[] = [];
-        if (approvedIds.length > 0) {
-          const { data, error } = await sb
-            .from('videos')
-            .select('id, title, description, thumbnail_url, video_url, video_storage_path, views, created_at')
-            .in('id', approvedIds)
-            .order('created_at', { ascending: false });
-          if (error) console.error('Erreur vidéos (approuvées):', error);
-          approvedData = data || [];
-        }
+        // Récupérer les 4 dernières vidéos dont le statut est "approved" (ignore content_approvals table)
+        const { data: approvedData = [], error } = await sb
+          .from('videos')
+          .select('id, title, description, thumbnail_url, video_url, video_storage_path, views, created_at')
+          .eq('status', 'approved')
+          .order('created_at', { ascending: false })
+          .limit(4);
+        if (error) console.error('Erreur récupération vidéos homepage:', error);
+        // approvedIds logic removed - not needed any more
 
         // Essayer aussi de récupérer les vidéos ayant status='approved' (si colonne disponible)
         let statusData: any[] = [];
