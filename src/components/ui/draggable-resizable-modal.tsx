@@ -64,7 +64,10 @@ export const DraggableResizableModal: React.FC<DraggableResizableModalProps> = (
       if (!tag) return false;
       const interactive = ['input', 'textarea', 'select', 'button', 'a', 'svg', 'path', 'label'];
       if (interactive.includes(tag)) return true;
+      // Check parent chain up to 2 levels for interactive elements
       if (el.closest && el.closest('button, a, input, textarea, select, label')) return true;
+      const parent = el.parentElement;
+      if (parent?.tagName?.toLowerCase() === 'button') return true;
       return false;
     } catch {
       return false;
@@ -188,7 +191,7 @@ export const DraggableResizableModal: React.FC<DraggableResizableModalProps> = (
         onPointerUp={onPointerUp}
         style={{ touchAction: 'none' as const }}
         className={
-          `bg-background rounded-lg shadow ${maxWidthClass} w-full p-0 overflow-auto cursor-grab resize-both ` +
+          `bg-background rounded-lg shadow ${maxWidthClass} w-full p-0 overflow-hidden flex flex-col cursor-grab ` +
           className
         }
       >
@@ -211,7 +214,7 @@ export const DraggableResizableModal: React.FC<DraggableResizableModalProps> = (
             </button>
           </div>
         )}
-        <div className="relative">
+        <div className="relative flex-1 overflow-auto" style={{ pointerEvents: 'auto' }}>
           <div className="p-4 overflow-auto">{children}</div>
           {/* resize handle bottom-right */}
           <div

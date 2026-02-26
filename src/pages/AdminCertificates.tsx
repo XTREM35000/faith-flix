@@ -275,79 +275,87 @@ export default function AdminCertificates() {
         title="Créer un nouveau certificat"
         headerClassName="bg-amber-900"
       >
-        <form onSubmit={(e) => { e.preventDefault(); handleCreate(); }} className="space-y-4">
+        <form onSubmit={(e) => { e.preventDefault(); handleCreate(); }} className="space-y-6">
+          {/* Full Name */}
           <div>
-              <Label htmlFor="full_name" className="text-gray-700">
-                Nom complet *
+            <Label htmlFor="full_name" className="block text-sm font-medium mb-2">
+              Nom complet *
+            </Label>
+            <Input
+              id="full_name"
+              value={formData.full_name}
+              onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+              placeholder="Jean Dupont"
+              className="w-full"
+              required
+            />
+          </div>
+
+          {/* Certificate Type */}
+          <div>
+            <Label htmlFor="cert_type" className="block text-sm font-medium mb-2">
+              Type de certificat *
+            </Label>
+            <Select
+              value={formData.certificate_type}
+              onValueChange={(value) =>
+                setFormData({
+                  ...formData,
+                  certificate_type: value as 'diplôme' | 'certificat' | 'mention' | 'honneur' | string,
+                })
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="diplôme">Diplôme</SelectItem>
+                <SelectItem value="certificat">Certificat</SelectItem>
+                <SelectItem value="mention">Mention</SelectItem>
+                <SelectItem value="honneur">Honneur</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Two-column grid: Mention & Issued By */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="mention" className="block text-sm font-medium mb-2">
+                Mention
               </Label>
               <Input
-                id="full_name"
-                value={formData.full_name}
-                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                placeholder="Jean Dupont"
-                className="mt-1 bg-white text-black border border-gray-300"
+                id="mention"
+                value={formData.mention || ''}
+                onChange={(e) => setFormData({ ...formData, mention: e.target.value })}
+                placeholder="Distinction, Médaille, etc."
+                className="w-full"
               />
             </div>
             <div>
-              <Label htmlFor="cert_type" className="text-gray-700">
-                Type de certificat *
-              </Label>
-              <Select
-                value={formData.certificate_type}
-                onValueChange={(value) =>
-                  setFormData({
-                    ...formData,
-                    certificate_type: value as 'diplôme' | 'certificat' | 'mention' | 'honneur' | string,
-                  })
-                }
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="diplôme">Diplôme</SelectItem>
-                  <SelectItem value="certificat">Certificat</SelectItem>
-                  <SelectItem value="mention">Mention</SelectItem>
-                  <SelectItem value="honneur">Honneur</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="mention" className="text-gray-700">
-                  Mention
-                </Label>
-                <Input
-                  id="mention"
-                  value={formData.mention || ''}
-                  onChange={(e) => setFormData({ ...formData, mention: e.target.value })}
-                  placeholder="Distinction, Médaille, etc."
-                  className="mt-1 bg-white text-black border border-gray-300"
-                />
-              </div>
-              <div>
-                <Label htmlFor="issued_by" className="text-gray-700">
-                  Délivré par
-                </Label>
-                <Input
-                  id="issued_by"
-                  value={formData.issued_by || ''}
-                  onChange={(e) => setFormData({ ...formData, issued_by: e.target.value })}
-                  placeholder="Nom de l'autorité"
-                  className="mt-1 bg-white text-black border border-gray-300"
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="description" className="text-gray-700">
-                Description
+              <Label htmlFor="issued_by" className="block text-sm font-medium mb-2">
+                Délivré par
               </Label>
               <Input
-                id="description"
-                value={formData.description || ''}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Détails du certificat"
-                className="mt-1 bg-white text-black border border-gray-300"
+                id="issued_by"
+                value={formData.issued_by || ''}
+                onChange={(e) => setFormData({ ...formData, issued_by: e.target.value })}
+                placeholder="Nom de l'autorité"
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <Label htmlFor="description" className="block text-sm font-medium mb-2">
+              Description
+            </Label>
+            <Input
+              id="description"
+              value={formData.description || ''}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Détails du certificat"
+              className="w-full"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -367,8 +375,8 @@ export default function AdminCertificates() {
               />
             </div>
 
-          {/* Footer */}
-          <div className="border-t border-orange-100 bg-gray-50 px-6 py-4 flex gap-2 justify-end">
+          {/* Footer with action buttons */}
+          <div className="border-t border-border bg-muted/40 -mx-6 -mb-6 mt-8 px-6 py-4 flex gap-3 justify-end">
             <Button
               variant="outline"
               onClick={() => {
@@ -381,7 +389,7 @@ export default function AdminCertificates() {
             <Button
               onClick={handleCreate}
               disabled={loading}
-              className="bg-orange-600 hover:bg-orange-700 text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               {loading ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : null}
               Créer
@@ -401,77 +409,87 @@ export default function AdminCertificates() {
         title="Modifier le certificat"
         headerClassName="bg-amber-900"
       >
-        <form onSubmit={(e) => { e.preventDefault(); handleUpdate(); }} className="space-y-4">
+        <form onSubmit={(e) => { e.preventDefault(); handleUpdate(); }} className="space-y-6">
+          {/* Full Name */}
           <div>
-              <Label htmlFor="edit_full_name" className="text-gray-700">
-                Nom complet *
+            <Label htmlFor="edit_full_name" className="block text-sm font-medium mb-2">
+              Nom complet *
+            </Label>
+            <Input
+              id="edit_full_name"
+              value={formData.full_name}
+              onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+              className="w-full"
+              required
+            />
+          </div>
+
+          {/* Certificate Type */}
+          <div>
+            <Label htmlFor="edit_cert_type" className="block text-sm font-medium mb-2">
+              Type de certificat *
+            </Label>
+            <Select
+              value={formData.certificate_type}
+              onValueChange={(value) =>
+                setFormData({
+                  ...formData,
+                  certificate_type: value as 'diplôme' | 'certificat' | 'mention' | 'honneur' | string,
+                })
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="diplôme">Diplôme</SelectItem>
+                <SelectItem value="certificat">Certificat</SelectItem>
+                <SelectItem value="mention">Mention</SelectItem>
+                <SelectItem value="honneur">Honneur</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Two-column grid: Mention & Issued By */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="edit_mention" className="block text-sm font-medium mb-2">
+                Mention
               </Label>
               <Input
-                id="edit_full_name"
-                value={formData.full_name}
-                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                className="mt-1 bg-white text-black border border-gray-300"
+                id="edit_mention"
+                value={formData.mention || ''}
+                onChange={(e) => setFormData({ ...formData, mention: e.target.value })}
+                className="w-full"
               />
             </div>
             <div>
-              <Label htmlFor="edit_cert_type" className="text-gray-700">
-                Type de certificat *
-              </Label>
-              <Select
-                value={formData.certificate_type}
-                onValueChange={(value) =>
-                  setFormData({
-                    ...formData,
-                    certificate_type: value as 'diplôme' | 'certificat' | 'mention' | 'honneur' | string,
-                  })
-                }
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="diplôme">Diplôme</SelectItem>
-                  <SelectItem value="certificat">Certificat</SelectItem>
-                  <SelectItem value="mention">Mention</SelectItem>
-                  <SelectItem value="honneur">Honneur</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="edit_mention" className="text-gray-700">
-                  Mention
-                </Label>
-                <Input
-                  id="edit_mention"
-                  value={formData.mention || ''}
-                  onChange={(e) => setFormData({ ...formData, mention: e.target.value })}
-                  className="mt-1 bg-white text-black border border-gray-300"
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit_issued_by" className="text-gray-700">
-                  Délivré par
-                </Label>
-                <Input
-                  id="edit_issued_by"
-                  value={formData.issued_by || ''}
-                  onChange={(e) => setFormData({ ...formData, issued_by: e.target.value })}
-                  className="mt-1 bg-white text-black border border-gray-300"
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="edit_description" className="text-gray-700">
-                Description
+              <Label htmlFor="edit_issued_by" className="block text-sm font-medium mb-2">
+                Délivré par
               </Label>
               <Input
-                id="edit_description"
-                value={formData.description || ''}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="mt-1 bg-white text-black border border-gray-300"
+                id="edit_issued_by"
+                value={formData.issued_by || ''}
+                onChange={(e) => setFormData({ ...formData, issued_by: e.target.value })}
+                className="w-full"
               />
             </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <Label htmlFor="edit_description" className="block text-sm font-medium mb-2">
+              Description
+            </Label>
+            <Input
+              id="edit_description"
+              value={formData.description || ''}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full"
+            />
+          </div>
+
+          {/* Signature & Logo uploads */}
             <div className="grid grid-cols-2 gap-4">
               <ImageUploadField
                 label="Signature"
@@ -489,8 +507,8 @@ export default function AdminCertificates() {
               />
             </div>
 
-          {/* Footer */}
-          <div className="border-t border-orange-100 bg-gray-50 px-6 py-4 flex gap-2 justify-end">
+          {/* Footer with action buttons */}
+          <div className="border-t border-border bg-muted/40 -mx-6 -mb-6 mt-8 px-6 py-4 flex gap-3 justify-end">
             <Button
               variant="outline"
               onClick={() => {
@@ -504,7 +522,7 @@ export default function AdminCertificates() {
             <Button
               onClick={handleUpdate}
               disabled={loading}
-              className="bg-orange-600 hover:bg-orange-700 text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               {loading ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : null}
               Mettre à jour

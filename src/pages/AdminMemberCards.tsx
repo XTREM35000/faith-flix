@@ -266,9 +266,10 @@ export default function AdminMemberCards() {
         title="Créer une nouvelle carte de membre"
         headerClassName="bg-amber-900"
       >
-        <form onSubmit={(e) => { e.preventDefault(); handleCreate(); }} className="space-y-4">
+        <form onSubmit={(e) => { e.preventDefault(); handleCreate(); }} className="space-y-6">
+          {/* Full Name */}
           <div>
-            <Label htmlFor="full_name" className="text-gray-700">
+            <Label htmlFor="full_name" className="block text-sm font-medium mb-2">
               Nom complet *
             </Label>
             <Input
@@ -276,12 +277,15 @@ export default function AdminMemberCards() {
               value={formData.full_name}
               onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
               placeholder="Jean Dupont"
-              className="mt-1 bg-white text-black border border-gray-300"
+              className="w-full"
+              required
             />
           </div>
+
+          {/* Two-column grid: Role & Member Number */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="role" className="text-gray-700">
+              <Label htmlFor="role" className="block text-sm font-medium mb-2">
                 Rôle
               </Label>
               <Input
@@ -289,11 +293,11 @@ export default function AdminMemberCards() {
                 value={formData.role || ''}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 placeholder="Paroissien, Prêtre, etc."
-                className="mt-1 bg-white text-black border border-gray-300"
+                className="w-full"
               />
             </div>
             <div>
-              <Label htmlFor="member_number" className="text-gray-700">
+              <Label htmlFor="member_number" className="block text-sm font-medium mb-2">
                 Numéro de membre
               </Label>
               <Input
@@ -301,10 +305,12 @@ export default function AdminMemberCards() {
                 value={formData.member_number}
                 onChange={(e) => setFormData({ ...formData, member_number: e.target.value })}
                 placeholder="MEM-001"
-                className="mt-1 bg-white text-black border border-gray-300"
+                className="w-full"
               />
             </div>
           </div>
+
+          {/* Photo & Signature uploads */}
           <div className="grid grid-cols-2 gap-4">
             <ImageUploadField
               label="Photo du membre"
@@ -322,7 +328,7 @@ export default function AdminMemberCards() {
             />
           </div>
           <div>
-            <Label htmlFor="issued_by" className="text-gray-700">
+            <Label htmlFor="issued_by" className="block text-sm font-medium mb-2">
               Délivré par
             </Label>
             <Input
@@ -330,12 +336,12 @@ export default function AdminMemberCards() {
               value={formData.issued_by || ''}
               onChange={(e) => setFormData({ ...formData, issued_by: e.target.value })}
               placeholder="Nom de l'autorité"
-              className="mt-1 bg-white text-black border border-gray-300"
+              className="w-full"
             />
           </div>
 
-          {/* Footer */}
-          <div className="border-t border-blue-100 bg-gray-50 -mx-6 -mb-6 mt-6 px-6 py-4 flex gap-2 justify-end">
+          {/* Footer with action buttons */}
+          <div className="border-t border-border bg-muted/40 -mx-6 -mb-6 mt-8 px-6 py-4 flex gap-3 justify-end">
             <Button
               variant="outline"
               onClick={() => {
@@ -368,42 +374,46 @@ export default function AdminMemberCards() {
         title="Modifier la carte de membre"
         headerClassName="bg-amber-900"
       >
-        <form onSubmit={(e) => { e.preventDefault(); handleUpdate(); }} className="space-y-4">
+        <form onSubmit={(e) => { e.preventDefault(); handleUpdate(); }} className="space-y-6">
+          {/* Full Name */}
           <div>
-              <Label htmlFor="edit_full_name" className="text-gray-700">
-                Nom complet *
-              </Label>
-              <Input
-                id="edit_full_name"
-                value={formData.full_name}
-                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                className="mt-1 bg-white text-black border border-gray-300"
+            <Label htmlFor="edit_full_name" className="block text-sm font-medium mb-2">
+              Nom complet *
+            </Label>
+            <Input
+              id="edit_full_name"
+              value={formData.full_name}
+              onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+              className="w-full"
+              required
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="edit_role" className="text-gray-700">
+                <Label htmlFor="edit_role" className="block text-sm font-medium mb-2">
                   Rôle
                 </Label>
                 <Input
                   id="edit_role"
                   value={formData.role || ''}
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                  className="mt-1 bg-white text-black border border-gray-300"
+                  className="w-full"
                 />
               </div>
               <div>
-                <Label htmlFor="edit_member_number" className="text-gray-700">
+                <Label htmlFor="edit_member_number" className="block text-sm font-medium mb-2">
                   Numéro de membre
                 </Label>
                 <Input
                   id="edit_member_number"
                   value={formData.member_number}
                   onChange={(e) => setFormData({ ...formData, member_number: e.target.value })}
-                  className="mt-1 bg-white text-black border border-gray-300"
+                  className="w-full"
                 />
               </div>
             </div>
+
+            {/* Photo & Signature uploads */}
             <div className="grid grid-cols-2 gap-4">
               <ImageUploadField
                 label="Photo du membre"
@@ -421,19 +431,19 @@ export default function AdminMemberCards() {
               />
             </div>
             <div>
-              <Label htmlFor="edit_issued_by" className="text-gray-700">
+              <Label htmlFor="edit_issued_by" className="block text-sm font-medium mb-2">
                 Délivré par
               </Label>
               <Input
                 id="edit_issued_by"
                 value={formData.issued_by || ''}
                 onChange={(e) => setFormData({ ...formData, issued_by: e.target.value })}
-                className="mt-1"
+                className="w-full"
               />
             </div>
 
-          {/* Footer */}
-          <div className="border-t border-blue-100 bg-gray-50 px-6 py-4 flex gap-2 justify-end">
+            {/* Footer with action buttons */}
+            <div className="border-t border-border bg-muted/40 -mx-6 -mb-6 mt-8 px-6 py-4 flex gap-3 justify-end">
             <Button
               variant="outline"
               onClick={() => {

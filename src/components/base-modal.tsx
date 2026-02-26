@@ -17,6 +17,13 @@ function getFocusableElements(container: HTMLElement | null) {
 export default function BaseModal({ open, onClose, children, center = false }: BaseModalProps) {
   const contentRef = useRef<HTMLDivElement | null>(null);
   const prevActive = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+
+  // keep a stable ref to the latest onClose so effects don't re-run when
+  // parent recreates the callback on each render (which would steal focus).
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return;
@@ -35,7 +42,11 @@ export default function BaseModal({ open, onClose, children, center = false }: B
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        try {
+          onCloseRef.current();
+        } catch {
+          // ignore
+        }
         return;
       }
 
@@ -70,9 +81,11 @@ export default function BaseModal({ open, onClose, children, center = false }: B
       // restore previous focus
       try {
         if (prevActive.current && typeof prevActive.current.focus === 'function') prevActive.current.focus();
-      } catch { /* ignore */ }
+      } catch {
+        // ignore
+      }
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
