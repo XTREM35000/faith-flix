@@ -92,18 +92,16 @@ export default function AdminAds() {
         <div className="mb-6">
           <Button onClick={() => { setEditing(null); setFile(null); setOpenDialog(true); }}>Nouvelle affiche</Button>
 
-          <DraggableModal open={openDialog} onClose={() => { setOpenDialog(false); setEditing(null); setFile(null); }} dragHandleOnly={false} verticalOnly={false} draggableOnMobile={true} center={true} maxWidthClass="max-w-2xl">
-            <div className="flex items-center justify-between px-4 py-3 bg-amber-800 text-white rounded-t-lg cursor-grab select-none" data-drag-handle role="button" aria-label="Poignée de déplacement">
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col items-start mr-2">
-                  <div className="w-14 h-1.5 bg-white/80 rounded-full shadow-sm mb-1" aria-hidden />
-                  <div className="text-xs text-white/90">Déplacer</div>
-                </div>
-                <h2 className="text-lg font-semibold">Créer / éditer une affiche / flyer</h2>
-              </div>
-              <button onClick={() => { setOpenDialog(false); setEditing(null); setFile(null); }} className="text-white hover:opacity-90" aria-label="Fermer">✕</button>
-            </div>
-
+          <DraggableModal
+            open={openDialog}
+            onClose={() => { setOpenDialog(false); setEditing(null); setFile(null); }}
+            dragHandleOnly={false}
+            verticalOnly={false}
+            draggableOnMobile={true}
+            center={true}
+            maxWidthClass="max-w-2xl"
+            title={editing ? 'Éditer une affiche / flyer' : 'Nouvelle affiche'}
+          >
             <div className="space-y-3 py-3 px-4 max-h-[calc(100vh-120px)] overflow-y-auto" aria-describedby="ad-form-desc"> {/* Formulaire de création et d'édition d'affiche ou flyer */}
               <form onSubmit={handleSave} className="space-y-3">
                 <div>

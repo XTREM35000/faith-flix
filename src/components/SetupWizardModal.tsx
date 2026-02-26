@@ -197,10 +197,16 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
   if (!open) return null;
 
   return (
-    <DraggableModal open={open} onClose={onClose} verticalOnly={true}>
-      <div className="bg-background text-foreground rounded-lg shadow-2xl w-full max-w-5xl mx-4 overflow-hidden border border-border">
-        {/* Header */}
-        <div data-drag-handle className="p-6 border-b border-border flex items-center justify-between cursor-move bg-gradient-to-r from-primary/10 to-transparent">
+    <DraggableModal
+      open={open}
+      onClose={onClose}
+      draggableOnMobile={true}
+      dragHandleOnly={false}
+      verticalOnly={false}
+      center={true}
+      maxWidthClass="max-w-5xl"
+      title={
+        <div className="flex items-center justify-between w-full">
           <div>
             <h3 className="text-2xl font-bold">Assistant de configuration</h3>
             <p className="text-sm text-muted-foreground mt-1">Configurez votre paroisse en 3 étapes</p>
@@ -210,7 +216,10 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
             <div className="text-xs text-muted-foreground">sur 3</div>
           </div>
         </div>
-
+      }
+      headerClassName="bg-gradient-to-r from-primary/10 to-transparent"
+    >
+      <div className="bg-background text-foreground rounded-lg shadow-2xl w-full max-w-5xl mx-4 overflow-hidden border border-border">
         {/* Progress Bar */}
         <div className="h-1 bg-muted">
           <div

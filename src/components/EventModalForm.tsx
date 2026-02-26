@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Upload, AlertCircle, CheckCircle, Calendar, MapPin } from 'lucide-react';
-import BaseModal from './base-modal';
+import DraggableModal from './DraggableModal';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadFile } from '@/lib/supabase/storage';
 import { useNotification } from './ui/notification-system';
@@ -241,27 +241,22 @@ const EventModalForm: React.FC<EventModalFormProps> = ({
   return (
     <AnimatePresence>
       {open && (
-        <BaseModal open={open} onClose={onClose}>
+        <DraggableModal
+          open={open}
+          onClose={onClose}
+          draggableOnMobile={true}
+          dragHandleOnly={false}
+          verticalOnly={false}
+          center={true}
+          maxWidthClass="max-w-2xl"
+          title={editingEvent ? 'Modifier l\'événement' : 'Ajouter un événement'}
+        >
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             className="bg-background rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
           >
-            {/* Header */}
-            <div className="flex justify-between items-center p-6 border-b border-border">
-              <h2 className="text-2xl font-bold flex items-center gap-3">
-                <Calendar className="w-6 h-6" />
-                {editingEvent ? 'Modifier l\'événement' : 'Ajouter un événement'}
-              </h2>
-              <button
-                onClick={onClose}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
             {/* Tabs */}
             <div className="flex gap-1 px-6 pt-6 pb-4 border-b border-border">
               {(['basic', 'datetime', 'location', 'seo', 'preview'] as TabType[]).map((tab) => (
@@ -551,7 +546,7 @@ const EventModalForm: React.FC<EventModalFormProps> = ({
               </Button>
             </div>
           </motion.div>
-        </BaseModal>
+        </DraggableModal>
       )}
     </AnimatePresence>
   );

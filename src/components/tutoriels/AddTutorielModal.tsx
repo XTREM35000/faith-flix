@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/contexts/ToastContext';
-import { X } from 'lucide-react';
+import UnifiedFormModal from '@/components/ui/unified-form-modal';
 import type { TutorielVideo } from '@/pages/AdminTutorielsPage/types';
 
 interface Props {
@@ -23,103 +23,6 @@ export default function AddTutorielModal({ isOpen, onClose, onCreated }: Props) 
   const [file, setFile] = useState<File | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const modalRef = React.useRef<HTMLDivElement | null>(null);
-  const draggingRef = React.useRef(false);
-  const offsetRef = React.useRef({ x: 0, y: 0 });
-  const [pos, setPos] = useState<{ x: number | null; y: number | null }>({ x: null, y: null });
-
-  // Center modal on open
-  React.useEffect(() => {
-    if (isOpen && modalRef.current) {
-      // Use requestAnimationFrame to ensure DOM is ready
-      const frame = requestAnimationFrame(() => {
-        const modal = modalRef.current;
-        if (modal) {
-          const centerX = Math.max(8, (window.innerWidth - modal.offsetWidth) / 2);
-          const centerY = Math.max(8, (window.innerHeight - modal.offsetHeight) / 2);
-          setPos({ x: centerX, y: centerY });
-        }
-      });
-      return () => cancelAnimationFrame(frame);
-    }
-  }, [isOpen]);
-
-  React.useEffect(() => {
-    function onMove(e: MouseEvent) {
-      if (!draggingRef.current) return;
-      const clientX = e.clientX;
-      const clientY = e.clientY;
-      const nx = clientX - offsetRef.current.x;
-      const ny = clientY - offsetRef.current.y;
-      const modal = modalRef.current;
-      if (!modal) return;
-      const maxX = window.innerWidth - modal.offsetWidth - 16;
-      const maxY = window.innerHeight - modal.offsetHeight - 16;
-      setPos({ x: Math.max(8, Math.min(nx, maxX)), y: Math.max(8, Math.min(ny, maxY)) });
-    }
-    function onUp() {
-      draggingRef.current = false;
-      document.body.style.userSelect = '';
-    }
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-  }, []);
-
-  React.useEffect(() => {
-    function onTouchMove(e: TouchEvent) {
-      if (!draggingRef.current) return;
-      const t = e.touches[0];
-      const nx = t.clientX - offsetRef.current.x;
-      const ny = t.clientY - offsetRef.current.y;
-      const modal = modalRef.current;
-      if (!modal) return;
-      const maxX = window.innerWidth - modal.offsetWidth - 16;
-      const maxY = window.innerHeight - modal.offsetHeight - 16;
-      setPos({ x: Math.max(8, Math.min(nx, maxX)), y: Math.max(8, Math.min(ny, maxY)) });
-    }
-    function onTouchEnd() {
-      draggingRef.current = false;
-      document.body.style.userSelect = '';
-    }
-    window.addEventListener('touchmove', onTouchMove);
-    window.addEventListener('touchend', onTouchEnd);
-    return () => {
-      window.removeEventListener('touchmove', onTouchMove);
-      window.removeEventListener('touchend', onTouchEnd);
-    };
-  }, []);
-
-  if (!isOpen) return null;
-
-  function startDrag(clientX: number, clientY: number) {
-    const modal = modalRef.current;
-    if (!modal) return;
-    if (pos.x === null || pos.y === null) {
-      // center initially
-      const startX = Math.max(8, (window.innerWidth - modal.offsetWidth) / 2);
-      const startY = Math.max(8, (window.innerHeight - modal.offsetHeight) / 2);
-      setPos({ x: startX, y: startY });
-      offsetRef.current.x = clientX - startX;
-      offsetRef.current.y = clientY - startY;
-    } else {
-      offsetRef.current.x = clientX - (pos.x || 0);
-      offsetRef.current.y = clientY - (pos.y || 0);
-    }
-    draggingRef.current = true;
-    document.body.style.userSelect = 'none';
-  }
-
-  function onMouseDownHeader(e: React.MouseEvent) {
-    startDrag(e.clientX, e.clientY);
-  }
-  function onTouchStartHeader(e: React.TouchEvent) {
-    const t = e.touches[0];
-    startDrag(t.clientX, t.clientY);
-  }
 
   function extractYouTubeId(input?: string) {
     if (!input) return '';
@@ -200,31 +103,12 @@ export default function AddTutorielModal({ isOpen, onClose, onCreated }: Props) 
     }
   };
 
-  const modalStyle: React.CSSProperties = pos.x !== null && pos.y !== null 
-    ? { left: pos.x + 'px', top: pos.y + 'px', position: 'fixed' } 
-    : { left: '50%', top: '50%', transform: 'translate(-50%, -50%)', position: 'fixed' };
+  // no manual positioning; use unified component
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center pointer-events-auto" aria-modal="true" role="dialog">
-      <div
-        ref={modalRef}
-        style={modalStyle}
-        className="w-full max-w-2xl bg-card border border-border rounded-lg shadow-lg pointer-events-auto z-50 relative"
-      >
-        <div
-          onMouseDown={onMouseDownHeader}
-          onTouchStart={onTouchStartHeader}
-          className="cursor-grab select-none flex items-center justify-between p-3 border-b border-border bg-gradient-to-r from-background/30 to-background/10 rounded-t-lg"
-        >
-          <h3 className="text-lg font-semibold text-foreground">Ajouter une vidéo</h3>
-          <div className="flex items-center gap-2">
-            <button onClick={onClose} className="text-muted-foreground px-2 py-1 rounded hover:bg-muted/10">
-              <X />
-            </button>
-          </div>
-        </div>
-
-        <div className="p-4 space-y-4 text-foreground">
+    <UnifiedFormModal open={isOpen} onClose={onClose} title="Ajouter un tutoriel">
+      <div className="p-4 space-y-4 text-foreground">
           <div>
             <label className="text-xs text-muted-foreground block mb-1">Lien YouTube</label>
             <input
@@ -265,7 +149,6 @@ export default function AddTutorielModal({ isOpen, onClose, onCreated }: Props) 
             <button onClick={handleSubmit} disabled={isSaving} className="px-4 py-2 bg-emerald-600 text-white rounded-md">{isSaving ? 'Enregistrement...' : 'Ajouter la vidéo'}</button>
           </div>
         </div>
-      </div>
-    </div>
+    </UnifiedFormModal>
   );
 }

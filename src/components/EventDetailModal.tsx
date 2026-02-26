@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import BaseModal from './base-modal';
+import DraggableModal from './DraggableModal';
 import { supabase } from '@/integrations/supabase/client';
 import type { Event } from '@/types/database';
 import { Button } from '@/components/ui/button';
@@ -72,8 +72,17 @@ const EventDetailModal: React.FC<EventDetailModalProps> = ({ slugOrId, open, onC
   }, [slugOrId, open]);
 
   return (
-    <BaseModal open={open} onClose={onClose}>
-      <div className="max-w-3xl mx-auto p-6">
+    <DraggableModal
+      open={open}
+      onClose={onClose}
+      draggableOnMobile={true}
+      dragHandleOnly={false}
+      verticalOnly={false}
+      center={true}
+      maxWidthClass="max-w-3xl"
+      title="Détails de l'événement"
+    >
+      <div className="p-6">
         {loading && <div>Chargement...</div>}
         {error && <div className="text-destructive">{error}</div>}
         {!loading && !error && !event && <div>Événement non trouvé</div>}
@@ -100,7 +109,7 @@ const EventDetailModal: React.FC<EventDetailModalProps> = ({ slugOrId, open, onC
           </article>
         )}
       </div>
-    </BaseModal>
+    </DraggableModal>
   );
 };
 

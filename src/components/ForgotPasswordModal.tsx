@@ -168,25 +168,23 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
   if (!isOpen) return null;
 
   return (
-    <DraggableModal open={isOpen} onClose={loading ? () => {} : onClose} verticalOnly={true}>
-      <div className="bg-background text-foreground rounded-lg shadow-2xl w-full max-w-md mx-4 overflow-hidden border border-border">
-        {/* Header avec gradient */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <GripVertical className="h-4 w-4 text-blue-300 opacity-70 cursor-grab" />
-            <h2 className="text-lg font-bold text-white">Réinitialiser le mot de passe</h2>
-          </div>
-          <motion.button
-            whileHover={{ rotate: 90 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={onClose}
-            className="p-1 rounded-lg hover:bg-blue-500 transition-colors"
-            aria-label="Fermer"
-          >
-            <X className="h-5 w-5 text-white" />
-          </motion.button>
+    <DraggableModal
+      open={isOpen}
+      onClose={loading ? () => {} : onClose}
+      draggableOnMobile={true}
+      dragHandleOnly={false}
+      verticalOnly={false}
+      center={true}
+      maxWidthClass="max-w-md"
+      title={
+        <div className="flex items-center gap-2">
+          <GripVertical className="h-4 w-4 text-blue-300 opacity-70" />
+          <span className="text-lg font-bold text-white">Réinitialiser le mot de passe</span>
         </div>
-
+      }
+      headerClassName="bg-gradient-to-r from-blue-600 to-blue-700"
+    >
+      <div className="bg-background text-foreground rounded-lg shadow-2xl w-full max-w-md mx-4 overflow-hidden border border-border">
         {/* Content */}
         <div className="px-4 py-6">
           <AnimatePresence mode="wait">

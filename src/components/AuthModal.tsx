@@ -36,7 +36,17 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMode = 'l
   const formMinH = mode === 'register' ? 'min-h-[720px]' : 'min-h-[300px]';
 
   return (
-    <DraggableModal open={isOpen} onClose={onClose} draggableOnMobile={true} dragHandleOnly={false} center={true} verticalOnly={false} maxWidthClass={maxWidthClass}>
+    <DraggableModal
+      open={isOpen}
+      onClose={onClose}
+      draggableOnMobile={true}
+      dragHandleOnly={false}
+      center={true}
+      verticalOnly={false}
+      maxWidthClass={maxWidthClass}
+      title={mode === 'login' ? 'Connexion' : 'Inscription'}
+      headerClassName="bg-amber-900"
+    >
       <motion.div
         initial={{ opacity: 0, scale: 0.98, y: 0 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -44,27 +54,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMode = 'l
         transition={{ duration: 0.18 }}
         className={`relative w-full ${maxHeightClass} bg-background/95 backdrop-blur-sm rounded-lg shadow-2xl border border-border/50 flex flex-col overflow-hidden`} 
       >
-        {/* Drag handle (visible) - styled like Admin / Live editor */}
-        <div data-drag-handle className="flex items-center justify-between px-4 py-3 bg-amber-900 text-white rounded-t-lg cursor-grab select-none" role="button" aria-label="Poignée de déplacement">
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col items-start mr-2">
-              <div className="w-14 h-1.5 bg-white/80 rounded-full shadow-sm mb-1" aria-hidden />
-              <div className="text-xs text-white/90">Déplacer</div>
-            </div>
-            <h2 className="text-base font-semibold">{mode === 'login' ? 'Connexion' : 'Inscription'}</h2>
-          </div>
-        </div>
-
-        {/* Close Button (redundant) */}
-        <motion.button
-          whileHover={{ rotate: 90 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={onClose}
-          className="absolute top-4 right-4 p-1 rounded-lg hover:bg-muted transition-colors z-10"
-          aria-label="Fermer"
-        >
-          <X className="h-6 w-6 text-white" />
-        </motion.button>
 
         <div className="flex-1 px-4 py-4 md:px-6 md:py-6 overflow-hidden">
           <div className="flex gap-6 items-stretch h-full">

@@ -22,8 +22,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import DraggableResizableModal from '@/components/ui/draggable-resizable-modal';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -355,19 +355,20 @@ function DocumentsArchivesList({ mediaType }: { mediaType?: string }) {
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
                 <Card>
                   <CardHeader>
-                    <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                          <Upload className="w-4 h-4 mr-2" />
-                          Télécharger
-                        </Button>
-                      </DialogTrigger>
-                      {/* Upload Dialog Content */}
-                      <DialogContent aria-describedby="upload-doc-desc">
-                        <DialogHeader>
-                          <DialogTitle>Télécharger un document</DialogTitle>
-                        </DialogHeader>
-                        <div id="upload-doc-desc" className="sr-only">Formulaire pour téléverser un document et définir ses métadonnées.</div>
+                    <Button onClick={() => setUploadDialogOpen(true)} className="w-full bg-blue-600 hover:bg-blue-700">
+                      <Upload className="w-4 h-4 mr-2" />
+                      Télécharger
+                    </Button>
+                    <DraggableResizableModal
+                      open={uploadDialogOpen}
+                      onClose={() => setUploadDialogOpen(false)}
+                      title="Télécharger un document"
+                      headerClassName="bg-blue-600"
+                      maxWidthClass="max-w-md"
+                      center
+                      draggableOnMobile
+                    >
+                      <div id="upload-doc-desc" className="sr-only">Formulaire pour téléverser un document et définir ses métadonnées.</div>
                         <form onSubmit={handleUpload} className="space-y-4">
                           <div>
                             <Label htmlFor="title">Titre</Label>
@@ -396,8 +397,7 @@ function DocumentsArchivesList({ mediaType }: { mediaType?: string }) {
                             </Button>
                           </div>
                         </form>
-                      </DialogContent>
-                    </Dialog>
+                    </DraggableResizableModal>
                   </CardHeader>
                 </Card>
               </motion.div>

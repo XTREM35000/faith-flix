@@ -675,18 +675,17 @@ const AnnouncementsPage = () => {
 
             {/* Modal for create/edit */}
             {/** Stable close handler to avoid remount/focus effects during typing */}
-            <DraggableModal open={isModalOpen} onClose={closeModal} dragHandleOnly={false} verticalOnly={false} draggableOnMobile={true} center={true} maxWidthClass="max-w-2xl">
-              <div className="flex items-center justify-between px-4 py-3 bg-amber-800 text-white rounded-t-lg cursor-grab select-none" data-drag-handle role="button" aria-label="Poignée de déplacement">
-                <div className="flex items-center gap-3">
-                  <div className="flex flex-col items-start mr-2">
-                    <div className="w-14 h-1.5 bg-white/80 rounded-full shadow-sm mb-1" aria-hidden />
-                    <div className="text-xs text-white/90">Déplacer</div>
-                  </div>
-                  <h2 className="text-lg font-semibold">{editingId ? 'Modifier l\'Annonce' : 'Créer une Annonce'}</h2>
-                </div>
-                <button onClick={closeModal} className="text-white hover:opacity-90" aria-label="Fermer">✕</button>
-              </div>
-
+            <DraggableModal
+              open={isModalOpen}
+              onClose={closeModal}
+              dragHandleOnly={false}
+              verticalOnly={false}
+              draggableOnMobile={true}
+              center={true}
+              maxWidthClass="max-w-2xl"
+              title={editingId ? 'Modifier l\'Annonce' : 'Créer une Annonce'}
+              headerClassName="bg-amber-800"
+            >
               <div className="py-4 px-4 space-y-4 max-h-[calc(100vh-160px)] overflow-y-auto" aria-describedby="announcement-form-desc">
                 <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-4">
                   <div>

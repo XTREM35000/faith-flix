@@ -320,20 +320,14 @@ const AdminDirectoryEditor: React.FC = () => {
       </main>
 
       {/* Edit/Create Dialog - Draggable */}
-      <DraggableModal open={isDialogOpen} onClose={closeDialog} dragHandleOnly={true}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border" data-drag-handle>
-          <h2 className="text-lg font-semibold">
-            {editingId ? 'Éditer l\'élément' : 'Créer un nouvel élément'}
-          </h2>
-          <button
-            onClick={closeDialog}
-            className="text-muted-foreground hover:text-foreground"
-            aria-label="Close"
-          >
-            ✕
-          </button>
-        </div>
-
+      <DraggableModal
+        open={isDialogOpen}
+        onClose={closeDialog}
+        dragHandleOnly={true}
+        title={editingId ? 'Éditer l\'élément' : 'Créer un nouvel élément'}
+        headerClassName="bg-amber-800"
+        maxWidthClass="max-w-2xl"
+      >
         <div id="admin-directory-desc" className="sr-only">Dialog draggable pour créer ou éditer un élément de l'annuaire.</div>
 
         <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto px-6 py-4">

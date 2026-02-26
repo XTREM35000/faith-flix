@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/contexts/ToastContext';
+import UnifiedFormModal from '@/components/ui/unified-form-modal';
 import { X } from 'lucide-react';
 import type { TutorielVideo } from '@/pages/AdminTutorielsPage/types';
 
@@ -23,55 +24,6 @@ export default function EditTutorielModal({ isOpen, tutoriel, onClose, onUpdated
   const [youtubeUrl, setYoutubeUrl] = useState(tutoriel?.youtubeId || '');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Draggable modal state
-  const modalRef = React.useRef<HTMLDivElement | null>(null);
-  const draggingRef = React.useRef(false);
-  const offsetRef = React.useRef({ x: 0, y: 0 });
-  const [pos, setPos] = useState<{ x: number | null; y: number | null }>({ x: null, y: null });
-
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-    if (target.closest('button') || target.closest('input') || target.closest('textarea')) return;
-    
-    draggingRef.current = true;
-    const modal = modalRef.current;
-    if (!modal) return;
-
-    const rect = modal.getBoundingClientRect();
-    offsetRef.current = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    };
-  };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!draggingRef.current || !modalRef.current) return;
-
-    const x = e.clientX - offsetRef.current.x;
-    const y = e.clientY - offsetRef.current.y;
-
-    // Constrain to viewport
-    const maxX = window.innerWidth - 300;
-    const maxY = window.innerHeight - 200;
-    setPos({
-      x: Math.max(0, Math.min(x, maxX)),
-      y: Math.max(0, Math.min(y, maxY)),
-    });
-  };
-
-  const handleMouseUp = () => {
-    draggingRef.current = false;
-  };
-
-  React.useEffect(() => {
-    if (!isOpen) return;
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isOpen]);
 
   React.useEffect(() => {
     if (tutoriel) {
@@ -180,24 +132,9 @@ export default function EditTutorielModal({ isOpen, tutoriel, onClose, onUpdated
 
   if (!isOpen || !tutoriel) return null;
 
-  const modalStyle: React.CSSProperties = pos.x !== null && pos.y !== null ? { left: pos.x + 'px', top: pos.y + 'px', transform: 'none' } : { transform: 'translate(-50%, -50%)' };
-
   return (
-    <div className="fixed inset-0 z-60 bg-black/40 p-4 flex items-center justify-center">
-      <div 
-        ref={modalRef}
-        onMouseDown={handleMouseDown}
-        style={modalStyle}
-        className="w-full max-w-2xl bg-card border border-border rounded-lg shadow-lg fixed cursor-grab active:cursor-grabbing"
-      >
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <h3 className="text-lg font-semibold text-foreground">Éditer la vidéo</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="p-4 space-y-4">
+    <UnifiedFormModal open={isOpen} onClose={onClose} title="Éditer la vidéo">
+      <div className="p-4 space-y-4">
           <div>
             <label className="text-xs text-muted-foreground block mb-1">Titre</label>
             <input
@@ -238,7 +175,6 @@ export default function EditTutorielModal({ isOpen, tutoriel, onClose, onUpdated
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </UnifiedFormModal>
   );
 }

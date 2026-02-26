@@ -157,24 +157,9 @@ const HomilyModal: React.FC<Props> = ({ open, onClose, onSaved, homilyId = null 
         verticalOnly={false}
         center={true}
         maxWidthClass="max-w-2xl"
+        title={homilyId ? 'Éditer homélie' : 'Nouvelle homélie'}
       >
         <div className="w-full">
-          <div
-            data-drag-handle
-            className="flex items-center justify-between px-4 py-3 bg-amber-800 text-white rounded-t-lg cursor-grab select-none"
-            role="button"
-            aria-label="Poignée de déplacement"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex flex-col items-start mr-2">
-                <div className="w-14 h-1.5 bg-white/80 rounded-full shadow-sm mb-1" aria-hidden />
-                <div className="text-xs text-white/90">Déplacer</div>
-              </div>
-              <h2 className="text-lg font-semibold">{homilyId ? 'Éditer homélie' : 'Nouvelle homélie'}</h2>
-            </div>
-            <button onClick={onClose} className="text-white hover:opacity-90" aria-label="Fermer">✕</button>
-          </div>
-
           <div className="py-4 px-4 space-y-4 max-h-[calc(100vh-160px)] overflow-y-auto">
             <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>

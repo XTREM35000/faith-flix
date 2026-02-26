@@ -322,51 +322,33 @@ const Live: React.FC = () => {
         )}
       </div>
 
-      {/* Player Modal (Draggable) */}
+      {/* Player Modal (draggable + resizable) */}
       {liveStream && (
-        <DraggableModal 
-          open={isModalOpen} 
-          onClose={() => setIsModalOpen(false)} 
-          dragHandleOnly={false} 
-          verticalOnly={false} 
-          draggableOnMobile={true} 
+        <DraggableModal
+          open={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          dragHandleOnly={false}
+          verticalOnly={false}
+          draggableOnMobile={true}
           initialY={80}
+          title={
+            <span className="flex items-center gap-2">
+              {liveStream.stream_type === 'tv' ? (
+                <>
+                  <Tv className="w-5 h-5 text-blue-500" />
+                  Regarder en direct
+                </>
+              ) : (
+                <>
+                  <Radio className="w-5 h-5 text-green-500" />
+                  Écouter en direct
+                </>
+              )}
+            </span>
+          }
+          headerClassName="bg-amber-900"
+          maxWidthClass="max-w-2xl"
         >
-          {/* Header (drag handle) */}
-          <div 
-            className="flex items-center justify-between px-6 py-4 bg-amber-900 text-white rounded-t-lg cursor-grab select-none" 
-            data-drag-handle 
-            role="button" 
-            aria-label="Poignée de déplacement"
-          >
-            <div className="flex items-center gap-4">
-              <div className="flex flex-col items-start mr-2">
-                <div className="w-16 h-1.5 bg-white/80 rounded-full shadow-sm mb-1" aria-hidden />
-                <div className="text-xs text-white/90">Déplacer</div>
-              </div>
-              <h2 className="flex items-center gap-2 text-lg font-semibold">
-                {liveStream.stream_type === 'tv' ? (
-                  <>
-                    <Tv className="w-5 h-5 text-blue-500" />
-                    Regarder en direct
-                  </>
-                ) : (
-                  <>
-                    <Radio className="w-5 h-5 text-green-500" />
-                    Écouter en direct
-                  </>
-                )}
-              </h2>
-            </div>
-
-            <button
-              onClick={() => setIsModalOpen(false)}
-              aria-label="Fermer le lecteur"
-              className="text-white hover:opacity-90"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
 
           <div className="w-full p-6">
             <div className="flex flex-col md:flex-row gap-4">
