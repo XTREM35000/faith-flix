@@ -121,35 +121,19 @@ export function AuthProvider({ children }: React.PropsWithChildren): React.JSX.E
 
               if (missingFields.length > 0) {
                 try {
-                  const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-                  const publicAuthPages = ['/reset-password', '/email-confirmed', '/auth', '/forgot-password', '/connexion'];
-                  const isOnPublicAuthPage = publicAuthPages.some(page => currentPath === page || currentPath.startsWith(page));
+                  // Mark in sessionStorage so UI can read it later without forcing navigation here
+                  try {
+                    sessionStorage.setItem('ff_profile_incomplete', JSON.stringify(missingFields));
+                  } catch (e) { /* ignore storage errors */ }
 
-                  // Eviter de rediriger les admins hors de l'admin
-                  const isAdminPath = currentPath.startsWith('/admin') || role?.toLowerCase()?.includes('admin');
-
-                  if (!isAdminPath && !isOnPublicAuthPage && currentPath !== '/profil') {
-                    const target = '/profil?prompt=complete';
-                    try {
-                      window.dispatchEvent(new CustomEvent('ff:profile-incomplete', { detail: { missingFields } }));
-                    } catch (e) {
-                      // ignore
-                    }
-                    try {
-                      window.location.replace(target);
-                    } catch (e) {
-                      // fallback
-                      window.location.href = target;
-                    }
-                  } else {
-                    // Still emit event so UI can react (e.g., show modal)
-                    try {
-                      window.dispatchEvent(new CustomEvent('ff:profile-incomplete', { detail: { missingFields } }));
-                    } catch (e) { /* ignore */ }
-                  }
+                  // Emit event so any UI listeners (pages/modals) can react safely
+                  try {
+                    window.dispatchEvent(new CustomEvent('ff:profile-incomplete', { detail: { missingFields } }));
+                  } catch (e) { /* ignore */ }
                 } catch (e) {
                   console.error('[AuthProvider] profile completeness check failed:', e);
                 }
+              }
               }
             } catch (e) {
               console.error('[AuthProvider] failed to fetch full profile for completeness check:', e);
