@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Sparkles } from 'lucide-react';
 import DraggableModal from './DraggableModal';
 
 interface WelcomeModalProps {
@@ -8,82 +8,81 @@ interface WelcomeModalProps {
   onOpenAuthModal?: (mode: 'login' | 'register') => void;
 }
 
-/**
- * WelcomeModal Component
- * 
- * Affiche un modal de bienvenue au chargement initial de la page d'accueil.
- * Ce modal s'affiche automatiquement une seule fois par session.
- * 
- * Inspiré par AdvertisementPopup mais adapté pour un message de bienvenue simple.
- */
 export default function WelcomeModal({ onClose, onOpenAuthModal }: WelcomeModalProps) {
   const [isVisible, setIsVisible] = useState(true);
   const navigate = useNavigate();
 
   const handleClose = () => {
-    console.log('WelcomeModal: Fermeture du modal de bienvenue');
     setIsVisible(false);
     onClose();
   };
 
   const handleConnect = () => {
-    console.log('WelcomeModal: Connexion cliquée');
     setIsVisible(false);
     onClose();
-    // Navigate to auth page or open auth modal
+
     if (onOpenAuthModal) {
       onOpenAuthModal('login');
     } else {
-      // Use fragment to open auth modal without causing a full navigation
       window.location.hash = '#auth';
     }
   };
 
-  if (!isVisible) {
-    return null;
-  }
+  if (!isVisible) return null;
 
   return (
     <DraggableModal
       open={isVisible}
       onClose={handleClose}
-      draggableOnMobile={true}
-      dragHandleOnly={false}
-      verticalOnly={false}
-      center={true}
+      draggableOnMobile
+      center
       maxWidthClass="max-w-md"
-      title="Bienvenue sur votre site média en ligne"
+      title="Bienvenue"
     >
-      {/* Content */}
-      <div className="p-6">
-        <div className="text-center">
-          <h3 className="text-lg font-semibold text-white mb-3">
-            Heureux de vous compter parmi nous ! 🙏
-          </h3>
-          <p className="text-white/90 mb-4 leading-relaxed">
-            Découvrez nos dernières vidéos de messes, homélies, événements et bien plus encore.
-          </p>
-          <p className="text-sm text-white/80 mb-6">
-            Rejoignez notre communauté pour rester connecté à votre paroisse.
-          </p>
+      <div className="px-6 pt-6 pb-2 text-center">
+
+        {/* Icon */}
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+          <Sparkles className="h-6 w-6 text-primary" />
         </div>
+
+        {/* Title */}
+        <h3 className="text-xl font-semibold text-foreground mb-2">
+          Heureux de vous accueillir 🙏
+        </h3>
+
+        {/* Description */}
+        <p className="text-muted-foreground leading-relaxed mb-4">
+          Retrouvez les dernières vidéos de messes, homélies et événements
+          de votre paroisse.
+        </p>
+
+        <p className="text-sm text-muted-foreground mb-6">
+          Connectez-vous pour commenter, sauvegarder vos vidéos
+          et rester informé des nouvelles publications.
+        </p>
+
       </div>
 
-      {/* Action Buttons */}
-      <div className="px-6 py-4 bg-background/5 border-t border-border/20 flex gap-3">
+      {/* Actions */}
+      <div className="flex gap-3 px-6 py-4 border-t border-border bg-muted/30">
+
         <button
           onClick={handleConnect}
-          className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+          className="flex-1 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition"
         >
-          S'authentifier
+          Se connecter
         </button>
+
         <button
           onClick={handleClose}
-          className="flex-1 px-4 py-2 border border-border/30 text-white/90 font-semibold rounded-lg transition-colors"
+          className="flex-1 px-4 py-2.5 rounded-lg border border-border text-foreground font-semibold hover:bg-muted transition"
         >
           Continuer
         </button>
+
       </div>
+
     </DraggableModal>
   );
 }

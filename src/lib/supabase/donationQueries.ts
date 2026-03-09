@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { Donation, DonationCampaign } from '@/types/database';
+import type { Donation, DonationCampaign, DonationStatus } from '@/types/database';
 
 export async function fetchDonations(options?: { donorId?: string; limit?: number }) {
   let query = supabase.from('donations').select('*');
@@ -73,4 +73,17 @@ export async function createCampaign(campaign: {
 
 export async function fetchActiveCampaigns() {
   return fetchCampaigns({ isActive: true });
+}
+
+export async function updateDonationStatus(donationId: string, status: DonationStatus, transactionId?: string) {
+  const { data, error } = await supabase
+    .from('donations')
+    .update({
+      status,
+      ...(transactionId ? { payment_intent_id: transactionId, transaction_id: transactionId } : {}),
+    })
+    .eq('id', donationId);
+
+  if (error) throw error;
+  return data;
 }

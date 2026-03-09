@@ -31,18 +31,29 @@ const getIconComponent = (iconName?: string) => {
 const getMethodStyle = (code: string) => {
   switch (code) {
     case 'card':
+    case 'cinetpay':
       return {
         gradient: 'from-blue-600 via-blue-500 to-purple-600',
         icon: 'text-white',
-        badge: 'En conception',
-        inConstruction: true,
+        badge: code === 'cinetpay' ? 'CinetPay' : 'Carte bancaire',
+        inConstruction: code === 'card',
       };
+    case 'moov':
+    case 'mtn':
+    case 'orange':
     case 'mobile_money':
       return {
         gradient: 'from-orange-600 via-orange-500 to-red-500',
         icon: 'text-white',
-        badge: 'En conception',
-        inConstruction: true,
+        badge: 'Mobile Money',
+        inConstruction: false,
+      };
+    case 'wave':
+      return {
+        gradient: 'from-pink-500 via-pink-400 to-rose-500',
+        icon: 'text-white',
+        badge: 'Wave',
+        inConstruction: false,
       };
     case 'cash':
       return {

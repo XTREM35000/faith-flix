@@ -2,10 +2,12 @@
  * Page Donate Success - Confirmation de donation
  */
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import DonationSummary from '@/components/donations/DonationSummary';
 import { Button } from '@/components/ui/button';
+import { verifyCinetPayPayment } from '@/lib/payments/cinetpay';
+import { updateDonationStatus } from '@/lib/supabase/donationQueries';
 
 interface DonationRecord {
   id: string;
@@ -69,6 +71,25 @@ export default function DonationSuccess() {
 
     fetchData();
   }, [donationId, navigate]);
+
+  // Vérifier transaction si fournie en query (ex: redirection CinetPay)
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const transactionId = searchParams.get('transaction_id');
+    if (!transactionId) return;
+
+    (async () => {
+      try {
+        const result = await verifyCinetPayPayment(transactionId);
+        if (result?.status === 'success' && result.donationId) {
+          await updateDonationStatus(result.donationId, 'completed', transactionId);
+        }
+      } catch (err) {
+        console.error('Error verifying payment:', err);
+      }
+    })();
+  }, [searchParams]);
 
   const handleDownloadReceipt = () => {
     if (receipt?.pdf_url) {

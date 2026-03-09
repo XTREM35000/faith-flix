@@ -168,6 +168,8 @@ export interface Event {
   organizer?: Profile;
 }
 
+export type PaymentMethod = 'cinetpay' | 'moov' | 'mtn' | 'orange' | 'wave' | 'card' | 'cash' | 'mobile_money';
+
 export interface Donation {
   id: string;
   donor_id: string | null;
@@ -176,8 +178,9 @@ export interface Donation {
   amount: number;
   currency: string;
   campaign_id: string | null;
-  payment_method: string | null;
+  payment_method: PaymentMethod | null;
   payment_intent_id: string | null;
+  transaction_id?: string | null;
   status: DonationStatus;
   is_anonymous: boolean;
   is_recurring: boolean;
