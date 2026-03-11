@@ -38,9 +38,11 @@ export default function DonationSuccess() {
           }
         );
         const data = await res.json();
-        if (data.success) {
+        if (data.status === "paid") {
           setAmount(data.amount);
           setStatus("success");
+        } else if (data.status === "pending") {
+          setStatus("loading");
         } else {
           setStatus("error");
           setErrorMsg(data.message || "Erreur lors de la vérification du paiement.");

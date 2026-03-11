@@ -21,32 +21,34 @@ Deno.serve(async (req) => {
 
     const { sessionId } = await req.json()
 
-    const session = await stripe.checkout.sessions.retrieve(sessionId)
-
-    if (!session || session.payment_status !== "paid") {
-      throw new Error("Paiement non validé")
-    }
-
-    const donationId = session.metadata?.donation_id
-
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    )
+    );
 
-    await supabase
+    // Chercher le don via stripe_session_id
+    const { data: donation, error } = await supabase
       .from("donations")
-      .update({
-        status: "paid",
-        stripe_session_id: session.id
-      })
-      .eq("id", donationId)
+      .select("status, amount, currency")
+      .eq("stripe_session_id", sessionId)
+      .single();
+
+    if (!donation) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Don introuvable ou session invalide." }),
+        {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        }
+      );
+    }
 
     return new Response(
       JSON.stringify({
-        success: true,
-        amount: session.amount_total / 100,
-        currency: session.currency
+        success: donation.status === "paid",
+        status: donation.status,
+        amount: donation.amount,
+        currency: donation.currency
       }),
       {
         headers: {
@@ -54,7 +56,7 @@ Deno.serve(async (req) => {
           "Content-Type": "application/json"
         }
       }
-    )
+    );
 
   } catch (error) {
 

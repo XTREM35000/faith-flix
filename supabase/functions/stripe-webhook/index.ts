@@ -30,29 +30,44 @@ return new Response(`Webhook error: ${err.message}`,{status:400})
 
 }
 
-if(event.type==="checkout.session.completed"){
+if(event.type === "checkout.session.completed") {
+	const session = event.data.object;
+	const donationId = session.metadata.donation_id;
+	const paymentIntent = session.payment_intent;
+	const supabase = createClient(
+		Deno.env.get("SUPABASE_URL")!,
+		Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+	);
 
-const session = event.data.object
+	// Vérifier l'état actuel du don
+	const { data: donation, error } = await supabase
+		.from("donations")
+		.select("status")
+		.eq("id", donationId)
+		.single();
 
-const donationId = session.metadata.donation_id
+	// Si déjà payé, ignorer
+	if (donation && donation.status === "paid") {
+		return new Response("ok");
+	}
 
-const supabase = createClient(
- Deno.env.get("SUPABASE_URL")!,
- Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-)
+	// Mettre à jour le don
+	await supabase
+		.from("donations")
+		.update({
+			status: "paid",
+			stripe_payment_intent: paymentIntent,
+			paid_at: new Date().toISOString()
+		})
+		.eq("id", donationId);
 
-await supabase
-.from("donations")
-.update({
- payment_status:"paid"
-})
-.eq("id",donationId)
-
-await sendReceipt(
- session.customer_email,
- session.amount_total/100
-)
-
+	// Envoi du reçu (optionnel)
+	if (session.customer_email) {
+		await sendReceipt(
+			session.customer_email,
+			session.amount_total / 100
+		);
+	}
 }
 
 return new Response("ok")

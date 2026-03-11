@@ -14,12 +14,21 @@ export type Database = {
           id: string
           username: string | null
           full_name: string | null
+          display_name: string | null
           avatar_url: string | null
+          bio: string | null
+          phone: string | null
+          location: string | null
+          date_of_birth: string | null
+          is_active: boolean
+          notification_preferences: {
+            email: boolean;
+            push: boolean;
+            sms: boolean;
+          } | null
           role: string | null
           parish_role: string | null
           email: string | null
-          phone: string | null
-          bio: string | null
           join_date: string | null
           is_verified: boolean | null
           settings: Json | null

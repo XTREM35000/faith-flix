@@ -31,7 +31,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const cached = localStorage.getItem('ff_profile_cache');
         if (cached) {
           const parsed = JSON.parse(cached);
-          setProfile(parsed.data);
+          setProfile(parsed.data ? {
+            ...parsed.data,
+            display_name: parsed.data.display_name ?? parsed.data.full_name ?? '',
+            location: parsed.data.location ?? '',
+            date_of_birth: parsed.data.date_of_birth ?? '',
+            is_active: typeof parsed.data.is_active === 'boolean' ? parsed.data.is_active : true,
+            notification_preferences: parsed.data.notification_preferences ?? { email: true, push: false, sms: false },
+          } : null);
           setRole(parsed.data.role || null);
           setLoading(false);
         } else {
@@ -41,9 +48,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .select('*')
             .eq('id', session.user.id)
             .maybeSingle();
-          setProfile(data);
+          setProfile(data ? data : null);
           setRole(data?.role || null);
-          try { localStorage.setItem('ff_profile_cache', JSON.stringify({ data, cachedAt: Date.now() })); } catch {}
+          try { localStorage.setItem('ff_profile_cache', JSON.stringify({ data, cachedAt: Date.now() })); } catch { /* ignore */ }
           setLoading(false);
         }
       } else {
@@ -54,11 +61,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     loadSession();
     // Listen for auth changes
-    const { data: listener } = supabase.auth.onAuthStateChange(() => {
+    const { data } = supabase.auth.onAuthStateChange(() => {
       loadSession();
     });
     return () => {
-      listener?.unsubscribe();
+      data?.subscription?.unsubscribe();
     };
   }, []);
 
@@ -70,4 +77,3 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 // Déplacé dans useAuthContext.ts pour respecter react-refresh/only-export-components
-}
