@@ -45,6 +45,7 @@ import Prayers from './pages/Prayers';
 import Verse from './pages/Verse';
 import Directory from './pages/Directory';
 import Donate from './pages/Donate';
+import DonationSuccess from './pages/donation-success';
 import Campaigns from './pages/Campaigns';
 import DonationsHistory from './pages/DonationsHistory';
 import Receipts from './pages/Receipts';
@@ -201,6 +202,7 @@ const App = () => {
             <Route path="/verse" element={<Layout><Verse /></Layout>} />
             <Route path="/directory" element={<Layout><Directory /></Layout>} />
             <Route path="/donate" element={<Layout><Donate /></Layout>} />
+            <Route path="/donation-success" element={<Layout><DonationSuccess /></Layout>} />
             <Route
               path="/admin/donate"
               element={
