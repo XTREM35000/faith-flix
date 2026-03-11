@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import UnifiedFormModal from "@/components/ui/unified-form-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import EmailInputWithSuffix from "@/components/EmailInputWithSuffix";
 import { Label } from "@/components/ui/label";
 import { Loader } from "lucide-react";
 import { usePayment } from "@/hooks/usePayment";
@@ -33,29 +34,48 @@ export default function DonationModal({
   const { processPayment } = usePayment();
 
   const [form, setForm] = useState({
-    amount: "",
+    amount: "5000",
     payerName: "",
     payerEmail: "",
   });
+  const [emailValid, setEmailValid] = useState(true);
+
+  const getMinAmount = (currency: string) => {
+    switch (currency) {
+      case "XOF": return 5000;
+      case "EUR": return 8;
+      case "USD": return 8;
+      case "CAD": return 10;
+      case "GBP": return 7;
+      case "CNY": return 60;
+      default: return 5000;
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    const min = getMinAmount("XOF"); // à adapter si multidevise
+    const amt = Number(form.amount);
+    if (isNaN(amt) || amt < min) {
+      alert(`Le montant minimum est ${min} XOF`);
+      return;
+    }
+    if (!emailValid || !form.payerEmail) {
+      alert("Veuillez saisir un email valide.");
+      return;
+    }
     try {
       setLoading(true);
-
       const donation = await onSubmit({
-        amount: Number(form.amount),
+        amount: amt,
         currency: "XOF",
         payment_method: selectedPaymentMethod,
         payer_name: form.payerName,
         payer_email: form.payerEmail,
       });
-
       const payment = await processPayment({
         donationId: donation.id,
       });
-
       if (payment.paymentUrl) {
         window.location.href = payment.paymentUrl;
       }
@@ -75,10 +95,16 @@ export default function DonationModal({
           <Label>Montant</Label>
           <Input
             type="number"
+            min={getMinAmount("XOF")}
+            step="1"
+            pattern="[0-9]*"
+            inputMode="numeric"
             value={form.amount}
-            onChange={(e) =>
-              setForm({ ...form, amount: e.target.value })
-            }
+            onChange={(e) => {
+              // Empêche la saisie non numérique
+              const val = e.target.value.replace(/[^0-9]/g, "");
+              setForm({ ...form, amount: val });
+            }}
           />
         </div>
 
@@ -94,11 +120,10 @@ export default function DonationModal({
 
         <div>
           <Label>Email</Label>
-          <Input
-            value={form.payerEmail}
-            onChange={(e) =>
-              setForm({ ...form, payerEmail: e.target.value })
-            }
+          <EmailInputWithSuffix
+            email={form.payerEmail}
+            onEmailChange={(v) => setForm({ ...form, payerEmail: v })}
+            onValidationChange={setEmailValid}
           />
         </div>
 

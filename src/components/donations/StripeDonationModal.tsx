@@ -7,15 +7,39 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import UnifiedFormModal from "@/components/ui/unified-form-modal";
 import { PaymentLogosCardsOnly } from "@/components/donations/PaymentLogosSection";
+import EmailInputWithSuffix from "@/components/EmailInputWithSuffix";
 
 export default function StripeDonationModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-	const [amount, setAmount] = useState("10");
+	const [amount, setAmount] = useState("5000");
 	const [email, setEmail] = useState("");
 	const [phone, setPhone] = useState("");
 	const [currency, setCurrency] = useState("XOF");
+	const [emailValid, setEmailValid] = useState(true);
+
+	const getMinAmount = (currency: string) => {
+		switch (currency) {
+			case "XOF": return 5000;
+			case "EUR": return 8; // ~5000 XOF
+			case "USD": return 8;
+			case "CAD": return 10;
+			case "GBP": return 7;
+			case "CNY": return 60;
+			default: return 5000;
+		}
+	};
 
 	const submit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
+		const min = getMinAmount(currency);
+		const amt = Number(amount);
+		if (isNaN(amt) || amt < min) {
+			alert(`Le montant minimum est ${min} ${currency}`);
+			return;
+		}
+		if (!emailValid || !email) {
+			alert("Veuillez saisir un email valide.");
+			return;
+		}
 		const { data: { user } } = await supabase.auth.getUser();
 		if (!user) {
 			alert("Veuillez vous connecter");
@@ -25,7 +49,7 @@ export default function StripeDonationModal({ open, onClose }: { open: boolean; 
 			.from("donations")
 			.insert({
 				user_id: user.id,
-				amount: Number(amount),
+				amount: amt,
 				currency,
 				payer_email: email,
 				payer_phone: phone,
@@ -56,14 +80,22 @@ export default function StripeDonationModal({ open, onClose }: { open: boolean; 
 				<Input
 					placeholder="Montant"
 					value={amount}
-					onChange={(e) => setAmount(e.target.value)}
+					type="number"
+					min={getMinAmount(currency)}
+					step="1"
+					pattern="[0-9]*"
+					inputMode="numeric"
+					onChange={(e) => {
+						// Empêche la saisie non numérique
+						const val = e.target.value.replace(/[^0-9]/g, "");
+						setAmount(val);
+					}}
 				/>
 				<CurrencySelect value={currency} onChange={setCurrency} />
-				<Input
-					type="email"
-					placeholder="Email"
-					value={email}
-					onChange={(e) => setEmail(e.target.value)}
+				<EmailInputWithSuffix
+					email={email}
+					onEmailChange={setEmail}
+					onValidationChange={setEmailValid}
 				/>
 				<PhoneInput value={phone} onChange={setPhone} />
 				<Button type="submit" className="w-full bg-green-600">
