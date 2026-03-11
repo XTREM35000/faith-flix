@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { useAuthContext } from '@/contexts/AuthContext';
 import { supabase } from "@/integrations/supabase/client";import { ensureProfileExists } from '@/utils/ensureProfileExists';import type { User } from "@supabase/supabase-js";
 
 type AuthContextValue = {
@@ -310,8 +311,6 @@ export function AuthProvider({ children }: React.PropsWithChildren): React.JSX.E
   );
 }
 
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
+  // Nouvelle version : délègue à AuthContext global
+  return useAuthContext();
 }

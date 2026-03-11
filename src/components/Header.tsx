@@ -11,7 +11,7 @@ import ThemeToggle from "./ThemeToggle";
 import HeaderSkeleton from "./HeaderSkeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { useUser } from "@/hooks/useUser";
 import { useHeaderConfig } from "@/hooks/useHeaderConfig";
 import useRoleCheck from '@/hooks/useRoleCheck';
@@ -36,7 +36,7 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
   const location = useLocation();
   const authMode = new URLSearchParams(location.search).get("mode") === "register" ? "register" : "login";
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, signOut } = useAuthContext();
   const { profile } = useUser();
   const { isAdmin } = useRoleCheck();
   const { data: headerConfig, isLoading: headerLoading } = useHeaderConfig();

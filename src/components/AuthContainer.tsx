@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthContext } from '@/contexts/AuthContext';
 import LoginForm from '@/components/LoginForm';
 import RegisterForm from '@/components/RegisterForm';
 import ForgotPasswordForm from '@/components/ForgotPasswordForm';
@@ -13,7 +13,7 @@ interface AuthContainerProps {
 }
 
 const AuthContainer: React.FC<AuthContainerProps> = ({ initialMode = 'login', onAuthSuccess }) => {
-  const { user, loading } = useAuth();
+  const { user, loading } = useAuthContext();
   const [activeTab, setActiveTab] = React.useState<'login' | 'register' | 'forgot-password'>(initialMode);
 
   if (loading) {
