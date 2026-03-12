@@ -1,6 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type DonationStatus = "loading" | "success" | "error";
 
@@ -8,6 +26,9 @@ export default function DonationSuccess() {
   const [status, setStatus] = useState<DonationStatus>("loading");
   const [amount, setAmount] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Empêche toute navigation automatique pendant l'affichage du succès/erreur
@@ -61,20 +82,24 @@ export default function DonationSuccess() {
         if (isCompleted) {
           setAmount(data.amount ?? null);
           setStatus("success");
+          setShowSuccessDialog(true);
         } else if (isPending) {
           setStatus("loading");
           pollingRef.current = setTimeout(fetchDonation, 3000);
         } else if (isFailed) {
           setStatus("error");
           setErrorMsg("Paiement non effectué.");
+          setShowErrorDialog(true);
         } else {
           setStatus("error");
           setErrorMsg(`Statut de paiement inconnu: ${data.payment_status}`);
+          setShowErrorDialog(true);
         }
       } catch (err) {
         if (cancelled) return;
         setStatus("error");
         setErrorMsg("Erreur lors de la vérification du paiement.");
+        setShowErrorDialog(true);
       }
     };
 
@@ -84,6 +109,14 @@ export default function DonationSuccess() {
       if (pollingRef.current) clearTimeout(pollingRef.current);
     };
   }, []);
+
+  const handleExit = () => {
+    setShowExitConfirm(true);
+  };
+
+  const confirmExit = () => {
+    window.location.href = "/donate";
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-emerald-50 to-blue-50 p-4">
@@ -109,102 +142,135 @@ export default function DonationSuccess() {
           </div>
         )}
 
-        {/* État SUCCÈS */}
-        {status === "success" && (
-          <div className="flex flex-col items-center space-y-6 animate-fadeIn">
-            <div className="relative">
-              <div className="w-28 h-28 bg-green-100 rounded-full flex items-center justify-center animate-bounce">
-                <span className="text-5xl animate-pulse">🎉</span>
-              </div>
-              <div className="absolute -top-2 -right-2 text-4xl animate-pulse">
-                🙏
-              </div>
-            </div>
-            
-            <h1 className="text-3xl font-bold text-center bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-              Merci pour votre don !
-            </h1>
-            
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border border-green-200 w-full text-center">
-              <p className="text-lg text-gray-700 mb-2">Votre paiement de</p>
-              <p className="text-4xl font-bold text-green-700 mb-2">
-                {amount?.toLocaleString()} FCFA
-              </p>
-              <p className="text-green-600 font-medium">a été confirmé avec succès</p>
-            </div>
-            
-            <Button 
-              asChild 
-              className="mt-4 w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-6 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-            >
-              <a href="/donate" className="flex items-center justify-center gap-2">
-                <span>💝</span> Faire un autre don
-              </a>
-            </Button>
-          </div>
-        )}
+        {/* Dialog de SUCCÈS */}
+        <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold text-center text-green-600 flex items-center justify-center gap-2">
+                <span className="text-4xl">🎉</span>
+                Don confirmé !
+              </DialogTitle>
+              <DialogDescription className="text-center pt-4">
+                <div className="bg-green-50 p-6 rounded-lg">
+                  <p className="text-lg text-gray-700 mb-2">Votre don de</p>
+                  <p className="text-3xl font-bold text-green-700 mb-2">
+                    {amount?.toLocaleString()} FCFA
+                  </p>
+                  <p className="text-green-600">a été traité avec succès</p>
+                </div>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="sm:justify-center gap-2">
+              <Button
+                onClick={() => setShowSuccessDialog(false)}
+                variant="outline"
+                className="border-2 border-green-200 hover:border-green-300"
+              >
+                Voir le détail
+              </Button>
+              <Button
+                onClick={confirmExit}
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+              >
+                Retour aux dons
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-        {/* État ERREUR */}
-        {status === "error" && (
-          <div className="flex flex-col items-center space-y-6 animate-fadeIn">
-            <div className="relative">
-              <div className="w-28 h-28 bg-red-100 rounded-full flex items-center justify-center">
-                <span className="text-5xl animate-pulse">😔</span>
-              </div>
-              <div className="absolute -top-2 -right-2 text-4xl">
-                ❌
-              </div>
-            </div>
-            
-            <h1 className="text-3xl font-bold text-center bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">
-              Oups ! Erreur de paiement
-            </h1>
-            
-            <div className="bg-gradient-to-r from-red-50 to-orange-50 p-6 rounded-xl border border-red-200 w-full">
-              <p className="text-lg text-gray-700 text-center">
-                {errorMsg || "Une erreur est survenue lors de la vérification."}
-              </p>
-              <div className="mt-4 p-4 bg-white/50 rounded-lg">
-                <p className="text-sm text-gray-600">
-                  💡 Conseil : Vérifiez votre connexion et réessayez. 
-                  Si le problème persiste, contactez notre support.
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex flex-col w-full gap-3">
-              <Button 
-                asChild 
-                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-6 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-              >
-                <a href="/donate" className="flex items-center justify-center gap-2">
-                  <span>🔄</span> Réessayer
-                </a>
-              </Button>
-              
-              <Button 
-                variant="outline" 
+        {/* Dialog d'ERREUR */}
+        <Dialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold text-center text-red-600 flex items-center justify-center gap-2">
+                <span className="text-4xl">😔</span>
+                Paiement non abouti
+              </DialogTitle>
+              <DialogDescription className="text-center pt-4">
+                <div className="bg-red-50 p-6 rounded-lg">
+                  <p className="text-gray-700 mb-4">
+                    {errorMsg || "Une erreur est survenue lors du traitement de votre don."}
+                  </p>
+                  <div className="bg-white/50 p-4 rounded-lg text-sm text-gray-600">
+                    <p>💡 Suggestions :</p>
+                    <ul className="list-disc list-inside mt-2">
+                      <li>Vérifiez votre connexion internet</li>
+                      <li>Assurez-vous que votre carte est valide</li>
+                      <li>Contactez votre banque si le problème persiste</li>
+                    </ul>
+                  </div>
+                </div>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="sm:justify-center gap-2 flex-col sm:flex-row">
+              <Button
                 onClick={() => window.location.reload()}
-                className="w-full border-2 border-gray-300 hover:border-gray-400 font-medium py-4 rounded-xl transition-all duration-300 hover:scale-105"
+                variant="outline"
+                className="border-2 border-red-200 hover:border-red-300"
               >
-                Rafraîchir la page
+                <span className="mr-2">🔄</span>
+                Rafraîchir
               </Button>
-            </div>
-          </div>
+              <Button
+                onClick={confirmExit}
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+              >
+                <span className="mr-2">💝</span>
+                Nouveau don
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog de CONFIRMATION DE SORTIE */}
+        <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-xl flex items-center gap-2">
+                <span className="text-2xl">🔔</span>
+                Quitter la page ?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-4 pt-4">
+                <p>
+                  Êtes-vous sûr de vouloir quitter cette page ?
+                </p>
+                <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+                  <p className="text-sm text-amber-800 flex items-start gap-2">
+                    <span className="text-lg">💡</span>
+                    <span>
+                      <strong>Information importante :</strong><br />
+                      Vous pourrez toujours vérifier le statut de votre don dans votre historique ou par email.
+                    </span>
+                  </p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-2 border-gray-200">
+                Continuer sur cette page
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmExit}
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+              >
+                Quitter
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Bouton de sortie (optionnel) */}
+        {status !== "loading" && (
+          <Button
+            variant="ghost"
+            onClick={handleExit}
+            className="mt-6 text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            <span className="mr-2">←</span>
+            Retour à l'accueil
+          </Button>
         )}
       </div>
     </div>
   );
 }
-
-// Ajoute ces animations dans ton fichier CSS global
-const styles = `
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  
-  .animate-fadeIn {
-    animation: fadeIn 0.5s ease-out;
-  }
-`;
