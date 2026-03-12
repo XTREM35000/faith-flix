@@ -32,21 +32,25 @@ export default function DonationSuccess() {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isNavigatingRef = useRef(false);
 
-  // Empêche toute navigation automatique pendant l'affichage du succès/erreur
+  // ✅ CORRECTION : Bloque seulement la fermeture/refresh du navigateur
   useEffect(() => {
-    const blockNavigation = (e: Event) => {
+    const blockBrowserClose = (e: BeforeUnloadEvent) => {
       e.preventDefault();
-      (e as unknown as { returnValue?: boolean }).returnValue = false;
-      return false;
+      e.returnValue = ""; // Standard pour les navigateurs
+      return "";
     };
-    window.addEventListener('beforeunload', blockNavigation);
-    window.addEventListener('popstate', blockNavigation);
+
+    window.addEventListener('beforeunload', blockBrowserClose);
+    
     return () => {
-      window.removeEventListener('beforeunload', blockNavigation);
-      window.removeEventListener('popstate', blockNavigation);
+      window.removeEventListener('beforeunload', blockBrowserClose);
     };
   }, []);
+
+  // ✅ On laisse la navigation interne fonctionner normalement
+  // On supprime le blocage de popstate qui empêche la navigation React
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -116,14 +120,17 @@ export default function DonationSuccess() {
     setShowExitConfirm(true);
   };
 
-  // ✅ Fonction de navigation vers /donate avec logs
   const goToDonatePage = () => {
+    if (isNavigatingRef.current) return; // Éviter les doubles clics
+    
     console.log("🟢 Navigation vers /donate");
+    isNavigatingRef.current = true;
+    
     setShowSuccessDialog(false);
     setShowErrorDialog(false);
     setShowExitConfirm(false);
     
-    // Utiliser setTimeout pour s'assurer que les dialogues sont fermés avant navigation
+    // Petit délai pour fermer les modales
     setTimeout(() => {
       console.log("🟢 Exécution de navigate('/donate')");
       navigate("/donate");
@@ -135,7 +142,11 @@ export default function DonationSuccess() {
   };
 
   const handleSeeDetails = () => {
+    if (isNavigatingRef.current) return;
+    
     console.log("🟢 Navigation vers historique");
+    isNavigatingRef.current = true;
+    
     setShowSuccessDialog(false);
     navigate("/donations/history");
   };
