@@ -45,8 +45,7 @@ export const MENU_GROUPS = [
     items: [
       { label: 'Faire un don', href: '/donate', icon: CreditCard, badge: 'New' },
       { label: 'Campagnes', href: '/campaigns', icon: BarChart3 },
-      { label: 'Historique', href: '/donations', icon: CreditCard },
-      { label: 'Reçus', href: '/receipts', icon: CreditCard },
+      { label: 'Historique', href: '/receipts', icon: CreditCard },
     ],
   },
   {
