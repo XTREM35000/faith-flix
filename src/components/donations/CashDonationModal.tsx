@@ -1,33 +1,75 @@
+import { useState } from "react"
 import UnifiedFormModal from "@/components/ui/unified-form-modal"
+import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { useCreateDonation } from "@/hooks/useCreateDonation"
 
-export default function CashDonationModal({open,onClose}:{open:boolean,onClose:()=>void}){
+// ✅ Props typées
+interface CashDonationModalProps {
+  open: boolean;
+  onClose: () => void;
+}
 
-return(
+export default function CashDonationModal({ open, onClose }: CashDonationModalProps) {
+  const { createDonation } = useCreateDonation()
+  const [amount, setAmount] = useState("")
+  const [name, setName] = useState("")
 
-<UnifiedFormModal open={open} onClose={onClose} title="Paiement au guichet">
+  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    
+    const donation = await createDonation({
+      amount: Number(amount),
+      currency: "XOF",
+      payment_method: "cash",
+      payer_name: name || "Donateur anonyme",
+      payer_email: "cash@paroisse.ci",
+      payer_phone: ""
+    })
 
-<div className="text-center space-y-4">
+    if (donation) {
+      alert("Votre intention de don a été enregistrée. Veuillez vous présenter au guichet de la paroisse.")
+      onClose()
+    }
+  }
 
-<div className="flex justify-center mb-4">
-<img src="/svg/espece.png" className="h-16 w-auto"/>
-</div>
+  return (
+    <UnifiedFormModal 
+      open={open} 
+      onClose={onClose} 
+      title="Don en espèces"
+      headerClassName="bg-amber-800"
+    >
+      <form onSubmit={submit} className="space-y-4">
+        <div>
+          <Label>Montant (FCFA)</Label>
+          <Input 
+            type="number" 
+            value={amount} 
+            onChange={e => setAmount(e.target.value)} 
+            placeholder="5000"
+            required
+          />
+        </div>
 
-<p className="text-lg">
-Vous pouvez faire votre don directement au guichet de la paroisse.
-</p>
+        <div>
+          <Label>Votre nom (optionnel)</Label>
+          <Input 
+            value={name} 
+            onChange={e => setName(e.target.value)} 
+            placeholder="Pour personnaliser votre don"
+          />
+        </div>
 
-<p className="text-sm text-gray-500">
-Un reçu officiel vous sera remis.
-</p>
+        <Button className="w-full bg-amber-600 hover:bg-amber-700">
+          Confirmer l'intention de don
+        </Button>
 
-<Button onClick={onClose}>
-Fermer
-</Button>
-
-</div>
-
-</UnifiedFormModal>
-
-)
+        <p className="text-sm text-gray-500 text-center mt-2">
+          Vous recevrez un reçu après paiement au guichet
+        </p>
+      </form>
+    </UnifiedFormModal>
+  )
 }

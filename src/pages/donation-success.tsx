@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -24,7 +23,6 @@ import {
 type DonationStatus = "loading" | "success" | "error";
 
 export default function DonationSuccess() {
-  const navigate = useNavigate();
   const [status, setStatus] = useState<DonationStatus>("loading");
   const [amount, setAmount] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
@@ -32,13 +30,12 @@ export default function DonationSuccess() {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isNavigatingRef = useRef(false);
 
-  // ✅ CORRECTION : Bloque seulement la fermeture/refresh du navigateur
+  // ✅ Bloque seulement la fermeture accidentelle du navigateur
   useEffect(() => {
     const blockBrowserClose = (e: BeforeUnloadEvent) => {
       e.preventDefault();
-      e.returnValue = ""; // Standard pour les navigateurs
+      e.returnValue = "";
       return "";
     };
 
@@ -48,9 +45,6 @@ export default function DonationSuccess() {
       window.removeEventListener('beforeunload', blockBrowserClose);
     };
   }, []);
-
-  // ✅ On laisse la navigation interne fonctionner normalement
-  // On supprime le blocage de popstate qui empêche la navigation React
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -65,6 +59,7 @@ export default function DonationSuccess() {
 
     const fetchDonation = async () => {
       try {
+        // ✅ IGNORER L'ERREUR DE TYPAGE SUR CETTE LIGNE
         // @ts-expect-error - Problème de typage récursif avec Supabase
         const { data, error } = await supabase
           .from("donations")
@@ -120,20 +115,16 @@ export default function DonationSuccess() {
     setShowExitConfirm(true);
   };
 
+  // ✅ Navigation avec window.location.href (fiable après redirection Stripe)
   const goToDonatePage = () => {
-    if (isNavigatingRef.current) return; // Éviter les doubles clics
-    
-    console.log("🟢 Navigation vers /donate");
-    isNavigatingRef.current = true;
+    console.log("🟢 Redirection vers /donate");
     
     setShowSuccessDialog(false);
     setShowErrorDialog(false);
     setShowExitConfirm(false);
     
-    // Petit délai pour fermer les modales
     setTimeout(() => {
-      console.log("🟢 Exécution de navigate('/donate')");
-      navigate("/donate");
+      window.location.href = "/donate";
     }, 100);
   };
 
@@ -142,13 +133,9 @@ export default function DonationSuccess() {
   };
 
   const handleSeeDetails = () => {
-    if (isNavigatingRef.current) return;
-    
-    console.log("🟢 Navigation vers historique");
-    isNavigatingRef.current = true;
-    
+    console.log("🟢 Redirection vers historique");
     setShowSuccessDialog(false);
-    navigate("/donations/history");
+    window.location.href = "/donations/history";
   };
 
   return (
