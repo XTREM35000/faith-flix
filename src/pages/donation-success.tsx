@@ -54,16 +54,18 @@ export default function DonationSuccess() {
           return;
         }
 
-        // Typer manuellement les données
-        const donationData = data as { payment_status: string; amount: number | null };
-        
-        if (donationData.payment_status === "paid") {
-          setAmount(donationData.amount ?? null);
+        // Vérifie le statut de paiement
+        const isPaid = data?.payment_status === "paid";
+        const isPending = data?.payment_status === "pending";
+        const isFailed = data?.payment_status === "failed";
+
+        if (isPaid) {
+          setAmount(data.amount ?? null);
           setStatus("success");
-        } else if (donationData.payment_status === "pending") {
+        } else if (isPending) {
           setStatus("loading");
           pollingRef.current = setTimeout(fetchDonation, 3000);
-        } else if (donationData.payment_status === "failed") {
+        } else if (isFailed) {
           setStatus("error");
           setErrorMsg("Paiement non effectué.");
         } else {
