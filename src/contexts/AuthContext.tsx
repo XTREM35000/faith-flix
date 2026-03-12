@@ -1,6 +1,8 @@
+// Réexport du hook useAuthContext pour compatibilité avec tous les imports existants
+export { useAuthContext } from './useAuthContext';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { Session, User } from '@supabase/supabase-js';
+
 import type { Profile } from '@/types/database';
 
 export interface AuthState {
@@ -9,9 +11,11 @@ export interface AuthState {
   profile: Profile | null;
   role: string | null;
   loading: boolean;
+  signOut: () => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthState | undefined>(undefined);
+export const AuthContext = createContext<AuthState | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
@@ -69,8 +73,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  // Fonction signOut à exposer dans le contexte
+  const signOut = async () => {
+    setLoading(true);
+    try {
+      await supabase.auth.signOut();
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      setRole(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fonction login à exposer dans le contexte
+  const login = async (email: string, password: string) => {
+    setLoading(true);
+    try {
+      const res = await supabase.auth.signInWithPassword({ email, password });
+      if (res.error) throw res.error;
+      setSession(res.data.session ?? null);
+      setUser(res.data.user ?? null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ session, user, profile, role, loading }}>
+    <AuthContext.Provider value={{ session, user, profile, role, loading, signOut, login }}>
       {children}
     </AuthContext.Provider>
   );

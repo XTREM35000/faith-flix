@@ -1,61 +1,86 @@
-
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+
+type DonationStatus = "loading" | "success" | "error";
 
 export default function DonationSuccess() {
-  const navigate = useNavigate();
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+  const [status, setStatus] = useState<DonationStatus>("loading");
   const [amount, setAmount] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Empêche toute navigation automatique pendant l'affichage du succès/erreur
   useEffect(() => {
-    // Empêche toute navigation automatique pendant l'affichage du succès/erreur
     const blockNavigation = (e: Event) => {
       e.preventDefault();
-      // Utilise une variable pour le cast returnValue
       (e as unknown as { returnValue?: boolean }).returnValue = false;
       return false;
     };
     window.addEventListener('beforeunload', blockNavigation);
     window.addEventListener('popstate', blockNavigation);
-    // Vérification du paiement
-    const verify = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const sessionId = params.get("session_id");
-      if (!sessionId) {
-        setStatus("error");
-        setErrorMsg("Session de paiement manquante.");
-        return;
-      }
-      try {
-        const res = await fetch(
-          "https://cghwsbkxcjsutqwzdbwe.supabase.co/functions/v1/verify-payment",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ sessionId })
-          }
-        );
-        const data = await res.json();
-        if (data.status === "paid") {
-          setAmount(data.amount);
-          setStatus("success");
-        } else if (data.status === "pending") {
-          setStatus("loading");
-        } else {
-          setStatus("error");
-          setErrorMsg(data.message || "Erreur lors de la vérification du paiement.");
-        }
-      } catch (e) {
-        setStatus("error");
-        setErrorMsg("Erreur réseau ou serveur.");
-      }
-    };
-    verify();
     return () => {
       window.removeEventListener('beforeunload', blockNavigation);
       window.removeEventListener('popstate', blockNavigation);
+    };
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    if (!sessionId) {
+      setStatus("error");
+      setErrorMsg("Session de paiement manquante.");
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchDonation = async () => {
+      try {
+        // Solution : Désactiver TypeScript pour cette ligne spécifique
+        // @ts-expect-error - Problème de typage récursif avec Supabase
+        const { data, error } = await supabase
+          .from("donations")
+          .select("payment_status, amount")
+          .eq("stripe_session_id", sessionId)
+          .maybeSingle();
+
+        if (cancelled) return;
+        
+        if (error || !data) {
+          setStatus("error");
+          setErrorMsg("Aucune information de don trouvée.");
+          return;
+        }
+
+        // Typer manuellement les données
+        const donationData = data as { payment_status: string; amount: number | null };
+        
+        if (donationData.payment_status === "paid") {
+          setAmount(donationData.amount ?? null);
+          setStatus("success");
+        } else if (donationData.payment_status === "pending") {
+          setStatus("loading");
+          pollingRef.current = setTimeout(fetchDonation, 3000);
+        } else if (donationData.payment_status === "failed") {
+          setStatus("error");
+          setErrorMsg("Paiement non effectué.");
+        } else {
+          setStatus("error");
+          setErrorMsg("Statut de paiement inconnu.");
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setStatus("error");
+        setErrorMsg("Erreur lors de la vérification du paiement.");
+      }
+    };
+
+    fetchDonation();
+    return () => {
+      cancelled = true;
+      if (pollingRef.current) clearTimeout(pollingRef.current);
     };
   }, []);
 

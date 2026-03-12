@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import CurrencySelect from "@/components/form/CurrencySelect";
@@ -27,17 +26,18 @@ export default function StripeDonationModal({ open, onClose }: { open: boolean; 
 	const [currency, setCurrency] = useState("XOF");
 	const [emailValid, setEmailValid] = useState(true);
 
-	const getMinAmount = (currency: string) => {
-		switch (currency) {
-			case "XOF": return 5000;
-			case "EUR": return 8; // ~5000 XOF
-			case "USD": return 8;
-			case "CAD": return 10;
-			case "GBP": return 7;
-			case "CNY": return 60;
-			default: return 5000;
-		}
-	};
+	// ⚠️ DEUXIÈME DÉCLARATION SUPPRIMÉE ICI ⚠️
+	// const getMinAmount = (currency: string) => {
+	//   switch (currency) {
+	//     case "XOF": return 5000;
+	//     case "EUR": return 8; // ~5000 XOF
+	//     case "USD": return 8;
+	//     case "CAD": return 10;
+	//     case "GBP": return 7;
+	//     case "CNY": return 60;
+	//     default: return 5000;
+	//   }
+	// };
 
 	const submit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
