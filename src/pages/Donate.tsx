@@ -9,21 +9,10 @@ import { Button } from "@/components/ui/button"
 import HeroBanner from "@/components/HeroBanner"
 import usePageHero from "@/hooks/usePageHero"
 
-// Imports normaux des modals
+// Imports des modals de paiement
 import StripeDonationModal from "@/components/donations/StripeDonationModal"
 import MobileMoneyDonationModal from "@/components/donations/MobileMoneyDonationModal"
 import CashDonationModal from "@/components/donations/CashDonationModal"
-
-// Définition des types pour les props des modals
-interface ModalProps {
-  open: boolean
-  onClose: () => void
-}
-
-// On s'assure que les composants importés correspondent au type attendu
-type StripeModalComponent = React.ComponentType<ModalProps>
-type MobileMoneyModalComponent = React.ComponentType<ModalProps>
-type CashModalComponent = React.ComponentType<ModalProps>
 
 export default function Donate() {
   const [method, setMethod] = useState<string | null>(null)
@@ -63,19 +52,15 @@ export default function Donate() {
   ]
 
   const handleMethodSelect = (selectedMethod: string) => {
+    console.log("Méthode sélectionnée:", selectedMethod)
     setMethod(selectedMethod)
-    setOpen(false)
+    setOpen(true) // ✅ Ouvre le modal immédiatement
   }
 
-  const handleContinue = () => {
-    if (method) {
-      setOpen(true)
-    }
-  }
-
-  const handleModalClose = () => {
+  const handleCloseModal = () => {
+    console.log("Fermeture du modal")
     setOpen(false)
-    setMethod(null)
+    setMethod(null) // Réinitialise la méthode après fermeture
   }
 
   return (
@@ -98,8 +83,7 @@ export default function Donate() {
             Choisissez votre méthode de paiement
           </h2>
           <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
-            Sélectionnez votre mode de paiement préféré pour continuer. 
-            Toutes les transactions sont sécurisées.
+            Cliquez sur une méthode pour commencer votre don
           </p>
 
           <PaymentMethodSelector
@@ -108,24 +92,6 @@ export default function Donate() {
             methods={paymentMethods}
           />
         </motion.section>
-
-        {method && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-center mb-16"
-          >
-            <Button
-              onClick={handleContinue}
-              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-8 py-4 text-lg font-bold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-              size="lg"
-            >
-              <Heart className="h-6 w-6 mr-3" />
-              Continuer vers le don
-            </Button>
-          </motion.div>
-        )}
 
         <motion.div
           initial={{ opacity: 0 }}
@@ -139,25 +105,25 @@ export default function Donate() {
           </p>
         </motion.div>
 
-        {/* Modals de paiement - rendu conditionnel avec les props */}
+        {/* Modals de paiement - rendu conditionnel */}
         {method === "stripe" && (
           <StripeDonationModal
             open={open}
-            onClose={handleModalClose}
+            onClose={handleCloseModal}
           />
         )}
 
         {method === "cinetpay" && (
           <MobileMoneyDonationModal
             open={open}
-            onClose={handleModalClose}
+            onClose={handleCloseModal}
           />
         )}
 
         {method === "cash" && (
           <CashDonationModal
             open={open}
-            onClose={handleModalClose}
+            onClose={handleCloseModal}
           />
         )}
       </div>
