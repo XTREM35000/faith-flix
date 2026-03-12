@@ -75,19 +75,19 @@ const queryClient = new QueryClient();
 const App = () => {
   // Debugging: track visibility changes to help diagnose unexpected reloads when tab regains focus
   // Leave lightweight logging in place for now; can be removed once root cause is identified
-  React.useEffect(() => {
-    const onVisibilityChange = () => {
-      const state = document.visibilityState;
-      const ts = new Date().toISOString();
-      console.debug('visibilitychange', { state, ts, href: window.location.href });
-      if (state === 'visible') {
-        // capture a small stack to help find who triggered reloads
-        console.debug('visibilitychange stack:', new Error('visibilitychange stack').stack);
-      }
-    };
-    document.addEventListener('visibilitychange', onVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
-  }, []);
+  // React.useEffect(() => {
+  //   const onVisibilityChange = () => {
+  //     const state = document.visibilityState;
+  //     const ts = new Date().toISOString();
+  //     console.debug('visibilitychange', { state, ts, href: window.location.href });
+  //     if (state === 'visible') {
+  //       // capture a small stack to help find who triggered reloads
+  //       console.debug('visibilitychange stack:', new Error('visibilitychange stack').stack);
+  //     }
+  //   };
+  //   document.addEventListener('visibilitychange', onVisibilityChange);
+  //   return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  // }, []);
 
   // Blocage de toute redirection automatique sur /donation-success
   React.useEffect(() => {
