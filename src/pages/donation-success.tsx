@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -23,6 +24,7 @@ import {
 type DonationStatus = "loading" | "success" | "error";
 
 export default function DonationSuccess() {
+  const navigate = useNavigate();
   const [status, setStatus] = useState<DonationStatus>("loading");
   const [amount, setAmount] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
@@ -115,7 +117,16 @@ export default function DonationSuccess() {
   };
 
   const confirmExit = () => {
-    window.location.href = "/donate";
+    navigate("/donate");
+  };
+
+  const handleRefresh = () => {
+    window.location.reload(); // Gardé car c'est un refresh, pas une navigation
+  };
+
+  const handleSeeDetails = () => {
+    setShowSuccessDialog(false);
+    navigate("/donations/history");
   };
 
   return (
@@ -162,11 +173,11 @@ export default function DonationSuccess() {
             </DialogHeader>
             <DialogFooter className="sm:justify-center gap-2">
               <Button
-                onClick={() => setShowSuccessDialog(false)}
+                onClick={handleSeeDetails}
                 variant="outline"
                 className="border-2 border-green-200 hover:border-green-300"
               >
-                Voir le détail
+                Voir l'historique
               </Button>
               <Button
                 onClick={confirmExit}
@@ -204,7 +215,7 @@ export default function DonationSuccess() {
             </DialogHeader>
             <DialogFooter className="sm:justify-center gap-2 flex-col sm:flex-row">
               <Button
-                onClick={() => window.location.reload()}
+                onClick={handleRefresh}
                 variant="outline"
                 className="border-2 border-red-200 hover:border-red-300"
               >
@@ -274,3 +285,15 @@ export default function DonationSuccess() {
     </div>
   );
 }
+
+// Ajoute ces animations dans ton fichier CSS global
+const styles = `
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .animate-fadeIn {
+    animation: fadeIn 0.5s ease-out;
+  }
+`;
