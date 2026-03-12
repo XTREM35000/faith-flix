@@ -38,7 +38,6 @@ export default function DonationSuccess() {
 
     const fetchDonation = async () => {
       try {
-        // Solution : Désactiver TypeScript pour cette ligne spécifique
         // @ts-expect-error - Problème de typage récursif avec Supabase
         const { data, error } = await supabase
           .from("donations")
@@ -54,12 +53,12 @@ export default function DonationSuccess() {
           return;
         }
 
-        // Vérifie le statut de paiement
-        const isPaid = data?.payment_status === "paid";
+        // ✅ CORRECTION : Les statuts possibles sont "pending", "completed", "failed", "cancelled"
+        const isCompleted = data?.payment_status === "completed";  // ← Changé de "paid" à "completed"
         const isPending = data?.payment_status === "pending";
-        const isFailed = data?.payment_status === "failed";
+        const isFailed = data?.payment_status === "failed" || data?.payment_status === "cancelled";
 
-        if (isPaid) {
+        if (isCompleted) {
           setAmount(data.amount ?? null);
           setStatus("success");
         } else if (isPending) {
@@ -70,7 +69,7 @@ export default function DonationSuccess() {
           setErrorMsg("Paiement non effectué.");
         } else {
           setStatus("error");
-          setErrorMsg("Statut de paiement inconnu.");
+          setErrorMsg(`Statut de paiement inconnu: ${data.payment_status}`);
         }
       } catch (err) {
         if (cancelled) return;
