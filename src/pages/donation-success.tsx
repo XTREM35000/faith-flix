@@ -1,296 +1,134 @@
-import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { useState } from "react"
+import { motion } from "framer-motion"
+import { Heart } from "lucide-react"
+import { useLocation } from "react-router-dom"
 
-type DonationStatus = "loading" | "success" | "error";
+import PaymentLogosSection from "@/components/donations/PaymentLogosSection"
+import PaymentMethodSelector from "@/components/donations/PaymentMethodSelector"
+import { Button } from "@/components/ui/button"
+import HeroBanner from "@/components/HeroBanner"
+import usePageHero from "@/hooks/usePageHero"
 
-export default function DonationSuccess() {
-  const [status, setStatus] = useState<DonationStatus>("loading");
-  const [amount, setAmount] = useState<number | null>(null);
-  const [errorMsg, setErrorMsg] = useState("");
-  const [showExitConfirm, setShowExitConfirm] = useState(false);
-  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-  const [showErrorDialog, setShowErrorDialog] = useState(false);
-  const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+// Imports des modals de paiement
+import StripeDonationModal from "@/components/donations/StripeDonationModal"
+import MobileMoneyDonationModal from "@/components/donations/MobileMoneyDonationModal"
+import CashDonationModal from "@/components/donations/CashDonationModal"
 
-  // ✅ Bloque seulement la fermeture accidentelle du navigateur
-  useEffect(() => {
-    const blockBrowserClose = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "";
-      return "";
-    };
+export default function Donate() {
+  const [method, setMethod] = useState<string | null>(null)
+  const [open, setOpen] = useState(false)
 
-    window.addEventListener('beforeunload', blockBrowserClose);
-    
-    return () => {
-      window.removeEventListener('beforeunload', blockBrowserClose);
-    };
-  }, []);
+  const location = useLocation()
+  const { data: hero, save: saveHero } = usePageHero(location.pathname)
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const sessionId = params.get("session_id");
-    if (!sessionId) {
-      setStatus("error");
-      setErrorMsg("Session de paiement manquante.");
-      return;
-    }
+  const paymentMethods = [
+    {
+      id: "stripe-1",
+      code: "stripe",
+      label: "Carte bancaire",
+      description: "Visa / Mastercard / American Express",
+      image: "/svg/MasterCard.png",
+      is_active: true,
+      requires_validation: false,
+    },
+    {
+      id: "cinetpay-1",
+      code: "cinetpay",
+      label: "Mobile Money",
+      description: "MTN / Orange / Moov / Wave",
+      image: "/svg/ORANGE.svg",
+      is_active: true,
+      requires_validation: false,
+    },
+    {
+      id: "cash-1",
+      code: "cash",
+      label: "Guichet Paroisse",
+      description: "Paiement en espèces à l'accueil",
+      image: "/svg/espece.png",
+      is_active: true,
+      requires_validation: false,
+    },
+  ]
 
-    let cancelled = false;
+  const handleMethodSelect = (selectedMethod: string) => {
+    setMethod(selectedMethod)
+    // OUVRE DIRECTEMENT LE MODAL quand on clique sur une carte
+    setOpen(true)
+  }
 
-    const fetchDonation = async () => {
-      try {
-        // ✅ IGNORER L'ERREUR DE TYPAGE SUR CETTE LIGNE
-        // @ts-expect-error - Problème de typage récursif avec Supabase
-        const { data, error } = await supabase
-          .from("donations")
-          .select("payment_status, amount")
-          .eq("stripe_session_id", sessionId)
-          .maybeSingle();
-
-        if (cancelled) return;
-        
-        if (error || !data) {
-          setStatus("error");
-          setErrorMsg("Aucune information de don trouvée.");
-          return;
-        }
-
-        // Les statuts possibles sont "pending", "completed", "failed", "cancelled"
-        const isCompleted = data?.payment_status === "completed";
-        const isPending = data?.payment_status === "pending";
-        const isFailed = data?.payment_status === "failed" || data?.payment_status === "cancelled";
-
-        if (isCompleted) {
-          setAmount(data.amount ?? null);
-          setStatus("success");
-          setShowSuccessDialog(true);
-        } else if (isPending) {
-          setStatus("loading");
-          pollingRef.current = setTimeout(fetchDonation, 3000);
-        } else if (isFailed) {
-          setStatus("error");
-          setErrorMsg("Paiement non effectué.");
-          setShowErrorDialog(true);
-        } else {
-          setStatus("error");
-          setErrorMsg(`Statut de paiement inconnu: ${data.payment_status}`);
-          setShowErrorDialog(true);
-        }
-      } catch (err) {
-        if (cancelled) return;
-        setStatus("error");
-        setErrorMsg("Erreur lors de la vérification du paiement.");
-        setShowErrorDialog(true);
-      }
-    };
-
-    fetchDonation();
-    return () => {
-      cancelled = true;
-      if (pollingRef.current) clearTimeout(pollingRef.current);
-    };
-  }, []);
-
-  const handleExit = () => {
-    setShowExitConfirm(true);
-  };
-
-  // ✅ Navigation avec window.location.href (fiable après redirection Stripe)
-  const goToDonatePage = () => {
-    console.log("🟢 Redirection vers /donate");
-    
-    setShowSuccessDialog(false);
-    setShowErrorDialog(false);
-    setShowExitConfirm(false);
-    
-    setTimeout(() => {
-      window.location.href = "/donate";
-    }, 100);
-  };
-
-  const handleRefresh = () => {
-    window.location.reload();
-  };
-
-  const handleSeeDetails = () => {
-    console.log("🟢 Redirection vers historique");
-    setShowSuccessDialog(false);
-    window.location.href = "/donations/history";
-  };
+  const handleCloseModal = () => {
+    setOpen(false)
+    setMethod(null)
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-emerald-50 to-blue-50 p-4">
-      <div className="max-w-md w-full mx-auto p-8 rounded-2xl shadow-2xl bg-white/90 backdrop-blur-sm border border-white/20 flex flex-col items-center transition-all duration-300 hover:shadow-3xl hover:scale-[1.02]">
-        
-        {/* État CHARGEMENT */}
-        {status === "loading" && (
-          <div className="flex flex-col items-center space-y-6 animate-fadeIn">
-            <div className="relative">
-              <div className="animate-spin rounded-full h-20 w-20 border-4 border-green-200 border-t-green-600"></div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-3xl animate-pulse">⏳</span>
-              </div>
-            </div>
-            <div className="text-center space-y-2">
-              <p className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                Vérification en cours
-              </p>
-              <p className="text-gray-600 animate-pulse">
-                Un instant, nous confirmons votre don...
-              </p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-background flex flex-col">
+      <HeroBanner
+        title="Faire un don"
+        subtitle="Soutenez notre mission avec votre générosité"
+        showBackButton={true}
+        backgroundImage={hero?.image_url}
+        onBgSave={saveHero}
+      />
+
+      <div className="container mx-auto px-4 py-12">
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-16"
+        >
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-4 text-green-700">
+            Choisissez votre méthode de paiement
+          </h2>
+          <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
+            Sélectionnez votre mode de paiement préféré pour continuer. 
+            Toutes les transactions sont sécurisées.
+          </p>
+
+          <PaymentMethodSelector
+            selectedMethod={method}
+            onSelect={handleMethodSelect} // ✅ Ouvre directement le modal
+            methods={paymentMethods}
+          />
+        </motion.section>
+
+        {/* Supprimé le bouton "Continuer" car on ouvre directement le modal */}
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="mt-12 pt-8 border-t border-gray-200"
+        >
+          <PaymentLogosSection />
+          <p className="text-center text-sm text-gray-500 mt-4">
+            Paiement 100% sécurisé • Chiffrement SSL
+          </p>
+        </motion.div>
+
+        {/* Modals de paiement */}
+        {method === "stripe" && (
+          <StripeDonationModal
+            open={open}
+            onClose={handleCloseModal}
+          />
         )}
 
-        {/* Dialog de SUCCÈS */}
-        <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold text-center text-green-600 flex items-center justify-center gap-2">
-                <span className="text-4xl">🎉</span>
-                Don confirmé !
-              </DialogTitle>
-              <DialogDescription className="text-center pt-4">
-                <div className="bg-green-50 p-6 rounded-lg">
-                  <p className="text-lg text-gray-700 mb-2">Votre don de</p>
-                  <p className="text-3xl font-bold text-green-700 mb-2">
-                    {amount?.toLocaleString()} FCFA
-                  </p>
-                  <p className="text-green-600">a été traité avec succès</p>
-                </div>
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="sm:justify-center gap-2">
-              <Button
-                onClick={handleSeeDetails}
-                variant="outline"
-                className="border-2 border-green-200 hover:border-green-300"
-              >
-                Voir l'historique
-              </Button>
-              <Button
-                onClick={goToDonatePage}
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-              >
-                Retour aux dons
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        {method === "cinetpay" && (
+          <MobileMoneyDonationModal
+            open={open}
+            onClose={handleCloseModal}
+          />
+        )}
 
-        {/* Dialog d'ERREUR */}
-        <Dialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold text-center text-red-600 flex items-center justify-center gap-2">
-                <span className="text-4xl">😔</span>
-                Paiement non abouti
-              </DialogTitle>
-              <DialogDescription className="text-center pt-4">
-                <div className="bg-red-50 p-6 rounded-lg">
-                  <p className="text-gray-700 mb-4">
-                    {errorMsg || "Une erreur est survenue lors du traitement de votre don."}
-                  </p>
-                  <div className="bg-white/50 p-4 rounded-lg text-sm text-gray-600">
-                    <p>💡 Suggestions :</p>
-                    <ul className="list-disc list-inside mt-2">
-                      <li>Vérifiez votre connexion internet</li>
-                      <li>Assurez-vous que votre carte est valide</li>
-                      <li>Contactez votre banque si le problème persiste</li>
-                    </ul>
-                  </div>
-                </div>
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="sm:justify-center gap-2 flex-col sm:flex-row">
-              <Button
-                onClick={handleRefresh}
-                variant="outline"
-                className="border-2 border-red-200 hover:border-red-300"
-              >
-                <span className="mr-2">🔄</span>
-                Rafraîchir
-              </Button>
-              <Button
-                onClick={goToDonatePage}
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-              >
-                <span className="mr-2">💝</span>
-                Nouveau don
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Dialog de CONFIRMATION DE SORTIE */}
-        <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-xl flex items-center gap-2">
-                <span className="text-2xl">🔔</span>
-                Quitter la page ?
-              </AlertDialogTitle>
-              <AlertDialogDescription className="space-y-4 pt-4">
-                <p>
-                  Êtes-vous sûr de vouloir quitter cette page ?
-                </p>
-                <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
-                  <p className="text-sm text-amber-800 flex items-start gap-2">
-                    <span className="text-lg">💡</span>
-                    <span>
-                      <strong>Information importante :</strong><br />
-                      Vous pourrez toujours vérifier le statut de votre don dans votre historique ou par email.
-                    </span>
-                  </p>
-                </div>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel className="border-2 border-gray-200">
-                Continuer sur cette page
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={goToDonatePage}
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-              >
-                Quitter
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* Bouton de sortie (optionnel) */}
-        {status !== "loading" && (
-          <Button
-            variant="ghost"
-            onClick={handleExit}
-            className="mt-6 text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            <span className="mr-2">←</span>
-            Retour à l'accueil
-          </Button>
+        {method === "cash" && (
+          <CashDonationModal
+            open={open}
+            onClose={handleCloseModal}
+          />
         )}
       </div>
     </div>
-  );
+  )
 }
