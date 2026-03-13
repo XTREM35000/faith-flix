@@ -8,6 +8,7 @@ import { updateProfileRole } from '@/lib/supabase/rpc';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import useRoleCheck from '@/hooks/useRoleCheck';
 
 interface Member {
   id: string;
@@ -25,6 +26,8 @@ const MembersPage: React.FC = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [form, setForm] = useState({ full_name: '', email: '', role: 'membre' });
   const { toast } = useToast();
+  const { hasRole } = useRoleCheck();
+  const isSuperAdmin = hasRole('super_admin');
 
   const fetchMembers = async () => {
     setLoading(true);
@@ -57,8 +60,7 @@ const MembersPage: React.FC = () => {
     if (['admin', 'administrateur'].includes(lower)) return 'admin';
     if (['pretre'].includes(lower)) return 'pretre';
     if (['diacre'].includes(lower)) return 'diacre';
-    // map any super-admin aliases to admin (DB doesn't have a super_admin value)
-    if (['super_admin', 'superadmin', 'super-admin'].includes(lower)) return 'admin';
+    if (['super_admin', 'superadmin', 'super-admin'].includes(lower)) return 'super_admin';
     return lower;
   };
 
@@ -78,6 +80,12 @@ const MembersPage: React.FC = () => {
       const normalizedForm = normalize(form.role);
 
       console.debug('Attempting to update member', { id: selected.id, formRole: form.role, normalizedCurrent, normalizedForm });
+
+      // Seuls les super_admin peuvent attribuer le rôle super_admin
+      if (normalizedForm === 'super_admin' && !isSuperAdmin) {
+        alert('Seul un Super Admin peut attribuer le rôle super_admin.');
+        return;
+      }
 
       // If role changed, call RPC to update role safely (RLS barrier)
       if (normalizedCurrent !== normalizedForm) {
@@ -148,7 +156,14 @@ const MembersPage: React.FC = () => {
 
   const createMember = async () => {
     try {
-      const payload: Partial<Member> = { email: form.email || null, full_name: form.full_name || null, role: normalize(form.role) || 'membre' };
+      const normalizedRole = normalize(form.role) || 'membre';
+
+      if (normalizedRole === 'super_admin' && !isSuperAdmin) {
+        alert('Seul un Super Admin peut créer un compte avec le rôle super_admin.');
+        return;
+      }
+
+      const payload: Partial<Member> = { email: form.email || null, full_name: form.full_name || null, role: normalizedRole };
       const { data, error } = await supabase.from('profiles').insert([payload as unknown as any]);
       if (error) throw error;
       void data;
@@ -193,6 +208,7 @@ const MembersPage: React.FC = () => {
                     if(['admin','administrateur'].includes(lower)) return 'Admin';
                     if(lower === 'pretre') return 'Prêtre';
                     if(lower === 'diacre') return 'Diacre';
+                    if(lower === 'super_admin') return 'Super Admin';
                     return r;
                   })(m.role)}</td>
                   <td className="px-4 py-3">
@@ -237,6 +253,7 @@ const MembersPage: React.FC = () => {
                 <option value="admin">Admin</option>
                 <option value="pretre">Prêtre</option>
                 <option value="diacre">Diacre</option>
+                <option value="super_admin">Super Admin</option>
               </select>
             </div>
             <div className="flex gap-2 justify-end">

@@ -69,6 +69,7 @@ import DocProjetPage from './pages/DocProjetPage';
 import AuthCallback from './pages/AuthCallback';
 import AdminMemberCards from './pages/AdminMemberCards';
 import AdminCertificates from './pages/AdminCertificates';
+import AdminMasterReset from './pages/AdminMasterReset';
 
 const queryClient = new QueryClient();
 
@@ -220,6 +221,14 @@ const App = () => {
             <Route path="/admin/users" element={<ProtectedRoute requiredRole="admin"><Layout><AdminUsers /></Layout></ProtectedRoute>} />
             <Route path="/admin/settings" element={<ProtectedRoute requiredRole="admin"><Layout><AdminSettings /></Layout></ProtectedRoute>} />
             <Route path="/admin/ads" element={<ProtectedRoute requiredRole="admin"><Layout><AdminAds /></Layout></ProtectedRoute>} />
+            <Route
+              path="/admin/master-reset"
+              element={
+                <ProtectedRoute requiredRole="super_admin">
+                  <Layout><AdminMasterReset /></Layout>
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/admin/tutoriels"
               element={<ProtectedRoute requiredRole="admin"><Layout><AdminTutorielsPage /></Layout></ProtectedRoute>}
