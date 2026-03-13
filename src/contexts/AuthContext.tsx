@@ -31,35 +31,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user || null);
       if (session?.user) {
-        // Try localStorage cache first
-        const cached = localStorage.getItem('ff_profile_cache');
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          setProfile(parsed.data ? {
-            ...parsed.data,
-            display_name: parsed.data.display_name ?? parsed.data.full_name ?? '',
-            location: parsed.data.location ?? '',
-            date_of_birth: parsed.data.date_of_birth ?? '',
-            is_active: typeof parsed.data.is_active === 'boolean' ? parsed.data.is_active : true,
-            notification_preferences: parsed.data.notification_preferences ?? { email: true, push: false, sms: false },
-          } : null);
-          setRole(parsed.data.role || null);
-          setLoading(false);
-        } else {
-          // Fetch profile from Supabase
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .maybeSingle();
-          setProfile(data ? data : null);
-          setRole(data?.role || null);
-          try { localStorage.setItem('ff_profile_cache', JSON.stringify({ data, cachedAt: Date.now() })); } catch { /* ignore */ }
-          setLoading(false);
+        // Toujours récupérer le profil le plus à jour depuis Supabase
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error('AuthContext: error fetching profile', error);
         }
+
+        const mergedProfile = data ? {
+          ...data,
+          display_name: (data as any).display_name ?? (data as any).full_name ?? '',
+          location: (data as any).location ?? '',
+          date_of_birth: (data as any).date_of_birth ?? '',
+          is_active: typeof (data as any).is_active === 'boolean' ? (data as any).is_active : true,
+          notification_preferences: (data as any).notification_preferences ?? { email: true, push: false, sms: false },
+        } : null;
+
+        setProfile(mergedProfile);
+        setRole((data as any)?.role || session.user.user_metadata?.role || null);
+
+        try {
+          localStorage.setItem('ff_profile_cache', JSON.stringify({ data, cachedAt: Date.now() }));
+        } catch {
+          // ignore cache errors
+        }
+        setLoading(false);
       } else {
         setProfile(null);
         setRole(null);
+        try { localStorage.removeItem('ff_profile_cache'); } catch { /* ignore */ }
         setLoading(false);
       }
     };
@@ -82,6 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setProfile(null);
       setRole(null);
+      try { localStorage.removeItem('ff_profile_cache'); } catch { /* ignore */ }
     } finally {
       setLoading(false);
     }
