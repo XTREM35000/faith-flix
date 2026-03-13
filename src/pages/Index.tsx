@@ -61,7 +61,7 @@ const Index = () => {
   const navigate = useNavigate();
   const navigationType = useNavigationType();
   const { user } = useAuth();
-  const { profile } = useUser();
+  const { profile, isAdmin } = useUser();
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [showAdPopup, setShowAdPopup] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
@@ -71,9 +71,6 @@ const Index = () => {
   const [loadingHomilies, setLoadingHomilies] = useState(true);
   const [loadingAnnouncements, setLoadingAnnouncements] = useState(true);
   const [loadingPrayers, setLoadingPrayers] = useState(true);
-  
-  // Déterminer le rôle de l'utilisateur
-  const isAdmin = profile?.role === 'admin' || user?.user_metadata?.role === 'admin';
   
   // Déterminer le lien des événements selon le rôle
   const eventsLink = isAdmin ? '/admin/events' : '/evenements';

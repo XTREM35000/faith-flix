@@ -50,7 +50,8 @@ export async function fetchGalleryImages(options?: {
         try {
           const { data: profileData } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
           const role = (profileData as any)?.role as string | undefined;
-          if (role && typeof role === 'string' && role.toLowerCase() === 'admin') isAdmin = true;
+          const lower = role ? role.toLowerCase() : '';
+          if (['admin', 'super_admin', 'administrateur'].includes(lower)) isAdmin = true;
         } catch (e) {
           console.error('fetchGalleryImages role lookup failed', e);
         }
@@ -143,7 +144,8 @@ export async function fetchGalleryImageById(id: string) {
 
       const { data: profileData } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
       const role = (profileData as any)?.role as string | undefined;
-      if (role && role.toLowerCase() === 'admin') return (data as any as GalleryImage);
+      const lower = role ? role.toLowerCase() : '';
+      if (['admin', 'super_admin', 'administrateur'].includes(lower)) return (data as any as GalleryImage);
     } catch (e) {
       console.error('fetchGalleryImageById auth check error', e);
     }

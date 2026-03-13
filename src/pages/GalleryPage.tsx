@@ -6,6 +6,7 @@ import { useLocation } from 'react-router-dom';
 import usePageHero from '@/hooks/usePageHero';
 import { useGalleryImages } from "@/hooks/useGalleryImages";
 import { useAuth } from '@/hooks/useAuth';
+import { useUser } from '@/hooks/useUser';
 import GalleryCard from "@/components/GalleryCard";
 import GalleryGrid from "@/components/GalleryGrid";
 import FileUploadZone from '@/components/FileUploadZone';
@@ -16,12 +17,10 @@ import type { GalleryImage } from '@/types/database';
 const GalleryPage = () => {
   const { images, loading } = useGalleryImages(100);
   const { user } = useAuth();
+  const { isAdmin } = useUser();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-
-  // Vérifier si l'utilisateur est admin
-  const isAdmin = user?.user_metadata?.role === 'admin';
 
   const categories = useMemo(
     () =>

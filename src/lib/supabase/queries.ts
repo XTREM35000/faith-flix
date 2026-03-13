@@ -18,7 +18,8 @@ export async function getVideoById(id: string) {
 
     const { data: profileData } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
     const role = (profileData as any)?.role as string | undefined;
-    if (role && role.toLowerCase() === 'admin') return data;
+    const lower = role ? role.toLowerCase() : '';
+    if (['admin', 'super_admin', 'administrateur'].includes(lower)) return data;
   } catch (e) {
     console.error('getVideoById auth check error', e);
   }

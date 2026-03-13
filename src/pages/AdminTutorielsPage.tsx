@@ -197,8 +197,9 @@ export default function AdminTutorielsPage() {
     return <div className="p-6">Vérification du profil...</div>;
   }
 
-  const isAdmin = !!(profile && typeof profile.role === 'string' && profile.role.toLowerCase() === 'admin');
-  const isModerator = !!(profile && typeof profile.role === 'string' && profile.role.toLowerCase() === 'moderateur');
+  const roleStr = typeof profile?.role === 'string' ? profile.role.toLowerCase() : '';
+  const isAdmin = ['admin', 'super_admin', 'administrateur'].includes(roleStr);
+  const isModerator = ['moderateur', 'moderator'].includes(roleStr) || isAdmin;
 
   if (!user || (!isAdmin && !isModerator)) {
     return <Navigate to="/" replace />;
@@ -270,7 +271,7 @@ export default function AdminTutorielsPage() {
       {/* Contenu principal */}
       <div className="container mx-auto px-4 py-12 space-y-12">
         {/* Admin: open modal to add YouTube link */}
-        {(profile && (profile.role === 'admin' || profile.role === 'moderateur')) && (
+        {(profile && (['admin', 'super_admin', 'administrateur', 'moderateur', 'moderator'].includes(String(profile.role).toLowerCase()))) && (
           <div className="mb-6 flex items-center justify-end">
             <button onClick={() => setIsAddOpen(true)} className="px-4 py-2 bg-emerald-600 text-white rounded-md">Ajouter une vidéo</button>
           </div>

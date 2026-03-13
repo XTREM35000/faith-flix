@@ -19,10 +19,9 @@ const GalleryCard = ({ image, onOpen, onDeleted }: GalleryCardProps) => {
   const [isLiked, setIsLiked] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const { profile } = useUser();
+  const { isAdmin } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const isAdmin = profile?.role === 'admin';
   const { downloadMedia } = useFileManager();
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();

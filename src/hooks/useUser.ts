@@ -1,7 +1,12 @@
 import { useAuthContext } from '@/contexts/AuthContext';
+import { isAdmin as rpIsAdmin } from '@/utils/rolePermissions';
 
 export function useUser() {
   const { profile, loading, role } = useAuthContext();
-  const isAdmin = !!(role && ['admin', 'administrateur', 'superadmin'].includes(role.toLowerCase()));
+
+  // Utilise la logique centralisée de normalisation des rôles
+  const effectiveRole = role ?? profile?.role ?? undefined;
+  const isAdmin = rpIsAdmin(effectiveRole || undefined);
+
   return { profile, isLoading: loading, isAdmin };
 }

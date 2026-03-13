@@ -85,7 +85,9 @@ export const useVideos = (limit = 4, category?: string) => {
         // public visitor: only approved videos
         query = client.from('videos').select('*').eq('status', 'approved').order('created_at', { ascending: false });
       } else {
-        const isAdmin = (currentUser?.user_metadata?.role === 'admin');
+        const rawRole = currentUser?.user_metadata?.role;
+        const lowerRole = rawRole ? String(rawRole).toLowerCase() : '';
+        const isAdmin = ['admin', 'super_admin', 'administrateur'].includes(lowerRole);
         if (isAdmin) {
           // admin sees everything
           query = client.from('videos').select('*').order('created_at', { ascending: false });
@@ -146,7 +148,9 @@ export const useVideos = (limit = 4, category?: string) => {
       // déterminer le statut en fonction du rôle de l'utilisateur
       const { data: { user: curUser } = {} } = await (supabase as any).auth.getUser();
       let status = 'pending';
-      if (curUser?.user_metadata?.role === 'admin') {
+      const rawRole = curUser?.user_metadata?.role;
+      const lowerRole = rawRole ? String(rawRole).toLowerCase() : '';
+      if (['admin', 'super_admin', 'administrateur'].includes(lowerRole)) {
         status = 'approved';
       }
 

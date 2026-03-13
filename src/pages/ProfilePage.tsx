@@ -28,8 +28,11 @@ interface UserData {
 
 const ProfilePage = () => {
   const navigate = useNavigate();
+  const location = useLocation(); 
   const { user, signOut } = useAuth();
   const { profile, isLoading: profileLoading } = useUser();
+  const { data: hero, save: saveHero } = usePageHero(location.pathname); // ✅ Utilisable ici
+
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -99,8 +102,8 @@ const ProfilePage = () => {
     }
   }, [location.search]);
 
-  const location = useLocation();
-  const { data: hero, save: saveHero } = usePageHero(location.pathname);
+  // const location = useLocation();
+  // const { data: hero, save: saveHer9o } = usePageHero(location.pathname);
   const [showCompletePrompt, setShowCompletePrompt] = useState(false);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -141,14 +144,16 @@ const ProfilePage = () => {
 
       // Update profile in database
       const normalize = (r?: string | null) => {
-        if(!r) return 'membre';
+        if (!r) return 'membre';
         const lower = r.toLowerCase();
-        if(lower === 'membre' || lower === 'member') return 'membre';
-        if(lower === 'moderateur' || lower === 'moderator') return 'moderateur';
-        if(lower === 'admin' || lower === 'administrateur') return 'admin';
-        if(lower === 'pretre' || lower === 'priest') return 'pretre';
-        if(lower === 'diacre') return 'diacre';
-        return 'membre'; // Default
+        if (lower === 'membre' || lower === 'member') return 'membre';
+        if (lower === 'moderateur' || lower === 'moderator') return 'moderateur';
+        if (lower === 'admin' || lower === 'administrateur') return 'admin';
+        if (lower === 'pretre' || lower === 'priest') return 'pretre';
+        if (lower === 'diacre') return 'diacre';
+        if (['super_admin', 'superadmin', 'super-admin'].includes(lower)) return 'super_admin';
+        // Pour tout autre rôle inconnu, conserver la valeur normalisée en minuscules
+        return lower;
       };
 
       const profileUpdates: Database['public']['Tables']['profiles']['Update'] = {

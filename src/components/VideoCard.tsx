@@ -19,9 +19,8 @@ interface VideoCardProps {
 const VideoCard = ({ video, onOpen, onDeleted }: VideoCardProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const { profile } = useUser();
+  const { isAdmin } = useUser();
   const { toast } = useToast();
-  const isAdmin = profile?.role === 'admin';
   const fm = useFileManager();
 
   // Vérification critique - afficher un placeholder si vidéo est undefined/null

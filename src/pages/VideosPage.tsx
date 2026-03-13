@@ -43,7 +43,7 @@ const VideosPage = () => {
   const [selectedVideoForPlayback, setSelectedVideoForPlayback] = useState<Video | null>(null);
   const [isPlayerModalOpen, setIsPlayerModalOpen] = useState(false);
   const { user } = useAuth();
-  const { profile } = useUser();
+  const { profile, isAdmin } = useUser();
   const { videos, loading, createVideo, updateVideo, deleteVideo, refreshVideos } = useVideos(
     100,
     selectedCategory === 'all' ? undefined : selectedCategory
@@ -52,8 +52,6 @@ const VideosPage = () => {
   const location = useLocation();
   const { data: hero, save: saveHero } = usePageHero(location.pathname);
   const queryClient = useQueryClient();
-
-  const isAdmin = profile?.role === 'admin' || (user as any)?.user_metadata?.role === 'admin';
   console.debug('📹 VideosPage rendered:', { userId: user?.id, profileRole: profile?.role, authRole: (user as any)?.user_metadata?.role, isAdmin });
 
   // Filtrer les vidéos par recherche et statut
