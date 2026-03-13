@@ -2,10 +2,10 @@ import { useAuthContext } from '@/contexts/AuthContext';
 
 export function useUserRoles() {
   const { role, loading } = useAuthContext();
-  const roles = role ? [role] : [];
-  const hasRole = (r: string) => roles.includes(r);
-  const isAdmin = hasRole('admin');
-  const isModerator = hasRole('moderator') || hasRole('admin');
+  const roles = role ? [String(role).toLowerCase()] : [];
+  const hasRole = (r: string) => roles.includes(String(r).toLowerCase());
+  const isAdmin = hasRole('admin') || hasRole('super_admin') || hasRole('administrateur');
+  const isModerator = hasRole('moderator') || hasRole('moderateur') || isAdmin;
   const isMember = roles.length > 0;
   return {
     roles,

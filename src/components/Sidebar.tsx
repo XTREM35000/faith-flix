@@ -83,6 +83,8 @@ export const MENU_GROUPS = [
     items: [
       { label: 'Approbations', href: '/admin/approvals', icon: CheckCircle2 },
       { label: 'Notifications', href: '/admin/notifications', icon: Bell },
+      // Lien Master Reset affiché seulement pour les super_admin (filtré dans le rendu)
+      { label: 'Master Reset', href: '/admin/master-reset', icon: Settings, superOnly: true },
     ],
   },
 ];
@@ -93,7 +95,8 @@ export interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
-  const { profile, isAdmin, isModerator } = useRoleCheck();
+  const { profile, isAdmin, hasRole, isModerator } = useRoleCheck();
+  const isSuperAdmin = hasRole('super_admin');
   const navRef = useRef<HTMLElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -235,7 +238,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                 </div>
               )}
               <div className="flex flex-col gap-1">
-                {group.items.map((item) => {
+                {group.items.map((item: any) => {
+                  if (item.superOnly && !isSuperAdmin) return null;
                   const Icon = item.icon as unknown as LucideIcon;
                   return (
                     <NavLink
