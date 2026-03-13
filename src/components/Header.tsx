@@ -18,6 +18,8 @@ import useRoleCheck from '@/hooks/useRoleCheck';
 import useUnreadNotifications from '@/hooks/useUnreadNotifications';
 import useUnreadMessages from '@/hooks/useUnreadMessages';
 import { supabase } from '@/integrations/supabase/client';
+import useLiveStatus from "@/hooks/useLiveStatus";
+import LiveStatusBadge from "@/components/LiveStatusBadge";
 
 interface HeaderProps {
   darkMode?: boolean;
@@ -42,6 +44,7 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
   const { data: headerConfig, isLoading: headerLoading } = useHeaderConfig();
   const { unreadCount: unreadNotificationsCount, markAllAsRead: markAllAsReadNotifications } = useUnreadNotifications();
   const { unreadCount: unreadMessagesCount, markAllAsRead } = useUnreadMessages();
+  const { isLiveActive } = useLiveStatus();
 
   // Favicon effect
   useEffect(() => {
@@ -217,8 +220,12 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
             </nav>
           </div>
 
-          {/* Spacer */}
-          <div className="flex-1" />
+          {/* Live badge + Spacer */}
+          <div className="flex-1 flex items-center justify-center">
+            <div className="hidden md:block">
+              <LiveStatusBadge isLive={isLiveActive} />
+            </div>
+          </div>
 
           {/* Right Actions - Universelles */}
           <div className="flex items-center gap-1">

@@ -7,6 +7,9 @@ import {
   HardDrive,
   Eye,
   AlertTriangle,
+  Save,
+  Database,
+  History,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -53,6 +56,7 @@ type Backup = {
   size: number | null;
   created_at: string;
   created_by: string | null;
+  type?: string | null;
 };
 
 interface BackupRestoreProps {
@@ -64,6 +68,10 @@ export function BackupRestore({ isMaster }: BackupRestoreProps) {
   const [backups, setBackups] = useState<Backup[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [fullBackingUp, setFullBackingUp] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [restoreDb, setRestoreDb] = useState(true);
+  const [restoreBuckets, setRestoreBuckets] = useState(true);
   const [selectedBackup, setSelectedBackup] = useState<Backup | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [restoreTarget, setRestoreTarget] = useState<Backup | null>(null);
@@ -161,6 +169,43 @@ export function BackupRestore({ isMaster }: BackupRestoreProps) {
     }
   };
 
+  const createFullBackup = async () => {
+    setFullBackingUp(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("backup-full", {
+        body: {},
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const stats = (data as any)?.stats;
+
+      toast({
+        title: "Sauvegarde complète créée",
+        description:
+          stats && typeof stats === "object"
+            ? `Tables: ${stats.tables ?? "?"}, buckets: ${
+                stats.buckets ?? "?"
+              }, fichiers: ${stats.total_files ?? "?"}`
+            : "La base de données et les buckets ont été sauvegardés.",
+      });
+
+      await fetchBackups();
+    } catch (e) {
+      console.error("[AdminMaster] Erreur backup-full:", e);
+      toast({
+        title: "Erreur",
+        description:
+          "Impossible de créer la sauvegarde complète (DB + fichiers).",
+        variant: "destructive",
+      });
+    } finally {
+      setFullBackingUp(false);
+    }
+  };
+
   const handleDownload = (backup: Backup) => {
     try {
       const blob = new Blob([JSON.stringify(backup.data, null, 2)], {
@@ -230,22 +275,23 @@ export function BackupRestore({ isMaster }: BackupRestoreProps) {
 
   const handleRestore = async (backupId: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke(
-        "restore-backup",
-        {
-          body: { backupId },
-        }
-      );
+      setRestoring(true);
+      const { data, error } = await supabase.functions.invoke("restore-full", {
+        body: { backupId, restoreDb, restoreBuckets },
+      });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log("[AdminMaster] Restauration terminée:", data);
+      console.log("[AdminMaster] Restauration complète terminée:", data);
+      const results = (data as any)?.results;
       toast({
         title: "Restauration réussie",
         description:
-          "La configuration a été restaurée à partir de la sauvegarde sélectionnée.",
+          results && typeof results === "object"
+            ? `Tables restaurées: ${
+                Object.keys(results.db || {}).length
+              }, buckets: ${Object.keys(results.buckets || {}).length}`
+            : "La sauvegarde a été restaurée.",
       });
       await fetchBackups();
     } catch (err) {
@@ -255,6 +301,8 @@ export function BackupRestore({ isMaster }: BackupRestoreProps) {
         description: "Erreur lors de la restauration de la sauvegarde.",
         variant: "destructive",
       });
+    } finally {
+      setRestoring(false);
     }
   };
 
@@ -327,6 +375,21 @@ export function BackupRestore({ isMaster }: BackupRestoreProps) {
                     Créer une sauvegarde
                   </Button>
                   <Button
+                    variant="default"
+                    onClick={createFullBackup}
+                    disabled={fullBackingUp}
+                    className="flex items-center gap-2"
+                  >
+                    {fullBackingUp ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4" />
+                      </>
+                    )}
+                    Sauvegarde complète (DB + fichiers)
+                  </Button>
+                  <Button
                     variant="outline"
                     className="flex items-center gap-2"
                     onClick={() => void fetchBackups()}
@@ -387,6 +450,7 @@ export function BackupRestore({ isMaster }: BackupRestoreProps) {
                     <TableRow>
                       <TableHead>Nom</TableHead>
                       <TableHead>Description</TableHead>
+                      <TableHead>Type</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Taille</TableHead>
                       <TableHead className="text-right">
@@ -395,50 +459,87 @@ export function BackupRestore({ isMaster }: BackupRestoreProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {backups.map((b) => (
-                      <TableRow key={b.id}>
-                        <TableCell className="font-medium">
-                          {b.name || "Sauvegarde sans nom"}
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {b.description || "—"}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(b.created_at).toLocaleString("fr-FR")}
-                        </TableCell>
-                        <TableCell>
-                          {b.size != null
-                            ? `${(b.size / 1024).toFixed(1)} Ko`
-                            : "—"}
-                        </TableCell>
-                        <TableCell className="text-right space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Voir le contenu"
-                            onClick={() => openPreview(b)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Télécharger"
-                            onClick={() => handleDownload(b)}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="ml-1"
-                            onClick={() => requestRestore(b)}
-                          >
-                            Restaurer
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {backups.map((b) => {
+                      const type = (b.type || "config").toLowerCase();
+                      const label =
+                        type === "full"
+                          ? "Complète"
+                          : type === "db_only"
+                          ? "Base de données"
+                          : type === "buckets_only"
+                          ? "Fichiers"
+                          : "Configuration";
+
+                      const typeClasses =
+                        type === "full"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : type === "db_only"
+                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                          : type === "buckets_only"
+                          ? "bg-violet-50 text-violet-700 border-violet-200"
+                          : "bg-slate-50 text-slate-700 border-slate-200";
+
+                      const sizeLabel =
+                        b.size != null
+                          ? b.size > 1024 * 1024
+                            ? `${(b.size / 1024 / 1024).toFixed(1)} Mo`
+                            : `${(b.size / 1024).toFixed(1)} Ko`
+                          : "—";
+
+                      return (
+                        <TableRow key={b.id}>
+                          <TableCell className="font-medium">
+                            {b.name || "Sauvegarde sans nom"}
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate">
+                            {b.description || "—"}
+                          </TableCell>
+                          <TableCell>
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${typeClasses}`}
+                            >
+                              {label}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(b.created_at).toLocaleString("fr-FR")}
+                          </TableCell>
+                          <TableCell>{sizeLabel}</TableCell>
+                          <TableCell className="text-right space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Voir le contenu"
+                              onClick={() => openPreview(b)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Télécharger"
+                              onClick={() => handleDownload(b)}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="ml-1"
+                              onClick={() => requestRestore(b)}
+                              disabled={restoring}
+                            >
+                              {restoring ? (
+                                <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                              ) : (
+                                <History className="h-3 w-3 mr-1" />
+                              )}
+                              Restaurer
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

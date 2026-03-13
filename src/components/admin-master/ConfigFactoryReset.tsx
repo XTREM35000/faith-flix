@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Skull, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,251 +16,220 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 
-type Step = "idle" | "confirming" | "executing" | "done";
-
-interface FactoryResetReport {
-  imagesDeleted?: number;
-  videosDeleted?: number;
-  eventsDeleted?: number;
-  donationsDeleted?: number;
-  messagesDeleted?: number;
-  announcementsDeleted?: number;
-  homiliesDeleted?: number;
-  prayersDeleted?: number;
-  notificationsDeleted?: number;
-  commentsDeleted?: number;
-  startedAt?: string;
-  finishedAt?: string;
-}
+type Step = "idle" | "first" | "second" | "third" | "executing" | "done";
 
 export function ConfigFactoryReset() {
   const { toast } = useToast();
   const [step, setStep] = useState<Step>("idle");
+  const [confirm1Open, setConfirm1Open] = useState(false);
+  const [confirm2Open, setConfirm2Open] = useState(false);
+  const [confirm3Open, setConfirm3Open] = useState(false);
+  const [textConfirm, setTextConfirm] = useState("");
+  const [keepSuperAdmin, setKeepSuperAdmin] = useState(true);
+  const [superAdminEmail, setSuperAdminEmail] = useState("");
   const [progress, setProgress] = useState(0);
-  const [confirmText, setConfirmText] = useState("");
-  const [firstDialogOpen, setFirstDialogOpen] = useState(false);
-  const [secondDialogOpen, setSecondDialogOpen] = useState(false);
-  const [report, setReport] = useState<FactoryResetReport | null>(null);
   const [executing, setExecuting] = useState(false);
 
   const startSequence = () => {
-    setConfirmText("");
-    setStep("confirming");
-    setFirstDialogOpen(true);
+    setStep("first");
+    setConfirm1Open(true);
   };
 
   const handleFirstConfirm = () => {
-    if (confirmText !== "SUPPRIMER TOUT") {
+    setConfirm1Open(false);
+    setStep("second");
+    setConfirm2Open(true);
+  };
+
+  const handleSecondConfirm = () => {
+    if (textConfirm !== "FACTORY RESET") {
       toast({
         title: "Confirmation invalide",
-        description: 'Vous devez taper exactement "SUPPRIMER TOUT" pour continuer.',
+        description:
+          'Vous devez taper exactement "FACTORY RESET" pour continuer.',
         variant: "destructive",
       });
       return;
     }
-    setFirstDialogOpen(false);
-    setSecondDialogOpen(true);
+    setConfirm2Open(false);
+    setStep("third");
+    setConfirm3Open(true);
   };
 
   const performFactoryReset = async () => {
-    setSecondDialogOpen(false);
-    setStep("executing");
+    setConfirm3Open(false);
     setExecuting(true);
-    setProgress(5);
+    setStep("executing");
+    setProgress(10);
 
     try {
-      // 1. Sauvegarde automatique préalable
-      setProgress(20);
-      const now = new Date();
-      const autoName = `Pré-Factory-Reset - ${now.toLocaleString("fr-FR")}`;
-
-      const [homepageRes, headerRes, heroesRes] = await Promise.all([
-        supabase.from("homepage_sections").select("*"),
-        supabase.from("header_config").select("*").limit(1),
-        supabase.from("page_hero_banners").select("*"),
-      ]);
-
-      if (homepageRes.error) throw homepageRes.error;
-      if (headerRes.error) throw headerRes.error;
-      if (heroesRes.error) throw heroesRes.error;
-
-      const payload = {
-        homepage_sections: homepageRes.data,
-        header_config: headerRes.data,
-        page_hero_banners: heroesRes.data,
-      };
-
-      const json = JSON.stringify(payload);
-      const size = new Blob([json]).size;
-
-      const { error: backupError } = await supabase.from("backups").insert({
-        name: autoName,
-        description: "Sauvegarde automatique avant Factory Reset",
-        data: payload,
-        size,
-      });
-
+      // 1. Sauvegarde complète ultime
+      setProgress(35);
+      const { data: backupData, error: backupError } =
+        await supabase.functions.invoke("backup-full", {
+          body: {},
+        });
       if (backupError) throw backupError;
 
+      const backupId = (backupData as any)?.backup?.id;
+
       toast({
-        title: "Sauvegarde créée",
-        description: "Une sauvegarde automatique a été créée avant la réinitialisation.",
+        title: "Sauvegarde ultime créée",
+        description:
+          backupId != null
+            ? `Backup ID: ${backupId}`
+            : "Une sauvegarde complète (DB + fichiers) a été créée.",
       });
 
-      setProgress(50);
+      setProgress(65);
 
-      // 2. Appel à l’Edge Function factory-reset
-      const { data, error } = await supabase.functions.invoke("factory-reset", {
-        body: { dryRun: false },
-      });
+      // 2. Appel de factory-reset
+      const { data, error } = await supabase.functions.invoke(
+        "factory-reset",
+        {
+          body: {
+            keepSuperAdmin,
+            superAdminEmail: keepSuperAdmin ? superAdminEmail || null : null,
+          },
+        }
+      );
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
-      setProgress(90);
-
-      const rep = (data as FactoryResetReport) || null;
-      setReport(rep);
-
-      setProgress(100);
-      setStep("done");
-      setExecuting(false);
+      setProgress(95);
+      const payload = data as any;
 
       toast({
         title: "Factory Reset terminé",
-        description: "Le contenu a été nettoyé. Consultez le rapport pour les détails.",
+        description:
+          payload && payload.finishedAt
+            ? `Terminé à ${new Date(
+                payload.finishedAt
+              ).toLocaleString("fr-FR")}`
+            : "Le site a été remis à nu. Vous pouvez maintenant le reconfigurer pour une nouvelle paroisse.",
       });
+
+      setProgress(100);
+      setStep("done");
     } catch (e) {
       console.error("[FactoryReset] Erreur pendant la mise à nu complète:", e);
-      setExecuting(false);
-      setStep("idle");
-      setProgress(0);
       toast({
         title: "Erreur",
         description:
-          "Une erreur est survenue pendant la mise à nu complète. Vérifiez la console et les Edge Functions.",
+          "Une erreur est survenue pendant le Factory Reset. Vérifiez les logs des Edge Functions.",
         variant: "destructive",
       });
+      setStep("idle");
+      setProgress(0);
+    } finally {
+      setExecuting(false);
     }
   };
 
   return (
     <>
-      <Card className="border-red-200">
+      <Card className="border-red-300">
         <CardHeader>
-          <CardTitle className="text-red-600 flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5" />
-            Réinitialisation complète (Factory Reset)
+          <CardTitle className="text-red-700 flex items-center gap-2">
+            <Skull className="h-5 w-5" />
+            🏭 MISE À NU COMPLÈTE – FACTORY RESET
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
           <p className="text-muted-foreground leading-relaxed">
-            Cette opération supprime tout le <span className="font-semibold">contenu non essentiel</span> du site
-            (médias, dons, événements, messages, annonces, contenus pastoraux…) pour repartir
-            sur un environnement vierge, prêt pour une nouvelle paroisse.
-            <br />
-            <span className="font-semibold text-red-600">
-              Une sauvegarde complète est automatiquement créée avant l’exécution.
-            </span>
+            Cette opération supprime <span className="font-semibold">tout</span>{" "}
+            le contenu du site (médias, dons, événements, messages, annonces,
+            homélies, etc.) et vide les principaux buckets de stockage pour
+            repartir sur une base vierge, prête pour une{" "}
+            <span className="font-semibold">nouvelle paroisse</span>.
           </p>
+
+          <div className="space-y-3 rounded-lg border border-red-100 bg-red-50 px-3 py-2">
+            <p className="text-xs text-red-900 font-semibold">
+              Ce qui est conservé :
+            </p>
+            <ul className="text-xs text-red-900/80 list-disc list-inside space-y-1">
+              <li>Comptes utilisateurs et rôles (dont les super_admin).</li>
+              <li>Structure des tables et configuration technique Supabase.</li>
+            </ul>
+          </div>
 
           <motion.div
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-3"
+            className="space-y-4"
           >
-            <ul className="list-disc list-inside text-muted-foreground space-y-1">
-              <li>Les comptes utilisateurs et les rôles sont conservés.</li>
-              <li>
-                Les médias (images, vidéos), dons, événements, messages, annonces
-                et contenus pastoraux sont supprimés.
-              </li>
-              <li>
-                Utilisez cette fonction uniquement pour préparer un nouveau site
-                de paroisse.
-              </li>
-            </ul>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="text-xs font-medium flex items-center gap-2">
+                  Conserver au moins un super_admin
+                  <Switch
+                    checked={keepSuperAdmin}
+                    onCheckedChange={setKeepSuperAdmin}
+                  />
+                </Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Recommandé : permet de garder un compte maître après le reset.
+                </p>
+              </div>
+              {keepSuperAdmin && (
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">
+                    Email du super_admin à conserver
+                  </Label>
+                  <Input
+                    type="email"
+                    value={superAdminEmail}
+                    onChange={(e) => setSuperAdminEmail(e.target.value)}
+                    placeholder="ex: admin@paroisse-ci.org"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Laissez vide pour conserver tous les super_admin existants.
+                  </p>
+                </div>
+              )}
+            </div>
 
             {step === "executing" && (
               <div className="space-y-2">
-                <p className="font-medium">Traitement en cours…</p>
+                <p className="font-medium flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Factory Reset en cours…
+                </p>
                 <Progress value={progress} />
-              </div>
-            )}
-
-            {step === "done" && report && (
-              <div className="mt-4 border border-green-200 bg-green-50 text-green-900 rounded-md p-3 text-xs space-y-1">
-                <p className="font-semibold mb-1">Rapport de suppression</p>
-                {report.imagesDeleted != null && (
-                  <p>Images supprimées : {report.imagesDeleted}</p>
-                )}
-                {report.videosDeleted != null && (
-                  <p>Vidéos supprimées : {report.videosDeleted}</p>
-                )}
-                {report.eventsDeleted != null && (
-                  <p>Événements supprimés : {report.eventsDeleted}</p>
-                )}
-                {report.donationsDeleted != null && (
-                  <p>Dons supprimés : {report.donationsDeleted}</p>
-                )}
-                {report.messagesDeleted != null && (
-                  <p>Messages supprimés : {report.messagesDeleted}</p>
-                )}
-                {report.announcementsDeleted != null && (
-                  <p>Annonces supprimées : {report.announcementsDeleted}</p>
-                )}
-                {report.homiliesDeleted != null && (
-                  <p>Homélies supprimées : {report.homiliesDeleted}</p>
-                )}
-                {report.prayersDeleted != null && (
-                  <p>Intentions de prière supprimées : {report.prayersDeleted}</p>
-                )}
-                {report.notificationsDeleted != null && (
-                  <p>Notifications supprimées : {report.notificationsDeleted}</p>
-                )}
-                {report.commentsDeleted != null && (
-                  <p>Commentaires supprimés : {report.commentsDeleted}</p>
-                )}
               </div>
             )}
 
             <div className="pt-2 flex justify-end">
               <Button
                 variant="destructive"
-                className="w-full md:w-auto font-semibold"
+                className="w-full md:w-auto font-semibold flex items-center gap-2"
                 onClick={startSequence}
                 disabled={executing}
               >
-                🧨 Réinitialisation complète de l’environnement
+                🧨 Lancer la mise à nu complète
               </Button>
             </div>
           </motion.div>
         </CardContent>
       </Card>
 
-      {/* Première confirmation */}
-      <AlertDialog open={firstDialogOpen} onOpenChange={setFirstDialogOpen}>
+      {/* Étape 1 */}
+      <AlertDialog open={confirm1Open} onOpenChange={setConfirm1Open}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              Êtes-vous absolument sûr ?
-            </AlertDialogTitle>
+            <AlertDialogTitle>Êtes-vous absolument sûr ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Cette action est <strong>IRRÉVERSIBLE</strong>. Tout le contenu
-              non essentiel sera supprimé. Pour confirmer, tapez{" "}
-              <code className="font-mono">SUPPRIMER TOUT</code> ci-dessous.
+              Vous êtes sur le point de lancer un{" "}
+              <span className="font-semibold">Factory Reset complet</span>. Cette
+              action est <strong>irréversible</strong> pour toutes les données
+              effacées.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-2">
-            <Input
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="SUPPRIMER TOUT"
-            />
-          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction onClick={handleFirstConfirm}>
@@ -270,14 +239,41 @@ export function ConfigFactoryReset() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Dernière confirmation */}
-      <AlertDialog open={secondDialogOpen} onOpenChange={setSecondDialogOpen}>
+      {/* Étape 2 */}
+      <AlertDialog open={confirm2Open} onOpenChange={setConfirm2Open}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmation renforcée</AlertDialogTitle>
+            <AlertDialogDescription>
+              Pour confirmer, tapez{" "}
+              <code className="font-mono text-xs">FACTORY RESET</code> ci‑dessous.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Input
+              value={textConfirm}
+              onChange={(e) => setTextConfirm(e.target.value)}
+              placeholder="FACTORY RESET"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSecondConfirm}>
+              Continuer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Étape 3 */}
+      <AlertDialog open={confirm3Open} onOpenChange={setConfirm3Open}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Dernière confirmation</AlertDialogTitle>
             <AlertDialogDescription>
-              Une sauvegarde automatique sera créée juste avant la suppression.
-              Confirmez-vous lancer la mise à nu complète de l’environnement ?
+              Une <span className="font-semibold">sauvegarde ultime</span> va être
+              créée (DB + fichiers) juste avant la mise à nu complète.
+              Confirmez‑vous vouloir lancer définitivement le Factory Reset ?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
