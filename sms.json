@@ -1,0 +1,9 @@
+﻿{
+  "outboundSMSMessageRequest": {
+    "address": "tel:+2250778429003",
+    "senderAddress": "tel:+2250000",
+    "outboundSMSTextMessage": {
+      "message": "Test OTP Paroisse NDC: 123456"
+    }
+  }
+}
