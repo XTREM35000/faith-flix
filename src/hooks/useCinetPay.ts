@@ -1,7 +1,11 @@
 import { useState, useCallback } from 'react';
-import { initCinetPayPayment } from '@/lib/payments/cinetpay';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+/**
+ * Passe par la fonction Edge create-cinetpay-payment pour éviter le CORS
+ * (l’API CinetPay n’accepte pas les appels directs depuis le navigateur).
+ */
 export const useCinetPay = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,10 +42,24 @@ export const useCinetPay = () => {
           direct_pay: false,
         };
 
-        const result = await initCinetPayPayment(paymentPayload);
+        const { data: result, error: fnError } = await supabase.functions.invoke(
+          'create-cinetpay-payment',
+          { body: { paymentData: paymentPayload } }
+        );
 
-        if (result.details?.must_be_redirected && result.payment_url) {
-          window.location.href = result.payment_url;
+        if (fnError) throw fnError;
+        if (result?.error) throw new Error(result.error as string);
+
+        const paymentUrl =
+          result?.payment_url ??
+          (result?.data as { payment_url?: string } | undefined)?.payment_url;
+        if (result?.details?.must_be_redirected && paymentUrl) {
+          window.location.href = paymentUrl;
+          return result;
+        }
+        if (paymentUrl) {
+          window.location.href = paymentUrl;
+          return result;
         }
 
         return result;

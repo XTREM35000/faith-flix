@@ -42,10 +42,10 @@ const providerValidation: Record<MobileMoneyProvider, (phone: string) => boolean
 };
 
 const providerPlaceholders: Record<MobileMoneyProvider, string> = {
-  mtn: "05 XX XX XX XX",
-  orange: "07 XX XX XX XX",
-  moov: "01 XX XX XX XX",
-  wave: "07 / 05 / 01 XX XX XX XX",
+  mtn: "+225 05 XX XX XX XX",
+  orange: "+225 07 XX XX XX XX",
+  moov: "+225 01 XX XX XX XX",
+  wave: "+225 07 / 05 / 01 XX XX XX XX",
 };
 
 // Formater le numéro au format international (+225...)
