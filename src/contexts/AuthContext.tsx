@@ -1,6 +1,4 @@
-// Réexport du hook useAuthContext pour compatibilité avec tous les imports existants
-export { useAuthContext } from './useAuthContext';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 import type { Profile } from '@/types/database';

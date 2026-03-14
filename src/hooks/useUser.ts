@@ -1,4 +1,4 @@
-import { useAuthContext } from '@/contexts/AuthContext';
+import { useAuthContext } from '@/contexts/useAuthContext';
 import { isAdmin as rpIsAdmin } from '@/utils/rolePermissions';
 
 export function useUser() {

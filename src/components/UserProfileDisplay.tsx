@@ -104,7 +104,7 @@ const UserProfileDisplay: React.FC<UserProfileDisplayProps> = ({ onLogoutSuccess
           <Button
             variant="outline"
             className="flex-1"
-            onClick={() => navigate('/profil')}
+            onClick={() => navigate('/profile')}
             size="sm"
           >
             Modifier le profil

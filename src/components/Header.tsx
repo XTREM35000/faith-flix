@@ -11,7 +11,7 @@ import ThemeToggle from "./ThemeToggle";
 import HeaderSkeleton from "./HeaderSkeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAuthContext } from "@/contexts/AuthContext";
+import { useAuthContext } from "@/contexts/useAuthContext";
 import { useUser } from "@/hooks/useUser";
 import { useHeaderConfig } from "@/hooks/useHeaderConfig";
 import useRoleCheck from '@/hooks/useRoleCheck';
@@ -411,7 +411,7 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
                       variant="ghost"
                       className="w-full justify-start text-xs mt-1"
                       onClick={() => {
-                        navigate('/profil');
+                        navigate('/profile');
                         setIsUserMenuOpen(false);
                       }}
                     >

@@ -129,7 +129,7 @@ const App = () => {
             <Route path="/lexique" element={<Layout><LexiquePage /></Layout>} />
             <Route path="/prospect" element={<Layout><DocProjetPage /></Layout>} />
             <Route
-              path="/profil"
+              path="/profile"
               element={
                 <ProtectedRoute>
                   <Layout><ProfilePage /></Layout>
