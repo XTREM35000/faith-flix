@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, User, LogOut, HelpCircle, Menu, X, Home, Info, Users, MessageCircle, Bell, BookOpen, FileText, MoreVertical } from "lucide-react";
+import { Search, User, UserCircle, LogOut, HelpCircle, Menu, X, Home, Info, Users, MessageCircle, Bell, BookOpen, FileText, MoreVertical } from "lucide-react";
 import AnimatedLogo from "./AnimatedLogo";
-import AuthModal from "./AuthModal";
-import ForgotPasswordModal from "./ForgotPasswordModal";
-import MobileSidebar from "./MobileSidebar";
+const AuthModal = lazy(() => import("./AuthModal"));
+const ForgotPasswordModal = lazy(() => import("./ForgotPasswordModal"));
+const MobileSidebar = lazy(() => import("./MobileSidebar"));
 import { MENU_GROUPS } from "./Sidebar";
 import ThemeToggle from "./ThemeToggle";
 import HeaderSkeleton from "./HeaderSkeleton";
@@ -26,6 +26,7 @@ import useUnreadMessages from '@/hooks/useUnreadMessages';
 import { supabase } from '@/integrations/supabase/client';
 import useLiveStatus from "@/hooks/useLiveStatus";
 import LiveStatusBadge from "@/components/LiveStatusBadge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface HeaderProps {
   darkMode?: boolean;
@@ -148,18 +149,22 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
   }, []);
 
 
-  // Loading skeleton
-  if (headerLoading) {
-    return <HeaderSkeleton />;
-  }
-
-
   return (
     <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border/50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Logo + Title + Navigation Menu */}
-          <div className="flex items-center gap-6">
+          {/* Zone gauche : menu burger + logo + titre */}
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden text-muted-foreground"
+              onClick={() => setIsMobileMenuOpen(prev => !prev)}
+              title="Menu mobile"
+            >
+              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+
             <Link to={isAdmin ? "/admin" : "/"} className="flex items-center gap-2 flex-shrink-0 group">
               {/* Logo dynamique avec animation 3D + étoiles dorées */}
               <div className="relative animate-star-rotate-3d" style={{ perspective: '1000px' }}>
@@ -168,6 +173,7 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
                       <img
                         src={headerConfig.logo_url}
                         alt={headerConfig.logo_alt_text ?? 'Logo'}
+                        loading="lazy"
                         className={
                           (headerConfig.logo_size ?? 'sm') === 'sm'
                             ? 'h-10 md:h-12 w-auto object-contain animate-sparkle'
@@ -210,7 +216,7 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
             </Link>
 
             {/* Navigation Menu - Desktop */}
-            <nav className="hidden md:flex items-center gap-2">
+            <nav className="hidden md:flex items-center gap-2 ml-4">
               {(headerConfig?.navigation_items || []).map((item, index) => (
                 <Link 
                   key={index}
@@ -246,10 +252,11 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
             </nav>
           </div>
 
-          {/* Zone centrale : badge connexion + badge live (masquée en mode compact) */}
-          <div className="flex-1 flex items-center justify-center">
+          {/* Zone droite : badges (si espace) + actions avec priorité */}
+          <div className="flex items-center gap-2">
+            {/* Badges Actif/Inactif + Live : visibles si espace */}
             {!isCompactHeader && (
-              <div className="flex items-center gap-2">
+              <div className="hidden xs:flex items-center gap-2">
                 {isConnected ? (
                   <span className="inline-block px-2 py-0.5 text-xs font-bold rounded-full bg-gradient-to-r from-emerald-400 to-green-500 text-white animate-badge-color-shift shadow-md">
                     Actif
@@ -262,11 +269,8 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
                 <LiveStatusBadge isLive={isLiveActive} />
               </div>
             )}
-          </div>
 
-          {/* Zone droite : actions avec priorité + menu de débordement */}
-          <div className="flex items-center gap-1">
-            {/* Search */}
+            {/* Search (champ animé) */}
             <AnimatePresence>
               {isSearchOpen && (
                 <motion.div
@@ -284,107 +288,157 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
                 </motion.div>
               )}
             </AnimatePresence>
-            {isFullHeader && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsSearchOpen(!isSearchOpen)}
-                className="text-muted-foreground hover:text-foreground"
-                title="Rechercher"
-              >
-                <Search className="h-5 w-5" />
-              </Button>
-            )}
-
-            {/* Lexique quick link (icon only, accessible to all) */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                try {
-                  navigate('/lexique?mobile=1');
-                } catch (e) {
-                  // fallback: set location
-                  window.location.href = '/lexique?mobile=1';
-                }
-              }}
-              className="text-muted-foreground hover:text-foreground"
-              title="Lexique"
-            >
-              <BookOpen className="h-5 w-5" />
-            </Button>
-
-            {/* Chat icon with badge - Only if logged in */}
-            {user && (
-              <div className="relative">
+            {/* Icônes supplémentaires : recherche + aide + lexique + chat + notifications */}
+            {isFullHeader ? (
+              <>
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={async () => {
-                    await markAllAsRead();
-                    navigate('/live');
-                  }}
+                  onClick={() => setIsSearchOpen(!isSearchOpen)}
                   className="text-muted-foreground hover:text-foreground"
-                  title="Chat en direct"
+                  title="Rechercher"
                 >
-                  <MessageCircle className="h-5 w-5" />
+                  <Search className="h-5 w-5" />
                 </Button>
-                {unreadMessagesCount > 0 && (
-                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-semibold leading-none text-white bg-gradient-to-r from-rose-500 to-rose-600 rounded-full animate-badge-pulse shadow-lg">
-                    {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
-                  </span>
-                )}
-              </div>
-            )}
 
-            {/* Notifications icon with badge - Only if logged in */}
-            {user && (
-              <div className="relative">
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={async () => {
-                    await markAllAsReadNotifications();
-                    navigate('/notifications');
+                  onClick={() => navigate("/help")}
+                  className="text-muted-foreground hover:text-foreground"
+                  title="Aide"
+                >
+                  <HelpCircle className="h-5 w-5" />
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    try {
+                      navigate('/lexique?mobile=1');
+                    } catch (e) {
+                      window.location.href = '/lexique?mobile=1';
+                    }
                   }}
                   className="text-muted-foreground hover:text-foreground"
-                  title="Notifications"
+                  title="Lexique"
                 >
-                  <Bell className="h-5 w-5" />
+                  <BookOpen className="h-5 w-5" />
                 </Button>
-                {unreadNotificationsCount > 0 && (
-                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-semibold leading-none text-white bg-gradient-to-r from-amber-500 to-orange-600 rounded-full animate-badge-pulse shadow-lg">
-                    {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
-                  </span>
+
+                {user && (
+                  <>
+                    <div className="relative">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={async () => {
+                          await markAllAsRead();
+                          navigate('/live');
+                        }}
+                        className="text-muted-foreground hover:text-foreground"
+                        title="Chat en direct"
+                      >
+                        <MessageCircle className="h-5 w-5" />
+                      </Button>
+                      {unreadMessagesCount > 0 && (
+                        <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-semibold leading-none text-white bg-gradient-to-r from-rose-500 to-rose-600 rounded-full animate-badge-pulse shadow-lg">
+                          {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="relative">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={async () => {
+                          await markAllAsReadNotifications();
+                          navigate('/notifications');
+                        }}
+                        className="text-muted-foreground hover:text-foreground"
+                        title="Notifications"
+                      >
+                        <Bell className="h-5 w-5" />
+                      </Button>
+                      {unreadNotificationsCount > 0 && (
+                        <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-semibold leading-none text-white bg-gradient-to-r from-amber-500 to-orange-600 rounded-full animate-badge-pulse shadow-lg">
+                          {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                        </span>
+                      )}
+                    </div>
+                  </>
                 )}
-              </div>
+              </>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-foreground"
+                    title="Plus d'actions"
+                  >
+                    <MoreVertical className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => setIsSearchOpen(true)}
+                  >
+                    <Search className="mr-2 h-4 w-4" /> Recherche
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => navigate("/help")}
+                  >
+                    <HelpCircle className="mr-2 h-4 w-4" /> Aide
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      try {
+                        navigate('/lexique?mobile=1');
+                      } catch (e) {
+                        window.location.href = '/lexique?mobile=1';
+                      }
+                    }}
+                  >
+                    <BookOpen className="mr-2 h-4 w-4" /> Lexique
+                  </DropdownMenuItem>
+                  {user && (
+                    <>
+                      <DropdownMenuItem
+                        onClick={async () => {
+                          await markAllAsRead();
+                          navigate('/live');
+                        }}
+                      >
+                        <MessageCircle className="mr-2 h-4 w-4" /> Chat en direct
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={async () => {
+                          await markAllAsReadNotifications();
+                          navigate('/notifications');
+                        }}
+                      >
+                        <Bell className="mr-2 h-4 w-4" /> Notifications
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
 
-            {/* Help */}
-            {isFullHeader && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate("/help")}
-                className="text-muted-foreground hover:text-foreground"
-                title="Aide"
-              >
-                <HelpCircle className="h-5 w-5" />
-              </Button>
-            )}
+            {/* Toggle thème : toujours visible */}
+            <ThemeToggle />
 
-            {/* Dark Mode Toggle */}
-              <ThemeToggle />
-
-            {/* User Menu / Auth Button */}
+            {/* Icône utilisateur : toujours visible, animée si non connecté */}
             <div className="relative" ref={userMenuRef}>
               {user ? (
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => {
-                    setIsUserMenuOpen(!isUserMenuOpen);
-                  }}
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="text-muted-foreground hover:text-foreground overflow-hidden rounded-full"
                   title={user.email || "Mon compte"}
                 >
@@ -399,15 +453,17 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
                         try {
                           const { data } = supabase.storage.from(bucket).getPublicUrl(val);
                           avatarSrc = data?.publicUrl || null;
-                        } catch (e) {
+                        } catch {
                           avatarSrc = null;
                         }
                       }
                     }
-                    return avatarSrc ? (
-                      <img src={avatarSrc} alt={profile?.full_name || user.email} className="w-5 h-5 rounded-full object-cover" />
-                    ) : (
-                      <User className="h-5 w-5" />
+                    const fallbackLabel = profile?.full_name?.[0] ?? user.email?.[0] ?? "👤";
+                    return (
+                      <Avatar className="h-8 w-8">
+                        {avatarSrc && <AvatarImage src={avatarSrc} alt={profile?.full_name || user.email} />}
+                        <AvatarFallback>{fallbackLabel}</AvatarFallback>
+                      </Avatar>
                     );
                   })()}
                 </Button>
@@ -416,16 +472,13 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
                   animate={{
                     scale: [1, 1.2, 1.2, 1],
                     rotate: [0, 5, -5, 0],
-                    color: ['#3b82f6', '#8b5cf6', '#ec4899', '#3b82f6'],
                   }}
                   transition={{
-                    duration: 3,
+                    duration: 2.5,
                     repeat: Infinity,
                     ease: "easeInOut",
                   }}
-                  style={{
-                    filter: "drop-shadow(0 0 10px currentColor)",
-                  }}
+                  whileHover={{ scale: 1.3 }}
                 >
                   <Button
                     variant="ghost"
@@ -433,10 +486,11 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
                     onClick={() => {
                       window.location.hash = '#auth';
                     }}
-                    className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent"
+                    className="relative"
                     title="Se connecter"
                   >
-                    <User className="h-5 w-5" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full blur-sm opacity-70" />
+                    <UserCircle className="h-6 w-6 relative z-10 text-white" />
                   </Button>
                 </motion.div>
               )}
@@ -503,106 +557,62 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
               </AnimatePresence>
             </div>
 
-            {/* Mobile Menu Toggle - pour ouvrir la sidebar (masqué si non connecté) */}
-            {user && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="lg:hidden text-muted-foreground"
-                onClick={() => {
-                  console.log('Mobile menu toggle - current state:', isMobileMenuOpen);
-                  setIsMobileMenuOpen(prev => !prev);
-                }}
-                title="Menu mobile"
-              >
-                {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </Button>
-            )}
-
-            {/* Menu de débordement pour les écrans avec peu d'espace */}
-            {!isFullHeader && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground hover:text-foreground"
-                    title="Plus d'actions"
-                  >
-                    <MoreVertical className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {!isFullHeader && (
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setIsSearchOpen(true);
-                      }}
-                    >
-                      <Search className="mr-2 h-4 w-4" /> Recherche
-                    </DropdownMenuItem>
-                  )}
-                  {!isFullHeader && (
-                    <DropdownMenuItem
-                      onClick={() => navigate("/help")}
-                    >
-                      <HelpCircle className="mr-2 h-4 w-4" /> Aide
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-
             </div>
           </div>
 
         {/* Mobile Sidebar */}
-        <MobileSidebar
-          isOpen={isMobileMenuOpen}
-          onClose={() => setIsMobileMenuOpen(false)}
-          // @ts-expect-error - MENU_GROUPS icons are valid React.ReactNode
-          navigationGroups={MENU_GROUPS}
-          user={user}
-        />
+        <Suspense fallback={null}>
+          <MobileSidebar
+            isOpen={isMobileMenuOpen}
+            onClose={() => setIsMobileMenuOpen(false)}
+            // @ts-expect-error - MENU_GROUPS icons are valid React.ReactNode
+            navigationGroups={MENU_GROUPS}
+            user={user}
+          />
+        </Suspense>
       </div>
 
       {/* Auth Modal */}
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => {
-          setIsAuthModalOpen(false);
-          // Si l'URL a '#auth', on l'enlève et on force le retour à la page d'accueil
-          if (typeof window !== 'undefined' && window.location.hash.includes('#auth')) {
-            try {
-              navigate('/', { replace: true });
-            } catch (e) {
-              try { window.history.replaceState(null, '', '/'); } catch { /* ignore */ }
+      <Suspense fallback={null}>
+        <AuthModal 
+          isOpen={isAuthModalOpen} 
+          onClose={() => {
+            setIsAuthModalOpen(false);
+            // Si l'URL a '#auth', on l'enlève et on force le retour à la page d'accueil
+            if (typeof window !== 'undefined' && window.location.hash.includes('#auth')) {
+              try {
+                navigate('/', { replace: true });
+              } catch (e) {
+                try { window.history.replaceState(null, '', '/'); } catch { /* ignore */ }
+              }
+            } else {
+              // Même sans hash, on force le retour à la home après fermeture manuelle du modal
+              try {
+                navigate('/', { replace: true });
+              } catch (e) {
+                try { window.history.replaceState(null, '', '/'); } catch { /* ignore */ }
+              }
             }
-          } else {
-            // Même sans hash, on force le retour à la home après fermeture manuelle du modal
-            try {
-              navigate('/', { replace: true });
-            } catch (e) {
-              try { window.history.replaceState(null, '', '/'); } catch { /* ignore */ }
-            }
-          }
-        }}
-        defaultMode={authMode}
-        onForgotPassword={() => {
-          setIsAuthModalOpen(false);
-          setIsForgotPasswordOpen(true);
-        }}
-      />
+          }}
+          defaultMode={authMode}
+          onForgotPassword={() => {
+            setIsAuthModalOpen(false);
+            setIsForgotPasswordOpen(true);
+          }}
+        />
+      </Suspense>
 
       {/* Forgot Password Modal */}
-      <ForgotPasswordModal
-        isOpen={isForgotPasswordOpen}
-        onClose={() => setIsForgotPasswordOpen(false)}
-        onBackToLogin={() => {
-          setIsForgotPasswordOpen(false);
-          setIsAuthModalOpen(true);
-        }}
-      />
+      <Suspense fallback={null}>
+        <ForgotPasswordModal
+          isOpen={isForgotPasswordOpen}
+          onClose={() => setIsForgotPasswordOpen(false)}
+          onBackToLogin={() => {
+            setIsForgotPasswordOpen(false);
+            setIsAuthModalOpen(true);
+          }}
+        />
+      </Suspense>
     </header>
   );
 };
