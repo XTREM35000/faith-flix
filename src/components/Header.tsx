@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, User, LogOut, HelpCircle, Menu, X, Home, Info, Users, MessageCircle, Bell, BookOpen, FileText } from "lucide-react";
+import { Search, User, LogOut, HelpCircle, Menu, X, Home, Info, Users, MessageCircle, Bell, BookOpen, FileText, MoreVertical } from "lucide-react";
 import AnimatedLogo from "./AnimatedLogo";
 import AuthModal from "./AuthModal";
 import ForgotPasswordModal from "./ForgotPasswordModal";
@@ -11,6 +11,12 @@ import ThemeToggle from "./ThemeToggle";
 import HeaderSkeleton from "./HeaderSkeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { useAuthContext } from "@/contexts/useAuthContext";
 import { useUser } from "@/hooks/useUser";
 import { useHeaderConfig } from "@/hooks/useHeaderConfig";
@@ -27,6 +33,26 @@ interface HeaderProps {
   onOpenAuthModal?: (mode: 'login' | 'register') => void;
 }
 
+const useHeaderSpace = () => {
+  const [availableSpace, setAvailableSpace] = useState<"full" | "medium" | "compact">("full");
+
+  useEffect(() => {
+    const checkSpace = () => {
+      if (typeof window === "undefined") return;
+      const width = window.innerWidth;
+      if (width < 400) setAvailableSpace("compact");
+      else if (width < 600) setAvailableSpace("medium");
+      else setAvailableSpace("full");
+    };
+
+    checkSpace();
+    window.addEventListener("resize", checkSpace);
+    return () => window.removeEventListener("resize", checkSpace);
+  }, []);
+
+  return availableSpace;
+};
+
 const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }: HeaderProps) => {
   // All hooks FIRST, in strict order
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -34,6 +60,9 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const headerSpace = useHeaderSpace();
+  const isCompactHeader = headerSpace === "compact";
+  const isFullHeader = headerSpace === "full";
   
   const location = useLocation();
   const authMode = new URLSearchParams(location.search).get("mode") === "register" ? "register" : "login";
@@ -45,6 +74,7 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
   const { unreadCount: unreadNotificationsCount, markAllAsRead: markAllAsReadNotifications } = useUnreadNotifications();
   const { unreadCount: unreadMessagesCount, markAllAsRead } = useUnreadMessages();
   const { isLiveActive } = useLiveStatus();
+  const isConnected = !!user;
 
   // Favicon effect
   useEffect(() => {
@@ -162,23 +192,13 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 }}
-                className="hidden sm:block relative"
+                className={`relative ${isCompactHeader ? "sr-only" : "hidden sm:block"}`}
               >
                 {headerConfig?.main_title && (
                   <div className="flex items-center gap-2">
                     <h1 className="text-sm lg:text-base font-semibold text-foreground leading-tight animate-glow-text">
                       {headerConfig.main_title}
                     </h1>
-                    {/* Badge de statut animé : vert si connecté, gris sinon */}
-                    {user ? (
-                      <span className="inline-block px-2 py-0.5 text-xs font-bold rounded-full bg-gradient-to-r from-emerald-400 to-green-500 text-white animate-badge-color-shift shadow-md">
-                        Actif
-                      </span>
-                    ) : (
-                      <span className="inline-block px-2 py-0.5 text-xs font-bold rounded-full bg-gradient-to-r from-slate-500 to-slate-700 text-slate-100 shadow-md">
-                        Inactif
-                      </span>
-                    )}
                   </div>
                 )}
                 {headerConfig?.subtitle && (
@@ -226,14 +246,25 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
             </nav>
           </div>
 
-          {/* Live badge + Spacer */}
+          {/* Zone centrale : badge connexion + badge live (masquée en mode compact) */}
           <div className="flex-1 flex items-center justify-center">
-            <div className="hidden md:block">
-              <LiveStatusBadge isLive={isLiveActive} />
-            </div>
+            {!isCompactHeader && (
+              <div className="flex items-center gap-2">
+                {isConnected ? (
+                  <span className="inline-block px-2 py-0.5 text-xs font-bold rounded-full bg-gradient-to-r from-emerald-400 to-green-500 text-white animate-badge-color-shift shadow-md">
+                    Actif
+                  </span>
+                ) : (
+                  <span className="inline-block px-2 py-0.5 text-xs font-bold rounded-full bg-gradient-to-r from-slate-500 to-slate-700 text-slate-100 shadow-md">
+                    Inactif
+                  </span>
+                )}
+                <LiveStatusBadge isLive={isLiveActive} />
+              </div>
+            )}
           </div>
 
-          {/* Right Actions - Universelles */}
+          {/* Zone droite : actions avec priorité + menu de débordement */}
           <div className="flex items-center gap-1">
             {/* Search */}
             <AnimatePresence>
@@ -253,15 +284,17 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
                 </motion.div>
               )}
             </AnimatePresence>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className="text-muted-foreground hover:text-foreground"
-              title="Rechercher"
-            >
-              <Search className="h-5 w-5" />
-            </Button>
+            {isFullHeader && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsSearchOpen(!isSearchOpen)}
+                className="text-muted-foreground hover:text-foreground"
+                title="Rechercher"
+              >
+                <Search className="h-5 w-5" />
+              </Button>
+            )}
 
             {/* Lexique quick link (icon only, accessible to all) */}
             <Button
@@ -328,58 +361,85 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
             )}
 
             {/* Help */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/help")}
-              className="text-muted-foreground hover:text-foreground"
-              title="Aide"
-            >
-              <HelpCircle className="h-5 w-5" />
-            </Button>
+            {isFullHeader && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate("/help")}
+                className="text-muted-foreground hover:text-foreground"
+                title="Aide"
+              >
+                <HelpCircle className="h-5 w-5" />
+              </Button>
+            )}
 
             {/* Dark Mode Toggle */}
               <ThemeToggle />
 
             {/* User Menu / Auth Button */}
             <div className="relative" ref={userMenuRef}>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  if (user) {
+              {user ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
                     setIsUserMenuOpen(!isUserMenuOpen);
-                  } else {
-                    // Use fragment so the App's routing + Header hash listener open auth consistently
-                    window.location.hash = '#auth';
-                  }
-                }}
-                className="text-muted-foreground hover:text-foreground overflow-hidden rounded-full"
-                title={user ? user.email : "Se connecter"}
-              >
-                {(() => {
-                  let avatarSrc: string | null = null;
-                  if (user && profile?.avatar_url) {
-                    const val = String(profile.avatar_url);
-                    if (val.startsWith('http') || val.startsWith('data:')) {
-                      avatarSrc = val;
-                    } else {
-                      const bucket = import.meta.env.VITE_BUCKET_AVATAR || 'avatars';
-                      try {
-                        const { data } = supabase.storage.from(bucket).getPublicUrl(val);
-                        avatarSrc = data?.publicUrl || null;
-                      } catch (e) {
-                        avatarSrc = null;
+                  }}
+                  className="text-muted-foreground hover:text-foreground overflow-hidden rounded-full"
+                  title={user.email || "Mon compte"}
+                >
+                  {(() => {
+                    let avatarSrc: string | null = null;
+                    if (user && profile?.avatar_url) {
+                      const val = String(profile.avatar_url);
+                      if (val.startsWith('http') || val.startsWith('data:')) {
+                        avatarSrc = val;
+                      } else {
+                        const bucket = import.meta.env.VITE_BUCKET_AVATAR || 'avatars';
+                        try {
+                          const { data } = supabase.storage.from(bucket).getPublicUrl(val);
+                          avatarSrc = data?.publicUrl || null;
+                        } catch (e) {
+                          avatarSrc = null;
+                        }
                       }
                     }
-                  }
-                  return avatarSrc ? (
-                    <img src={avatarSrc} alt={profile?.full_name || user.email} className="w-5 h-5 rounded-full object-cover" />
-                  ) : (
+                    return avatarSrc ? (
+                      <img src={avatarSrc} alt={profile?.full_name || user.email} className="w-5 h-5 rounded-full object-cover" />
+                    ) : (
+                      <User className="h-5 w-5" />
+                    );
+                  })()}
+                </Button>
+              ) : (
+                <motion.div
+                  animate={{
+                    scale: [1, 1.2, 1.2, 1],
+                    rotate: [0, 5, -5, 0],
+                    color: ['#3b82f6', '#8b5cf6', '#ec4899', '#3b82f6'],
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  style={{
+                    filter: "drop-shadow(0 0 10px currentColor)",
+                  }}
+                >
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      window.location.hash = '#auth';
+                    }}
+                    className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent"
+                    title="Se connecter"
+                  >
                     <User className="h-5 w-5" />
-                  );
-                })()}
-              </Button>
+                  </Button>
+                </motion.div>
+              )}
 
               {/* Dropdown menu seulement si connecté */}
               <AnimatePresence>
@@ -457,6 +517,40 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
               >
                 {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </Button>
+            )}
+
+            {/* Menu de débordement pour les écrans avec peu d'espace */}
+            {!isFullHeader && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-foreground"
+                    title="Plus d'actions"
+                  >
+                    <MoreVertical className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {!isFullHeader && (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setIsSearchOpen(true);
+                      }}
+                    >
+                      <Search className="mr-2 h-4 w-4" /> Recherche
+                    </DropdownMenuItem>
+                  )}
+                  {!isFullHeader && (
+                    <DropdownMenuItem
+                      onClick={() => navigate("/help")}
+                    >
+                      <HelpCircle className="mr-2 h-4 w-4" /> Aide
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
 
             </div>
