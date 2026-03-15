@@ -8,7 +8,9 @@ import { updateProfileRole } from '@/lib/supabase/rpc';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import useRoleCheck from '@/hooks/useRoleCheck';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import useUserRoles from '@/hooks/useUserRoles';
 
 interface Member {
   id: string;
@@ -26,8 +28,8 @@ const MembersPage: React.FC = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [form, setForm] = useState({ full_name: '', email: '', role: 'membre' });
   const { toast } = useToast();
-  const { hasRole } = useRoleCheck();
-  const isSuperAdmin = hasRole('super_admin');
+  const { canEditRole, isSuperAdmin } = useUserRoles();
+  const [editingRole, setEditingRole] = useState<Record<string, string>>({});
 
   const fetchMembers = async () => {
     setLoading(true);
@@ -62,6 +64,24 @@ const MembersPage: React.FC = () => {
     if (['diacre'].includes(lower)) return 'diacre';
     if (['super_admin', 'superadmin', 'super-admin'].includes(lower)) return 'super_admin';
     return lower;
+  };
+
+  const handleRoleChange = async (memberId: string, newRole: string) => {
+    try {
+      const result = await updateProfileRole(memberId, newRole);
+      toast({ title: 'Succès', description: "Rôle mis à jour avec succès" });
+      // Rafraîchir la liste
+      await fetchMembers();
+      // Clear editing state
+      setEditingRole(prev => {
+        const next = { ...prev };
+        delete next[memberId];
+        return next;
+      });
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du rôle:', error);
+      toast({ title: 'Erreur', description: `Erreur lors de la mise à jour du rôle: ${error instanceof Error ? error.message : 'Erreur inconnue'}`, variant: 'destructive' });
+    }
   };
 
   const openEdit = (m: Member) => {
@@ -176,52 +196,82 @@ const MembersPage: React.FC = () => {
     <div className="min-h-screen bg-background flex flex-col">
       <HeroBanner title="Membres" subtitle="Gérez les membres" backgroundImage={hero?.image_url} onBgSave={saveHero} />
 
-      <main className="flex-1 container mx-auto px-4 py-12">
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-2xl font-semibold">Liste des membres</h2>
-          <div className="flex items-center gap-2">
-            <Input placeholder="Nom ou email" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
-            <Button onClick={createMember}>Créer membre</Button>
-          </div>
+      <main className="flex-1 container mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">Liste des membres</h2>
+          <Button onClick={() => setIsOpen(true)}>Ajouter un membre</Button>
         </div>
 
-        <div className="overflow-x-auto bg-card border border-border rounded-lg">
-          <table className="w-full table-auto">
-            <thead>
-              <tr className="text-left">
-                <th className="px-4 py-3">Nom</th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Rôle</th>
-                <th className="px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {members.map((m) => (
-                <tr key={m.id} className="border-t">
-                  <td className="px-4 py-3">{m.full_name || '—'}</td>
-                  <td className="px-4 py-3">{m.email || '—'}</td>
-                  <td className="px-4 py-3">{(function displayRole(r?: string | null){
-                    if(!r) return 'Membre';
-                    const lower = r.toLowerCase();
-                    if(['member','membre'].includes(lower)) return 'Membre';
-                    if(['moderator','moderateur'].includes(lower)) return 'Modérateur';
-                    if(['admin','administrateur'].includes(lower)) return 'Admin';
-                    if(lower === 'pretre') return 'Prêtre';
-                    if(lower === 'diacre') return 'Diacre';
-                    if(lower === 'super_admin') return 'Super Admin';
-                    return r;
-                  })(m.role)}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <Button variant="outline" onClick={() => openEdit(m)}>Éditer</Button>
-                      <Button variant="destructive" onClick={() => remove(m.id)}>Supprimer</Button>
-                    </div>
-                  </td>
+        {loading ? (
+          <div className="text-center py-8">Chargement...</div>
+        ) : (
+          <div className="overflow-x-auto bg-card border border-border rounded-lg">
+            <table className="w-full table-auto">
+              <thead>
+                <tr className="text-left">
+                  <th className="px-4 py-3">Nom</th>
+                  <th className="px-4 py-3">Email</th>
+                  <th className="px-4 py-3">Rôle</th>
+                  <th className="px-4 py-3">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {members.map((m) => (
+                  <tr key={m.id} className="border-t">
+                    <td className="px-4 py-3">{m.full_name || '—'}</td>
+                    <td className="px-4 py-3">{m.email || '—'}</td>
+                    <td className="px-4 py-3">
+                      {canEditRole(m.role) ? (
+                        <Select
+                          value={editingRole[m.id] || m.role || 'membre'}
+                          onValueChange={(value) => {
+                            setEditingRole(prev => ({ ...prev, [m.id]: value }));
+                            handleRoleChange(m.id, value);
+                          }}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue placeholder="Rôle" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="membre">Membre</SelectItem>
+                            <SelectItem value="moderateur">Modérateur</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            {isSuperAdmin && (
+                              <SelectItem value="super_admin">Super Admin</SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Badge variant="outline">{(function displayRole(r?: string | null){
+                          if(!r) return 'Membre';
+                          const lower = r.toLowerCase();
+                          if(['member','membre'].includes(lower)) return 'Membre';
+                          if(['moderator','moderateur'].includes(lower)) return 'Modérateur';
+                          if(['admin','administrateur'].includes(lower)) return 'Admin';
+                          if(lower === 'pretre') return 'Prêtre';
+                          if(lower === 'diacre') return 'Diacre';
+                          if(lower === 'super_admin') return 'Super Admin';
+                          return r;
+                        })(m.role)}</Badge>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => openEdit(m)}>Éditer</Button>
+                        <Button variant="destructive" onClick={() => remove(m.id)}>Supprimer</Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {members.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                Aucun membre trouvé
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>

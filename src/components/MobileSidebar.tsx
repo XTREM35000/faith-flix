@@ -11,6 +11,7 @@ interface NavItem {
   href: string;
   // accept either a React element/node or a component type (Lucide icons etc.)
   icon?: React.ReactNode | React.ElementType;
+  badge?: string;
 }
 
 interface NavGroup {
@@ -169,11 +170,18 @@ export default function MobileSidebar({ isOpen, onClose, navItems, navigation, n
                             to={item.href}
                             onClick={onClose}
                             className={({ isActive }) =>
-                              'flex items-center gap-3 px-3 py-2 rounded transition-colors ' + (isActive ? 'bg-accent/60 text-accent-foreground' : 'hover:bg-accent/50')
+                              'flex items-center gap-3 px-3 py-2 rounded transition-colors justify-between ' + (isActive ? 'bg-accent/60 text-accent-foreground' : 'hover:bg-accent/50')
                             }
                           >
-                            {renderIcon(item.icon)}
-                            <span>{item.label}</span>
+                            <div className="flex items-center gap-3">
+                              {renderIcon(item.icon)}
+                              <span>{item.label}</span>
+                            </div>
+                            {item.badge && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-gradient-to-b from-green-400 to-green-600 text-white shadow-md shadow-green-500/50">
+                                {item.badge}
+                              </span>
+                            )}
                           </NavLink>
                         ))}
                       </div>
@@ -188,11 +196,18 @@ export default function MobileSidebar({ isOpen, onClose, navItems, navigation, n
                     to={item.href}
                     onClick={onClose}
                     className={({ isActive }) =>
-                      'flex items-center gap-3 px-3 py-2 rounded hover:bg-accent/50 ' + (isActive ? 'bg-accent/60 text-accent-foreground' : 'text-foreground')
+                      'flex items-center gap-3 px-3 py-2 rounded hover:bg-accent/50 justify-between ' + (isActive ? 'bg-accent/60 text-accent-foreground' : 'text-foreground')
                     }
                   >
-                    {renderIcon(item.icon)}
-                    <span>{item.label}</span>
+                    <div className="flex items-center gap-3">
+                      {renderIcon(item.icon)}
+                      <span>{item.label}</span>
+                    </div>
+                    {item.badge && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-gradient-to-b from-green-400 to-green-600 text-white shadow-md shadow-green-500/50">
+                        {item.badge}
+                      </span>
+                    )}
                   </NavLink>
                 ))
               )}

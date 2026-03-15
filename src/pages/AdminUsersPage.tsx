@@ -9,7 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useToast } from '@/hooks/use-toast';
 import { Trash2, Edit, Upload } from 'lucide-react';
 import { updateProfileRole } from '@/lib/supabase/rpc';
-import useRoleCheck from '@/hooks/useRoleCheck';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import useUserRoles from '@/hooks/useUserRoles';
 
 interface User {
   id: string;
@@ -39,8 +41,8 @@ const AdminUsersPage: React.FC = () => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const { toast } = useToast();
-  const { hasRole } = useRoleCheck();
-  const isSuperAdmin = hasRole('super_admin');
+  const { canEditRole, isSuperAdmin } = useUserRoles();
+  const [editingRole, setEditingRole] = useState<Record<string, string>>({});
 
   const location = useLocation();
   const { data: hero, save: saveHero } = usePageHero(location.pathname);
@@ -121,6 +123,27 @@ const AdminUsersPage: React.FC = () => {
     if (['diacre'].includes(lower)) return 'Diacre';
     if (['super_admin', 'superadmin', 'super-admin'].includes(lower)) return 'Super Admin';
     return 'Membre';
+  };
+
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    try {
+      const { error } = await updateProfileRole(userId, newRole);
+
+      if (error) throw error;
+
+      toast({ title: 'Succès', description: "Rôle mis à jour avec succès" });
+      // Rafraîchir la liste
+      await fetchUsers();
+      // Clear editing state
+      setEditingRole(prev => {
+        const next = { ...prev };
+        delete next[userId];
+        return next;
+      });
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du rôle:', error);
+      toast({ title: 'Erreur', description: "Erreur lors de la mise à jour du rôle", variant: 'destructive' });
+    }
   };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -305,7 +328,7 @@ const AdminUsersPage: React.FC = () => {
                   <th className="px-4 py-3">Email</th>
                   <th className="px-4 py-3">Téléphone</th>
                   <th className="px-4 py-3">Rôle</th>
-                  <th className="px-4 py-3">Date de création</th>
+                  <th className="px-4 py-3">Créé le</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
@@ -329,9 +352,29 @@ const AdminUsersPage: React.FC = () => {
                     <td className="px-4 py-3 text-sm">{user.email || '—'}</td>
                     <td className="px-4 py-3 text-sm">{user.phone || '—'}</td>
                     <td className="px-4 py-3">
-                      <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-primary/10 text-primary">
-                        {displayRole(user.role)}
-                      </span>
+                      {canEditRole(user.role) ? (
+                        <Select
+                          value={editingRole[user.id] || user.role || 'membre'}
+                          onValueChange={(value) => {
+                            setEditingRole(prev => ({ ...prev, [user.id]: value }));
+                            handleRoleChange(user.id, value);
+                          }}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue placeholder="Rôle" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="membre">Membre</SelectItem>
+                            <SelectItem value="moderateur">Modérateur</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            {isSuperAdmin && (
+                              <SelectItem value="super_admin">Super Admin</SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Badge variant="outline">{displayRole(user.role)}</Badge>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
                       {user.created_at ? new Date(user.created_at).toLocaleDateString('fr-FR') : '—'}
