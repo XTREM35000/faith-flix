@@ -21,6 +21,9 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminLiveStats from "./pages/AdminLiveStats";
+import AdminVodStats from "./pages/AdminVodStats";
+import AdminFinanceStats from "./pages/AdminFinanceStats";
 import AdminHomepageEditor from "./pages/AdminHomepageEditor";
 import AdminEvents from "./pages/AdminEvents";
 import EventDetail from './pages/EventDetail';
@@ -143,6 +146,30 @@ const App = () => {
               element={
                 <ProtectedRoute requiredRole="admin">
                   <Layout><AdminDashboard /></Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/stats-live"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <Layout><AdminLiveStats /></Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/stats-vod"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <Layout><AdminVodStats /></Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/stats-finances"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <Layout><AdminFinanceStats /></Layout>
                 </ProtectedRoute>
               }
             />

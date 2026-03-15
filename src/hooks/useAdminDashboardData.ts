@@ -4,11 +4,12 @@ import { supabase } from '@/integrations/supabase/client';
 interface DashboardData {
   totalVideos: number;
   totalEvents: number;
-  totalComments: number;
+  totalMessages: number;
   pendingComments: number;
   totalDonations: number;
   totalUsers: number;
   activeUsersToday: number;
+  retentionRate: number;
   recentVideos: Array<{ id: string; title: string; created_at: string }>;
   upcomingEvents: Array<{ id: string; title: string; event_date: string }>;
   recentComments: Array<{ id: string; content: string; status: string; created_at: string }>;
@@ -31,42 +32,77 @@ export const useAdminDashboardData = (): UseAdminDashboardDataResult => {
       setLoading(true);
       setError(null);
 
-      // Récupérer les données en parallèle
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      // Récupérer les données en parallèle (vraies données Supabase)
       const [
         videosRes,
         eventsRes,
         donationsRes,
         usersRes,
+        activeUsersRes,
+        messagesCountRes,
+        pendingNotificationsRes,
       ] = await Promise.all([
-        supabase.from('videos').select('id, title, created_at', { count: 'exact' }).order('created_at', { ascending: false }).limit(10),
-        supabase.from('events').select('id, title, event_date', { count: 'exact' }).order('event_date', { ascending: false }).limit(5),
-        supabase.from('donations').select('id, amount_value', { count: 'exact' }).gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
-        supabase.from('profiles').select('id', { count: 'exact' }),
+        supabase
+          .from('videos')
+          .select('id, title, created_at', { count: 'exact' })
+          .order('created_at', { ascending: false })
+          .limit(10),
+        supabase
+          .from('events')
+          .select('id, title, event_date', { count: 'exact' })
+          .order('event_date', { ascending: false })
+          .limit(5),
+        supabase
+          .from('donations')
+          .select('amount, created_at, payment_status', { count: 'exact' })
+          .eq('payment_status', 'completed')
+          .gte('created_at', monthStart.toISOString()),
+        supabase
+          .from('profiles')
+          .select('id', { count: 'exact' }),
+        supabase
+          .from('profiles')
+          .select('id', { count: 'exact', head: true })
+          .gte('last_seen', todayStart.toISOString()),
+        supabase
+          .from('messages')
+          .select('id', { count: 'exact', head: true })
+          .gte('created_at', thirtyDaysAgo.toISOString()),
+        supabase
+          .from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .is('read_at', null),
       ]);
 
-      // Compter les commentaires en attente (si la table comments existe)
-      const { count: pendingCount } = await supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('is_read', false);
-
-      // Calculer les donations ce mois
+      // Calculer les donations du mois (réelles)
       let totalDonations = 0;
       if (donationsRes.data) {
-        totalDonations = donationsRes.data.reduce((sum: number, d: Record<string, unknown>) => sum + (Number(d.amount_value) || 0), 0);
+        totalDonations = donationsRes.data.reduce(
+          (sum: number, d: { amount: number | null }) => sum + (Number(d.amount) || 0),
+          0,
+        );
       }
 
-      // Compter les utilisateurs actifs aujourd'hui (approximation)
-      const activeTodayCount = Math.floor(((usersRes.count || 0) / 3));
+      const totalUsers = usersRes.count || 0;
+      const activeUsersToday = activeUsersRes.count || 0;
+      const retentionRate =
+        totalUsers > 0 ? (activeUsersToday / totalUsers) * 100 : 0;
 
       setData({
         totalVideos: videosRes.count || 0,
         totalEvents: eventsRes.count || 0,
-        totalComments: 0,
-        pendingComments: pendingCount || 0,
+        totalMessages: messagesCountRes.count || 0,
+        pendingComments: pendingNotificationsRes.count || 0,
         totalDonations,
-        totalUsers: usersRes.count || 0,
-        activeUsersToday: (usersRes.count || 0) / 3, // Approximation simple
+        totalUsers,
+        activeUsersToday,
+        retentionRate,
         recentVideos: videosRes.data?.map(v => ({ id: v.id, title: v.title, created_at: v.created_at })) || [],
         upcomingEvents: eventsRes.data?.map(e => ({ id: e.id, title: e.title, event_date: e.event_date })) || [],
         recentComments: [],

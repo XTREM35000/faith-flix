@@ -81,6 +81,9 @@ export const MENU_GROUPS = [
     title: 'Supervision',
     adminOnly: true,
     items: [
+      { label: 'Stats Live', href: '/admin/stats-live', icon: BarChart3 },
+      { label: 'Stats VOD', href: '/admin/stats-vod', icon: BarChart3 },
+      { label: 'Stats Finances', href: '/admin/stats-finances', icon: CreditCard },
       { label: 'Approbations', href: '/admin/approvals', icon: CheckCircle2 },
       { label: 'Notifications', href: '/admin/notifications', icon: Bell },
       // Lien Master Reset affiché seulement pour les super_admin (filtré dans le rendu)

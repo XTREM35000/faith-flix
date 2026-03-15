@@ -8,7 +8,7 @@ import AdminQuickActions from '@/components/AdminQuickActions';
 import UnifiedModerationPanel from '@/components/UnifiedModerationPanel';
 import RecentContentFeed from '@/components/RecentContentFeed';
 import ActivityMetrics from '@/components/ActivityMetrics';
-import { Bell, Video, Calendar, Users, Megaphone, Image, CreditCard, Settings, AlertCircle } from 'lucide-react';
+import { Bell, Video, Calendar, Users, Megaphone, Image, CreditCard, Settings, AlertCircle, BarChart3 } from 'lucide-react';
 
 const AdminDashboard: React.FC = () => {
   const location = useLocation();
@@ -22,51 +22,39 @@ const AdminDashboard: React.FC = () => {
 
   const stats: Array<{ label: string; value: string | number; change?: string; icon: string; trend?: 'up' | 'down' | 'neutral'; color: 'blue' | 'green' | 'purple' | 'orange' | 'pink' | 'teal' }> = [
     {
-      label: 'Visiteurs (7j)',
+      label: 'Membres actifs (aujourd\'hui)',
       value: dashboardData?.activeUsersToday ?? 0,
-      change: '+12%',
       icon: '👥',
-      trend: 'up',
       color: 'blue' as const,
     },
     {
       label: 'Vidéos publiées',
       value: dashboardData?.totalVideos ?? 0,
-      change: '+3',
       icon: '🎬',
-      trend: 'up',
       color: 'green' as const,
     },
     {
-      label: 'Commentaires (24h)',
-      value: dashboardData?.totalComments ?? 0,
-      change: '+5',
+      label: 'Messages (30j)',
+      value: dashboardData?.totalMessages ?? 0,
       icon: '💬',
-      trend: 'up',
       color: 'purple' as const,
     },
     {
       label: 'Dons ce mois',
-      value: `${dashboardData?.totalDonations ?? 0} F`,
-      change: '+15%',
+      value: `${dashboardData?.totalDonations?.toLocaleString('fr-FR') ?? 0} F`,
       icon: '💰',
-      trend: 'up',
       color: 'orange' as const,
     },
     {
       label: 'Événements à venir',
       value: dashboardData?.totalEvents ?? 0,
-      change: '-2',
       icon: '📅',
-      trend: 'down',
       color: 'pink' as const,
     },
     {
-      label: 'En attente',
+      label: 'Notifications non lues',
       value: dashboardData?.pendingComments ?? 0,
-      change: '+3',
       icon: '⏰',
-      trend: getTrend(dashboardData?.pendingComments ?? 0),
       color: 'teal' as const,
     },
   ];
@@ -79,6 +67,9 @@ const AdminDashboard: React.FC = () => {
     { icon: '📢', label: 'Notification', description: 'Envoyer', href: '/admin/notifications', color: 'orange' as const, badge: dashboardData?.pendingComments },
     { icon: '📸', label: 'Galerie', description: 'Photos/albums', href: '/galerie', color: 'pink' as const },
     { icon: '💰', label: 'Dons', description: 'Campagnes', href: '/donate', color: 'teal' as const },
+    { icon: <BarChart3 className="h-5 w-5" />, label: 'Stats Live', description: 'Audience directs', href: '/admin/stats-live', color: 'blue' as const },
+    { icon: <BarChart3 className="h-5 w-5" />, label: 'Stats VOD', description: 'Performance vidéos', href: '/admin/stats-vod', color: 'green' as const },
+    { icon: <CreditCard className="h-5 w-5" />, label: 'Stats Finances', description: 'Dons & contributions', href: '/admin/stats-finances', color: 'orange' as const },
   ];
 
   // Modération (simulée avec les commentaires en attente)
