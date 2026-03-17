@@ -145,15 +145,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
     console.log('🔵 URL actuelle:', window.location.origin);
     console.log('🔵 Callback URL sera:', new URL('/auth/callback', window.location.origin).toString());
     
-    // Sur mobile, vérifier que le SDK est prêt (sécurisé)
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { safeGetLoginStatus } = require('@/lib/facebook');
-      safeGetLoginStatus();
-    } catch (e) {
-      /* ignore: helper may not be available in SSR build */
-    }
-    
     setFacebookLoading(true);
     try {
       // FIX: Nettoyage forcé de la session pour éviter les jetons corrompus
@@ -170,31 +161,26 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
       
       console.log('✅ Session nettoyée, lancement OAuth Facebook...');
       
-      // Supabase gère la vérification du token et la création du profil
-      const res = await signInWithProvider('facebook') as any;
-      if (res?.error) {
-        console.error('Supabase OAuth initiation error (Facebook):', res.error);
-        toast({ title: '❌ Erreur Facebook', description: String(res.error.message || res.error), variant: 'destructive' });
+      // Utiliser directement supabase.auth.signInWithOAuth pour éviter les erreurs de fonction
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'facebook',
+        options: {
+          redirectTo: window.location.origin + '/auth/callback',
+          scopes: 'email,public_profile'
+        }
+      });
+
+      if (error) {
+        console.error('Supabase OAuth initiation error (Facebook):', error);
+        toast({ title: '❌ Erreur Facebook', description: String(error.message), variant: 'destructive' });
         return;
       }
 
-      setTimeout(async () => {
-        try {
-          const { data: authUser } = await supabase.auth.getUser();
-          if (authUser?.user?.id) {
-            await ensureProfileExists(authUser.user.id);
-          }
-        } catch (err) {
-          console.error('Erreur lors de la création du profil Facebook:', err);
-          toast({
-            title: '⚠️ Profil',
-            description: 'Profil créé, mais redirection incomplète. Veuillez recharger.',
-            variant: 'default',
-          });
-        }
-      }, 1000);
+      console.log('✅ Redirection vers Facebook initiée');
+
+      // La redirection est automatique, pas besoin d'appeler onSuccess ici
+      // Le callback gérera la suite
       
-      if (onSuccess) onSuccess();
     } catch (err: unknown) {
       console.error('Erreur Facebook Login:', err);
       const errorMsg = (err as Record<string, unknown>)?.message || 'Erreur lors de la connexion Facebook';
