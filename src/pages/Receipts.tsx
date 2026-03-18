@@ -11,6 +11,7 @@ import {
   XCircle,
   FileText,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import HeroBanner from "@/components/HeroBanner";
@@ -43,8 +44,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import ReceiptPreviewModal from "@/components/donations/ReceiptPreviewModal";
-import { findCashDonationByCode } from "@/lib/supabase/cashDonationQueries";
 import type { ReceiptDonation } from "@/components/donations/ReceiptPreviewModal";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type Donation = {
   id: string;
@@ -96,6 +104,7 @@ export default function Receipts() {
   const { data: hero, save: saveHero } = usePageHero(location.pathname);
   const { isAdmin } = useRoleCheck();
   const { profile } = useUser();
+  const { toast } = useToast();
 
   const [donations, setDonations] = useState<Donation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,6 +117,7 @@ export default function Receipts() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
   const [page, setPage] = useState(1);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const pageSize = 10;
 
@@ -176,15 +186,60 @@ export default function Receipts() {
     setCodeSearching(true);
     setCodeResult(null);
     try {
-      const found = await findCashDonationByCode(code);
+      // Aligner la recherche "du haut" sur la logique qui marche (filtre local)
+      // pour éviter les divergences entre requête DB et affichage.
+      const upper = code.toUpperCase();
+      const foundDonation = donations.find((d) => {
+        const codeInfo = getDisplayCode(d);
+        const display = String(codeInfo.code || "").toUpperCase();
+        const token = String(d.intention_token || "").toUpperCase();
+        const tx = String(d.transaction_id || "").toUpperCase();
+        const id = String(d.id || "").toUpperCase();
+        return (
+          display.includes(upper) ||
+          token.includes(upper) ||
+          tx.includes(upper) ||
+          id.includes(upper)
+        );
+      });
+
+      const found = (foundDonation as unknown as ReceiptDonation) || null;
       setCodeResult(found);
-      if (found) {
-        setPreviewDonation(found as ReceiptDonation);
-      }
+      if (found) setPreviewDonation(found);
     } catch {
       setCodeResult(null);
     } finally {
       setCodeSearching(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmId) return;
+    const donationId = deleteConfirmId;
+    try {
+      // Optimistic UI: remove immediately
+      setDonations((prev) => prev.filter((d) => d.id !== donationId));
+
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth?.user?.id ?? null;
+      const q = supabase.from("donations").delete().eq("id", donationId);
+      // Safety: if not admin, ensure user can only delete own donations
+      const { error } = isAdmin || !userId ? await q : await q.eq("user_id", userId);
+      if (error) throw error;
+
+      toast({ title: "Succès", description: "Don supprimé avec succès" });
+      await fetchDonations();
+    } catch (err) {
+      console.error("[Receipts] delete donation error", err);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer ce don. Vérifiez vos droits.",
+        variant: "destructive",
+      });
+      // Recover state from source of truth
+      await fetchDonations();
+    } finally {
+      setDeleteConfirmId(null);
     }
   };
 
@@ -426,6 +481,7 @@ export default function Receipts() {
                       <TableHead>Montant</TableHead>
                       <TableHead>Méthode</TableHead>
                       <TableHead>Statut</TableHead>
+                      <TableHead>Actions</TableHead>
                       <TableHead className="text-right">Reçu</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -443,7 +499,7 @@ export default function Receipts() {
                       ))
                     ) : paginatedDonations.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                           Aucun don trouvé
                         </TableCell>
                       </TableRow>
@@ -455,6 +511,7 @@ export default function Receipts() {
                           onPreview={() =>
                             setPreviewDonation(donation as ReceiptDonation)
                           }
+                          onDelete={() => setDeleteConfirmId(donation.id)}
                         />
                       ))
                     )}
@@ -500,6 +557,34 @@ export default function Receipts() {
         donation={previewDonation}
         responsableCaisse={profile?.full_name || "—"}
       />
+
+      {/* Confirmation suppression don */}
+      <Dialog
+        open={!!deleteConfirmId}
+        onOpenChange={(open) => {
+          if (!open) setDeleteConfirmId(null);
+        }}
+      >
+        <DialogContent className="max-w-md" aria-describedby="delete-donation-desc">
+          <DialogHeader>
+            <DialogTitle>Confirmer la suppression</DialogTitle>
+            <DialogDescription id="delete-donation-desc">
+              Cette action supprimera définitivement ce don de votre historique.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p>Voulez-vous vraiment supprimer ce don ? Cette action est irréversible.</p>
+            <div className="flex gap-2 justify-end mt-4">
+              <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
+                Annuler
+              </Button>
+              <Button variant="destructive" onClick={confirmDelete}>
+                Supprimer
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -507,9 +592,11 @@ export default function Receipts() {
 function DonationRow({
   donation,
   onPreview,
+  onDelete,
 }: {
   donation: Donation;
   onPreview: () => void;
+  onDelete: () => void;
 }) {
   const { code, isPaid } = getDisplayCode(donation);
 
@@ -604,6 +691,18 @@ function DonationRow({
         </div>
       </TableCell>
       <TableCell>{getStatusBadge(donation.payment_status)}</TableCell>
+      <TableCell>
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={onDelete}
+          title="Supprimer ce don"
+          className="gap-1"
+        >
+          <Trash2 className="h-4 w-4" />
+          Supprimer
+        </Button>
+      </TableCell>
       <TableCell className="text-right">
         {canPreview && (
           <Button
