@@ -116,13 +116,29 @@ const HomepageHero = ({ data, isLoading }: HomepageHeroProps) => {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.5, duration: 0.6 }}
             >
-              <Button
-                asChild
-                size="sm"
-                className="rounded-lg px-4 md:px-8 py-2 md:py-3 text-sm md:text-lg font-semibold md:size-lg"
-              >
-                <a href={data.button_link}>{data.button_text}</a>
-              </Button>
+              {(() => {
+                const rawText = String(data.button_text ?? '');
+                const rawLink = String(data.button_link ?? '');
+                const normalizedLink = rawLink.replace(/\/$/, '');
+                const shouldOverrideToDonate =
+                  normalizedLink === '/events' ||
+                  normalizedLink === '/evenements' ||
+                  rawText.toLowerCase().includes('voir tous les événements') ||
+                  rawText.toLowerCase().includes('voir tous les evenements');
+
+                const href = shouldOverrideToDonate ? '/donate' : rawLink;
+                const text = shouldOverrideToDonate ? 'Faire un don sécurisé' : rawText;
+
+                return (
+                  <Button
+                    asChild
+                    size="sm"
+                    className="rounded-lg px-4 md:px-8 py-2 md:py-3 text-sm md:text-lg font-semibold md:size-lg"
+                  >
+                    <a href={href}>{text}</a>
+                  </Button>
+                );
+              })()}
             </motion.div>
           )}
         </motion.div>

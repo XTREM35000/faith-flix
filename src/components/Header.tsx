@@ -334,7 +334,7 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
                         size="icon"
                         onClick={async () => {
                           await markAllAsRead();
-                          navigate('/live');
+                          navigate('/chat');
                         }}
                         className="text-muted-foreground hover:text-foreground"
                         title="Chat en direct"
@@ -409,7 +409,7 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
                       <DropdownMenuItem
                         onClick={async () => {
                           await markAllAsRead();
-                          navigate('/live');
+                          navigate('/chat');
                         }}
                       >
                         <MessageCircle className="mr-2 h-4 w-4" /> Chat en direct
