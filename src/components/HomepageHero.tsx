@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ImageOff } from 'lucide-react';
 import { useUser } from '@/hooks/useUser';
 import type { HomepageSection } from '@/types/homepage';
+import { Link } from 'react-router-dom';
 
 interface HomepageHeroProps {
   data?: HomepageSection | null;
@@ -128,14 +129,25 @@ const HomepageHero = ({ data, isLoading }: HomepageHeroProps) => {
 
                 const href = shouldOverrideToDonate ? '/donate' : rawLink;
                 const text = shouldOverrideToDonate ? 'Faire un don sécurisé' : rawText;
+                const isExternal = /^https?:\/\//i.test(href);
+                const isInternal = href.startsWith('/');
 
                 return (
                   <Button
                     asChild
                     size="sm"
-                    className="rounded-lg px-4 md:px-8 py-2 md:py-3 text-sm md:text-lg font-semibold md:size-lg"
+                    className={[
+                      "rounded-lg px-4 md:px-8 py-2 md:py-3 text-sm md:text-lg font-semibold md:size-lg",
+                      shouldOverrideToDonate ? "cta-donate-3d" : "",
+                    ].filter(Boolean).join(" ")}
                   >
-                    <a href={href}>{text}</a>
+                    {isExternal ? (
+                      <a href={href}>{text}</a>
+                    ) : isInternal ? (
+                      <Link to={href}>{text}</Link>
+                    ) : (
+                      <a href={href}>{text}</a>
+                    )}
                   </Button>
                 );
               })()}
