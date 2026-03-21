@@ -2,6 +2,7 @@ import { Building2, Check, Plus, X } from 'lucide-react';
 import React, { useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { useParoisse, type Paroisse } from '@/contexts/ParoisseContext';
 import { useAuthContext } from '@/contexts/useAuthContext';
 

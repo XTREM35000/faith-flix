@@ -163,16 +163,15 @@ const Index = () => {
     fetchAnnouncements();
   }, [paroisseId]);
 
-  // Fetch prayers
+  // Fetch prayers (prayer_intentions n'a pas de colonne paroisse_id)
   useEffect(() => {
     const fetchPrayers = async () => {
       try {
-        let query = (supabase as any).from('prayer_intentions')
+        const query = (supabase as any).from('prayer_intentions')
           .select('id, title, content, category, created_at')
           .eq('status', 'approved')
           .order('created_at', { ascending: false })
           .limit(3);
-        if (paroisseId) query = query.eq('paroisse_id', paroisseId);
 
         const { data, error } = await query;
         if (error) {
@@ -188,7 +187,7 @@ const Index = () => {
       }
     };
     fetchPrayers();
-  }, [paroisseId]);
+  }, []);
 
   // Auth modal controlled centrally in Header; Index no longer renders AuthModal
 
