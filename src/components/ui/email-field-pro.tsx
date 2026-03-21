@@ -3,7 +3,7 @@ import { Mail } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Input } from './input'
 import { Label } from './label'
-import { stripAndNormalize, normalizeEmail, sanitizeEmail, getKnownDomains, detectAndSeparateDomain } from '@/utils/emailSanitizer'
+import { stripAndNormalize, normalizeEmail, sanitizeEmail, detectAndSeparateDomain } from '@/utils/emailSanitizer'
 
 type DomainOption = { label: string; value: string }
 
@@ -120,55 +120,49 @@ export const EmailFieldPro: React.FC<EmailFieldProProps> = ({
 
 	// Handle paste to detect domains without @ (e.g., "prenom.nomgmail.com")
 	const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-		const pasted = e.clipboardData.getData('text')
-		console.log('[EmailFieldPro] handlePaste:', {pasted});
+		const pasted = (e.clipboardData.getData('text') || '').trim()
+		console.log('[EmailFieldPro] handlePaste:', { pasted })
 		if (!pasted) return
 
+		// Collage d’une adresse complète user@domaine.tld
+		if (pasted.includes('@')) {
+			e.preventDefault()
+			const at = pasted.indexOf('@')
+			const loc = pasted.slice(0, at).trim()
+			const dom = pasted.slice(at + 1).trim().toLowerCase()
+			const found = DOMAIN_OPTIONS.find((opt) => opt.value === dom)
+			setLocalPart(loc)
+			if (found) {
+				setDomain(found.value)
+				setCustomDomain('')
+			} else {
+				setDomain('')
+				setCustomDomain(dom)
+			}
+			return
+		}
+
 		const detected = detectAndSeparateDomain(pasted)
-		console.log('[EmailFieldPro] handlePaste detected:', {detected});
+		console.log('[EmailFieldPro] handlePaste detected:', { detected })
 		if (detected) {
-			try {
-				const path = typeof window !== 'undefined' ? window.location.pathname : ''
-				if (path === '/auth') {
-					e.preventDefault()
-					setLocalPart(detected.localPart)
-					setDomain(DOMAIN_OPTIONS[0].value)
-					setCustomDomain('')
-					// Don't call onChange here, useEffect will handle it
-				}
-			} catch (err) {
-				// ignore
+			e.preventDefault()
+			setLocalPart(detected.localPart)
+			const dom = (detected.domain || '').toLowerCase()
+			const found = DOMAIN_OPTIONS.find((opt) => opt.value === dom)
+			if (found) {
+				setDomain(found.value)
+				setCustomDomain('')
+			} else {
+				setDomain('')
+				setCustomDomain(dom)
 			}
 		}
 	}
 
-	// Validate on blur
+	// Validate on blur (ne pas forcer un domaine : évite d’écraser ex. @hotmail.com par Gmail)
 	const handleBlur = () => {
 		console.log('[EmailFieldPro] handleBlur:', {fullValue, localPart, domain, customDomain});
 		if (!fullValue) return
-
-		// If we're on the /auth page, reset domain view on blur but keep full email in onChange
-		// This makes the UI show only the local part, but provides complete email to forms
-		if (fullValue.includes('@')) {
-			try {
-				const path = typeof window !== 'undefined' ? window.location.pathname : ''
-				if (path === '/auth') {
-					const [loc, dom] = fullValue.split('@')
-					// Check against the consolidated known domains list from utils
-					const knownDomains = getKnownDomains()
-					if (knownDomains.includes(dom)) {
-						console.log('[EmailFieldPro] handleBlur stripping domain on /auth:', {from: fullValue, domain: dom});
-						setLocalPart(loc)
-						setDomain(DOMAIN_OPTIONS[0].value)
-						setCustomDomain('')
-						// Don't call onChange, useEffect will handle sending the email
-						return
-					}
-				}
-			} catch (e) {
-				// ignore
-			}
-		}
 
 		const validation = sanitizeEmail(fullValue)
 		if (validation.suggestion && validation.suggestion !== fullValue) {

@@ -17,7 +17,7 @@ interface LoginFormProps {
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) => {
-  const { login, signInWithProvider } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
@@ -27,6 +27,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showRetryBanner, setShowRetryBanner] = useState(false);
   const [showOTPModal, setShowOTPModal] = useState(false); // État pour contrôler la modale OTP
+  const [emailNotConfirmed, setEmailNotConfirmed] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
 
   const closeOTPModal = () => {
     setShowOTPModal(false);
@@ -108,18 +110,27 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
       return;
     }
 
+    const emailToUse = email.trim();
     setLoading(true);
+    setEmailNotConfirmed(false);
     try {
-      // EmailFieldPro returns the complete email: identifier + selected domain
-      const emailToUse = email;
-      console.log('[LoginForm] Attempting login with email:', emailToUse, 'origin:', typeof window !== 'undefined' ? window.location.origin : 'no-window');
-      
-      const res: unknown = await login(emailToUse, password);
-      const data = (res as Record<string, unknown>)?.data as Record<string, unknown> | undefined;
-      const loggedUser = data?.user as Record<string, unknown> | undefined;
+      console.log(
+        '[LoginForm] Attempting login with email:',
+        emailToUse,
+        'origin:',
+        typeof window !== 'undefined' ? window.location.origin : 'no-window',
+      );
 
-      if (loggedUser?.id) {
-        await ensureProfileExists(loggedUser.id as string);
+      await login(emailToUse, password);
+
+      // login() ne renvoie pas l’utilisateur : récupération explicite pour ensureProfileExists + avatar pending
+      const { data: userData, error: userErr } = await supabase.auth.getUser();
+      if (userErr) {
+        console.warn('[LoginForm] getUser après login:', userErr);
+      }
+      const uid = userData?.user?.id;
+      if (uid) {
+        await ensureProfileExists(uid);
       }
 
       if (onSuccess) {
@@ -129,14 +140,54 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
       }
     } catch (err: unknown) {
       console.error('Login error', err);
-      const errorMsg = (err as Record<string, unknown>)?.message || 'Erreur lors de la connexion';
+      const e = err as { message?: string; code?: string };
+      const errorMsg = String(e?.message || 'Erreur lors de la connexion');
+      const code = e?.code;
+      const isUnconfirmed =
+        code === 'email_not_confirmed' ||
+        errorMsg.toLowerCase().includes('email not confirmed') ||
+        errorMsg.toLowerCase().includes('not confirmed');
+
+      if (isUnconfirmed) {
+        setEmailNotConfirmed(true);
+        toast({
+          title: 'Email non confirmé',
+          description:
+            'Ouvrez le lien reçu par email pour activer votre compte, puis reconnectez-vous. Vous pouvez renvoyer l’email de confirmation ci-dessous.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       toast({
         title: '❌ Erreur de connexion',
-        description: String(errorMsg),
+        description: errorMsg,
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    const em = email.trim();
+    if (!em) {
+      toast({ title: 'Email requis', description: 'Saisissez votre adresse email.', variant: 'destructive' });
+      return;
+    }
+    setResendLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({ type: 'signup', email: em });
+      if (error) throw error;
+      toast({
+        title: 'Email de confirmation renvoyé',
+        description: 'Vérifiez votre boîte de réception (et les courriers indésirables).',
+      });
+    } catch (resendErr: unknown) {
+      const msg = resendErr instanceof Error ? resendErr.message : String(resendErr);
+      toast({ title: 'Impossible de renvoyer l’email', description: msg, variant: 'destructive' });
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -266,6 +317,22 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
             Mot de passe oublié ?
           </button>
         </div>
+
+        {emailNotConfirmed && (
+          <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 text-xs text-amber-950 dark:text-amber-100 space-y-2">
+            <p className="font-medium">Compte inactif tant que l’email n’est pas confirmé (réglage Supabase).</p>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="w-full h-8 text-xs"
+              disabled={resendLoading}
+              onClick={() => void handleResendConfirmation()}
+            >
+              {resendLoading ? 'Envoi…' : 'Renvoyer l’email de confirmation'}
+            </Button>
+          </div>
+        )}
 
         <div className="flex gap-2 pt-1">
           <Button type="submit" disabled={loading} className="flex-1 h-8 text-xs">{loading ? 'Connexion...' : 'Se connecter'}</Button>

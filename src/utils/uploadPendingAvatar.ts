@@ -45,8 +45,8 @@ export async function uploadPendingAvatar(userId: string): Promise<string | null
 
     if (avatar_url) {
       console.log('✅ URL avatar publique:', avatar_url);
-      
-      // Mettre à jour les metadata avec l'avatar URL
+
+      // Mettre à jour les metadata auth
       try {
         const { error: metaErr } = await supabase.auth.updateUser({
           data: { avatar_url },
@@ -59,6 +59,25 @@ export async function uploadPendingAvatar(userId: string): Promise<string | null
         }
       } catch (err) {
         console.error('Erreur lors de la mise à jour metadata:', err);
+      }
+
+      // Synchroniser public.profiles (profil créé par trigger souvent sans avatar)
+      try {
+        const { error: profileErr } = await supabase
+          .from('profiles')
+          .update({
+            avatar_url,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', userId);
+
+        if (profileErr) {
+          console.error('❌ Erreur mise à jour profiles.avatar_url:', profileErr);
+        } else {
+          console.log('✅ profiles.avatar_url mis à jour');
+        }
+      } catch (err) {
+        console.error('Erreur mise à jour profil avatar:', err);
       }
     }
 

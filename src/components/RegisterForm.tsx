@@ -2,16 +2,16 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { stripAndNormalize } from "@/utils/emailSanitizer";
-import { Camera, Facebook } from "lucide-react";
+import { Camera } from "lucide-react";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
 import PasswordField from '@/components/ui/password-field';
 import PhoneInputWithCountry from "@/components/PhoneInputWithCountry";
 import { EmailFieldPro } from "@/components/ui/email-field-pro";
+import { ensureProfileExists } from "@/utils/ensureProfileExists";
+import { isValidEmail } from "@/utils/emailSanitizer";
 
 interface RegisterFormProps {
   onSuccess?: () => void;
@@ -19,7 +19,7 @@ interface RegisterFormProps {
 }
 
 const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin }) => {
-  const { register, signInWithProvider } = useAuth();
+  const { signUpWithEmail } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
@@ -28,7 +28,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin 
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [countryCode, setCountryCode] = useState("+225");
-  const [showPassword, setShowPassword] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -52,16 +51,48 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin 
     }
   };
 
+  /** Attendre que l’avatar soit bien écrit dans sessionStorage (évite course au clic rapide). */
+  const persistPendingAvatar = (userId: string, file: File) =>
+    new Promise<void>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          sessionStorage.setItem(
+            'pending_avatar_upload',
+            JSON.stringify({
+              fileData: reader.result,
+              fileName: `${userId}/${Date.now()}_avatar.${file.name.split('.').pop()}`,
+              mimeType: file.type,
+            }),
+          );
+          resolve();
+        } catch (e) {
+          reject(e);
+        }
+      };
+      reader.onerror = () => reject(reader.error ?? new Error('FileReader error'));
+      reader.readAsDataURL(file);
+    });
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // STRIP MODE: Extract only the identifier part
-    const identifier = stripAndNormalize(email);
-    
-    if (!identifier.trim()) {
+
+    // EmailFieldPro : valeur complète (local + domaine sélectionné ou « Autre »)
+    const emailToSubmit = email.trim();
+
+    if (!emailToSubmit) {
       toast({
-        title: '❌ Identifiant requis',
-        description: 'Veuillez entrer votre identifiant',
+        title: '❌ Email requis',
+        description: 'Veuillez compléter votre adresse email (identifiant + domaine).',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!isValidEmail(emailToSubmit)) {
+      toast({
+        title: '❌ Email invalide',
+        description: 'Vérifiez l’identifiant et le domaine (ex. prenom.nom@gmail.com).',
         variant: 'destructive',
       });
       return;
@@ -87,9 +118,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin 
 
     setLoading(true);
     try {
-      // Generate email from identifier (or backend can do this)
-      const emailToUse = `${identifier}@paroisse.ci`; // Adjust domain as needed
-      
       // Déterminer le rôle à attribuer (premier utilisateur = admin, deuxième = moderateur)
       // Utiliser les valeurs canoniques françaises acceptées par la contrainte CHECK
       let assignedRole = 'membre';
@@ -107,8 +135,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin 
       }
 
       // 1) Créer l'utilisateur d'abord et récupérer la réponse
-      type AuthSignUpRes = { data?: { user?: { id?: string } } | null };
-      const registerRes = (await register(emailToUse, password, {
+      type AuthSignUpRes = {
+        data?: { user?: { id?: string } | null; session?: unknown } | null;
+      };
+      const registerRes = (await signUpWithEmail(emailToSubmit, password, {
         full_name: fullName,
         phone: fullPhone,
         role: assignedRole,
@@ -141,24 +171,20 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin 
         throw new Error('User not available after registration; profile creation aborted');
       }
 
-      // 2) Stocker l'avatar dans sessionStorage pour upload au premier login
-      // (On ne peut pas uploader immédiatement car pas de session après signUp)
-      if (createdUser && avatarFile) {
+      // Profil public : trigger SQL côté Supabase ou création si session active (email confirm désactivé)
+      if (registerRes?.data?.session && createdUser.id) {
         try {
-          console.log('💾 Stockage de l\'avatar en sessionStorage pour upload ultérieur...');
-          
-          // Convertir le fichier en base64 pour stockage
-          const reader = new FileReader();
-          reader.onload = () => {
-            const avatarData = {
-              fileData: reader.result, // base64
-              fileName: `${createdUser.id}/${Date.now()}_avatar.${avatarFile.name.split('.').pop()}`,
-              mimeType: avatarFile.type,
-            };
-            sessionStorage.setItem('pending_avatar_upload', JSON.stringify(avatarData));
-            console.log('✅ Avatar stocké en sessionStorage');
-          };
-          reader.readAsDataURL(avatarFile);
+          await ensureProfileExists(createdUser.id);
+        } catch (profileErr) {
+          console.error('ensureProfileExists après inscription:', profileErr);
+        }
+      }
+
+      // Avatar : stockage synchrone avant le toast (upload au 1er login dans ensureProfileExists)
+      if (avatarFile && createdUser.id) {
+        try {
+          await persistPendingAvatar(createdUser.id, avatarFile);
+          console.log('✅ Avatar stocké en sessionStorage (pending)');
         } catch (err) {
           console.error('Erreur stockage avatar en sessionStorage:', err);
         }
@@ -257,13 +283,14 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin 
             </div>
           </div>
 
-          {/* Email avec auto-complétion */}
+          {/* Email avec sélecteur de domaine (composant réutilisable) */}
           <EmailFieldPro
             value={email}
             onChange={setEmail}
             label="Email"
             required
             onValidationChange={() => {}}
+            className="h-8 text-xs"
           />
 
           {/* Mot de passe avec indicateur */}

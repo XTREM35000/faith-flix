@@ -281,11 +281,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
         <button
           type="button"
           onClick={() => setSelectorOpen(true)}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded hover:bg-accent/50 text-muted-foreground"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-accent/50 text-muted-foreground"
           title="Changer de paroisse"
         >
           <Building2 className="h-4 w-4 flex-shrink-0" />
-          {!isCollapsed && <span className="text-sm">Changer de paroisse</span>}
+          {!isCollapsed && (
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <span className="inline-flex shrink-0 items-center px-2 py-0.5 rounded-md text-[0.65rem] font-semibold bg-gradient-to-b from-green-400 to-green-600 text-white shadow-md shadow-green-500/50">
+                New
+              </span>
+              <span className="truncate text-left text-sm">Changer de paroisse</span>
+            </div>
+          )}
         </button>
       </div>
     </aside>

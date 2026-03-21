@@ -1,6 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { Input } from '@/components/ui/input';
-import { stripAndNormalize } from '@/utils/emailSanitizer';
 
 interface EmailInputWithSuffixProps {
   email: string;
@@ -9,6 +8,7 @@ interface EmailInputWithSuffixProps {
   error?: string;
 }
 
+/** Format email complet (type="email") — ne force plus de domaine ni de suffixe. */
 const EmailInputWithSuffix: React.FC<EmailInputWithSuffixProps> = ({
   email,
   onEmailChange,
@@ -17,59 +17,52 @@ const EmailInputWithSuffix: React.FC<EmailInputWithSuffixProps> = ({
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleChange = (value: string) => {
-    // STRIP MODE: Extract only the part before @
-    const identifier = stripAndNormalize(value);
-    
-    onEmailChange(identifier);
-    
-    // Mark as valid if there's content
-    if (identifier.trim()) {
-      onValidationChange?.(true);
-    } else {
+  const validate = (value: string) => {
+    if (!value.trim()) {
       onValidationChange?.(false);
+      return;
     }
+    const el = inputRef.current;
+    if (el && typeof el.checkValidity === 'function') {
+      onValidationChange?.(el.checkValidity());
+      return;
+    }
+    onValidationChange?.(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()));
+  };
+
+  const handleChange = (value: string) => {
+    onEmailChange(value);
+    validate(value);
   };
 
   const handleBlur = () => {
-    // No auto-correction needed in strip mode
-    // Just trim and normalize on blur
-    if (email) {
-      const normalized = stripAndNormalize(email);
-      if (normalized !== email) {
-        onEmailChange(normalized);
-      }
+    const t = email.trim();
+    if (t !== email) {
+      onEmailChange(t);
+      validate(t);
+    } else {
+      validate(email);
     }
   };
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      // No suggestions needed in strip mode
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   return (
     <div className="space-y-1">
       <div className="relative">
         <Input
           ref={inputRef}
-          type="text"
-          placeholder="identifiant (ex: prenom.nom)"
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          placeholder="vous@exemple.com"
           value={email}
           onChange={(e) => handleChange(e.target.value)}
           onBlur={handleBlur}
-          autoComplete="username"
           className={error ? 'border-red-500 focus-visible:ring-red-500' : ''}
           aria-invalid={Boolean(error)}
         />
       </div>
-      
-      {error && (
-        <p className="text-xs text-red-500 font-medium">{error}</p>
-      )}
+
+      {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
     </div>
   );
 };

@@ -7,10 +7,10 @@ import { uploadPendingAvatar } from './uploadPendingAvatar';
  */
 export async function ensureProfileExists(userId: string) {
   try {
-    // Vérifier si le profil existe déjà
+    // Vérifier si le profil existe déjà (incl. avatar pour pending upload après inscription)
     const { data: existingProfile, error: checkError } = await supabase
       .from('profiles')
-      .select('id')
+      .select('id, avatar_url')
       .eq('id', userId)
       .maybeSingle();
 
@@ -19,10 +19,15 @@ export async function ensureProfileExists(userId: string) {
       return null;
     }
 
-    // Le profil existe déjà
+    // Profil déjà créé (ex. trigger SQL) : compléter l’avatar si fichier en attente
     if (existingProfile) {
-      console.log('✅ Profil existe déjà');
-      return existingProfile;
+      if (!existingProfile.avatar_url) {
+        console.log('⏳ Profil sans avatar — tentative pending_avatar_upload…');
+        await uploadPendingAvatar(userId);
+      } else {
+        console.log('✅ Profil existe déjà avec avatar');
+      }
+      return { id: existingProfile.id };
     }
 
     // Récupérer les données de l'utilisateur auth

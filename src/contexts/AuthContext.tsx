@@ -119,8 +119,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  /** Inscription : email brut transmis à Supabase (pas de suffixe / domaine imposé côté client). */
+  const signUpWithEmail = async (
+    email: string,
+    password: string,
+    metadata?: { full_name?: string; phone?: string; role?: string }
+  ) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: metadata?.full_name,
+            phone: metadata?.phone,
+            role: metadata?.role,
+          },
+        },
+      });
+      if (error) throw error;
+      // Session présente seulement si la confirmation email est désactivée côté projet
+      if (data.session) {
+        setSession(data.session);
+        setUser(data.user ?? null);
+      }
+      return { data };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const register = signUpWithEmail;
+
   return (
-    <AuthContext.Provider value={{ session, user, profile, role, loading, signOut, login }}>
+    <AuthContext.Provider
+      value={{
+        session,
+        user,
+        profile,
+        role,
+        loading,
+        signOut,
+        login,
+        register,
+        signUpWithEmail,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
