@@ -21,3 +21,13 @@ export {
   moderateComment,
   deleteComment,
 };
+
+// Paroisses (administration multi-paroisses, super_admin / RLS)
+export {
+  fetchParoissesForAdmin,
+  upsertParoisse,
+  deleteParoisseById,
+  formatParoisseSaveError,
+  type ParoisseAdminRow,
+  type ParoisseUpsertPayload,
+} from './paroisseAdminQueries';

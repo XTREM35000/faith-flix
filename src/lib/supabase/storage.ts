@@ -7,6 +7,8 @@ export const STORAGE_BUCKETS = {
   VIDEOS: (import.meta.env.VITE_BUCKET_PUBLIC as string) || 'videos',
   DIRECTORY_IMAGES: (import.meta.env.VITE_BUCKET_DIRECTORY_IMAGES as string) || 'directory-images',
   PAROISSE_FILES: (import.meta.env.VITE_BUCKET_PAROISSE_FILES as string) || 'paroisse-files',
+  /** Logos des paroisses (bucket public dédié). */
+  PAROISSES: (import.meta.env.VITE_BUCKET_PAROISSES as string) || 'paroisses',
   AVATARS: (import.meta.env.VITE_BUCKET_AVATAR as string) || 'avatars',
 };
 
@@ -373,5 +375,48 @@ export async function uploadDirectoryImage(file: File, bucketName: string = STOR
   } catch (e) {
     console.error('uploadDirectoryImage unexpected error', e);
     return null;
+  }
+}
+
+/** Upload logo paroisse → bucket `paroisses` (ou VITE_BUCKET_PAROISSES). */
+export async function uploadParoisseLogo(file: File, slugHint?: string) {
+  const ext = getFileExtension(file.name);
+  const mimeType = file.type || `image/${ext}`;
+  const prefix = slugHint ? `${sanitizeFileName(slugHint).slice(0, 40)}/` : '';
+  const shortKey = `${prefix}${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
+
+  type SupabaseUploadResponse = { data: { path: string } | null; error: Error | null };
+  const attemptUpload = async (): Promise<SupabaseUploadResponse> => {
+    const uploadPromise = supabase.storage.from(STORAGE_BUCKETS.PAROISSES).upload(shortKey, file, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: mimeType,
+    });
+    const timeoutMs = 120000;
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('upload timeout')), timeoutMs),
+    );
+    return (await Promise.race([uploadPromise, timeout])) as SupabaseUploadResponse;
+  };
+
+  try {
+    const first = await attemptUpload();
+    if (first.error) throw first.error;
+    const path = first.data?.path;
+    if (!path) throw new Error('No path returned');
+
+    const { data: publicData } = supabase.storage.from(STORAGE_BUCKETS.PAROISSES).getPublicUrl(path);
+    if (!publicData?.publicUrl) throw new Error('Failed to get public URL');
+
+    return {
+      key: path,
+      publicUrl: publicData.publicUrl,
+      originalName: file.name,
+      extension: ext,
+      mimeType,
+    };
+  } catch (e) {
+    console.error('[uploadParoisseLogo]', e);
+    throw e instanceof Error ? e : new Error(String(e));
   }
 }

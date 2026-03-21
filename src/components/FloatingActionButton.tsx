@@ -19,7 +19,7 @@ export const FloatingActionButton: React.FC = () => {
       whileHover={{ scale: 1.12 }}
       whileTap={{ scale: 0.98 }}
       onClick={() => {
-        navigate('/admin/paroisses/new');
+        navigate('/admin/paroisses');
       }}
       // Shadcn Dialog uses z-50 overlay/content; bump above to stay visible during paroisse selection.
       className="fixed bottom-6 right-6 z-[1000] flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-r from-primary to-purple-600 text-white shadow-lg shadow-purple-600/30"

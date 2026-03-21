@@ -74,6 +74,7 @@ import AuthCallback from './pages/AuthCallback';
 import AdminMemberCards from './pages/AdminMemberCards';
 import AdminCertificates from './pages/AdminCertificates';
 import AdminMasterReset from './pages/AdminMasterReset';
+import AdminParoisses from './pages/AdminParoisses';
 import WelcomeModal from './components/WelcomeModal';
 import { ParoisseProvider, useParoisse } from '@/contexts/ParoisseContext';
 import { ParoisseSelector } from '@/components/ParoisseSelector';
@@ -291,6 +292,14 @@ const AppInner = () => {
             }
           />
           <Route
+            path="/admin/paroisses"
+            element={
+              <ProtectedRoute requiredRole="super_admin">
+                <Layout><AdminParoisses /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/tutoriels"
             element={<ProtectedRoute requiredRole="admin"><Layout><AdminTutorielsPage /></Layout></ProtectedRoute>}
           />
@@ -326,9 +335,10 @@ const AppInner = () => {
           <Route path="/unauthorized" element={<Unauthorized />} />
           <Route path="*" element={<Layout><NotFound /></Layout>} />
         </Routes>
-      </BrowserRouter>
 
-      <ParoisseSelector open={isSelectorOpen} onClose={handleParoisseSelectorClose} />
+        {/* Dans le Router pour que ParoisseSelector puisse utiliser useNavigate() */}
+        <ParoisseSelector open={isSelectorOpen} onClose={handleParoisseSelectorClose} />
+      </BrowserRouter>
     </>
   );
 };

@@ -74,6 +74,7 @@ export const MENU_GROUPS = [
     items: [
       { label: 'Accueil', href: '/admin/homepage', icon: Settings },
       { label: 'Paramètres', href: '/admin/settings', icon: Settings },
+      { label: 'Paroisses', href: '/admin/paroisses', icon: Building2, superOnly: true },
       { label: 'Documents', href: '/documents', icon: FileText },
       { label: 'Événements', href: '/admin/events', icon: Calendar },
     ],
