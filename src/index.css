@@ -267,15 +267,15 @@ header {
 @keyframes donate-cta-3d {
   0%, 100% {
     transform: perspective(900px) rotateX(0deg) rotateY(0deg) translateZ(0);
-    filter: drop-shadow(0 0 6px hsl(var(--gold) / 0.55));
+    filter: drop-shadow(0 2px 2px hsl(30 10% 10% / 0.4)) drop-shadow(0 0 8px hsl(var(--gold) / 0.4));
   }
   50% {
-    transform: perspective(900px) rotateX(10deg) rotateY(-10deg) translateZ(10px);
-    filter: drop-shadow(0 0 18px hsl(var(--gold) / 0.85));
+    transform: perspective(900px) rotateX(6deg) rotateY(-6deg) translateZ(8px);
+    filter: drop-shadow(0 3px 4px hsl(30 10% 10% / 0.5)) drop-shadow(0 0 14px hsl(var(--gold) / 0.6));
   }
 }
 
-/* CTA spécial "don": gradient + effet 3D + clignotement */
+/* CTA spécial "don": gradient + effet 3D relief + animation douce */
 .cta-donate-3d {
   background-image: linear-gradient(135deg,
     hsl(var(--gold)) 0%,
@@ -283,9 +283,17 @@ header {
     hsl(var(--gold-light)) 100%
   ) !important;
   color: hsl(var(--secondary-foreground)) !important;
+  font-weight: 700 !important;
+  text-shadow:
+    0 1px 0 hsl(40 30% 100% / 0.5),
+    0 2px 2px hsl(30 10% 15% / 0.35),
+    0 3px 4px hsl(30 10% 10% / 0.25);
   background-size: 200% 200%;
-  animation: shimmer 2.4s linear infinite, donate-cta-3d 1.8s ease-in-out infinite;
-  box-shadow: var(--shadow-glow);
+  animation: shimmer 5s linear infinite, donate-cta-3d 4s ease-in-out infinite;
+  box-shadow:
+    0 4px 0 hsl(var(--primary) / 0.5),
+    0 6px 12px -2px hsl(30 10% 15% / 0.25),
+    inset 0 1px 0 hsl(40 30% 100% / 0.3);
   transform-style: preserve-3d;
   will-change: transform, filter, background-position;
 }
@@ -294,4 +302,42 @@ header {
   .cta-donate-3d {
     animation: none;
   }
+}
+
+/* Boutons 3D relief pour le sélecteur de paroisse */
+.paroisse-btn-3d {
+  box-shadow:
+    0 3px 0 hsl(var(--primary) / 0.5),
+    0 5px 8px -2px hsl(30 10% 15% / 0.2),
+    inset 0 1px 0 hsl(40 30% 100% / 0.25);
+  transform-style: preserve-3d;
+}
+.paroisse-btn-3d:active {
+  box-shadow:
+    0 1px 0 hsl(var(--primary) / 0.5),
+    0 2px 4px -2px hsl(30 10% 15% / 0.15);
+  transform: translateY(2px);
+}
+.paroisse-btn-3d:hover {
+  box-shadow:
+    0 4px 0 hsl(var(--primary) / 0.55),
+    0 7px 12px -2px hsl(30 10% 15% / 0.25),
+    inset 0 1px 0 hsl(40 30% 100% / 0.3);
+}
+.paroisse-btn-3d-outline {
+  box-shadow:
+    0 2px 0 hsl(var(--border)),
+    0 4px 6px -2px hsl(30 10% 15% / 0.1),
+    inset 0 1px 0 hsl(40 30% 100% / 0.5);
+}
+.paroisse-btn-3d-outline:active {
+  box-shadow:
+    0 1px 0 hsl(var(--border)),
+    0 2px 4px -2px hsl(30 10% 15% / 0.08);
+  transform: translateY(1px);
+}
+.paroisse-btn-3d-outline:hover {
+  box-shadow:
+    0 3px 0 hsl(var(--border)),
+    0 5px 8px -2px hsl(30 10% 15% / 0.15);
 }

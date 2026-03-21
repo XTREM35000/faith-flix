@@ -2,7 +2,6 @@ import { Building2, Check, Plus, X } from 'lucide-react';
 import React, { useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 import { useParoisse, type Paroisse } from '@/contexts/ParoisseContext';
 import { useAuthContext } from '@/contexts/useAuthContext';
 
@@ -55,7 +54,8 @@ export const ParoisseSelector: React.FC<ParoisseSelectorProps> = ({ open, onClos
       }}
     >
       <div
-        className="relative z-[30001] w-full max-w-md rounded-lg border border-border bg-card p-6 text-foreground shadow-2xl"
+        className="relative z-[30001] w-full max-w-md rounded-xl border-2 border-primary/30 bg-card p-6 text-foreground shadow-2xl"
+        style={{ boxShadow: '0 8px 32px -8px hsl(var(--primary) / 0.25), 0 0 0 1px hsl(var(--border))' }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <button
@@ -68,7 +68,7 @@ export const ParoisseSelector: React.FC<ParoisseSelectorProps> = ({ open, onClos
         </button>
 
         <div className="space-y-1.5 pr-8 text-center sm:text-left">
-          <h2 id="paroisse-selector-title" className="text-lg font-semibold leading-none tracking-tight">
+          <h2 id="paroisse-selector-title" className="text-lg font-semibold leading-none tracking-tight text-primary">
             Choisissez votre paroisse
           </h2>
           <p className="text-sm text-muted-foreground">
@@ -80,7 +80,7 @@ export const ParoisseSelector: React.FC<ParoisseSelectorProps> = ({ open, onClos
           <Button
             type="button"
             variant="default"
-            className="mt-4 w-full gap-2 bg-gradient-to-r from-primary to-purple-600 text-primary-foreground shadow-md hover:opacity-90"
+            className="mt-4 w-full gap-2 paroisse-btn-3d bg-gradient-to-r from-primary to-primary/80 text-primary-foreground"
             onClick={() => {
               onClose();
               navigate('/admin/paroisses');
@@ -99,10 +99,14 @@ export const ParoisseSelector: React.FC<ParoisseSelectorProps> = ({ open, onClos
           )}
 
           {(paroissesList || []).map((p: Paroisse) => (
-            <Button
+            <button
               key={p.id}
-              variant={currentParoisse?.id === p.id ? 'default' : 'outline'}
-              className="w-full justify-between"
+              type="button"
+              className={`w-full flex items-center justify-between rounded-lg px-4 py-3 text-left font-medium transition-all ${
+                currentParoisse?.id === p.id
+                  ? 'paroisse-btn-3d bg-primary text-primary-foreground shadow-lg shadow-primary/30'
+                  : 'paroisse-btn-3d-outline bg-muted/50 hover:bg-muted border border-border'
+              }`}
               onClick={() => {
                 setParoisse(p);
                 onClose();
@@ -117,7 +121,7 @@ export const ParoisseSelector: React.FC<ParoisseSelectorProps> = ({ open, onClos
                 <span>{p.nom}</span>
               </div>
               {currentParoisse?.id === p.id && <Check className="h-4 w-4" />}
-            </Button>
+            </button>
           ))}
         </div>
       </div>

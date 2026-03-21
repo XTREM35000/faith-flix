@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, User, UserCircle, LogOut, HelpCircle, Menu, X, Home, Info, Users, MessageCircle, Bell, BookOpen, FileText, MoreVertical, Building2 } from "lucide-react";
+import { Search, User, UserCircle, LogOut, HelpCircle, Menu, X, Home, Info, Users, MessageCircle, Bell, BookOpen, FileText, MoreVertical } from "lucide-react";
 import AnimatedLogo from "./AnimatedLogo";
 const AuthModal = lazy(() => import("./AuthModal"));
 const ForgotPasswordModal = lazy(() => import("./ForgotPasswordModal"));
@@ -77,7 +77,7 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
   const { unreadCount: unreadMessagesCount, markAllAsRead } = useUnreadMessages();
   const { isLiveActive } = useLiveStatus();
   const isConnected = !!user;
-  const { paroisse, setSelectorOpen } = useParoisse();
+  const { paroisse } = useParoisse();
 
   // Favicon effect
   useEffect(() => {
@@ -527,18 +527,6 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
                         Membre
                       </Button>
                     )}
-
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start text-xs mt-1"
-                      onClick={() => {
-                        setSelectorOpen(true);
-                        setIsUserMenuOpen(false);
-                      }}
-                    >
-                      <Building2 className="h-4 w-4 mr-2" />
-                      Changer de paroisse
-                    </Button>
 
                     <Button
                       variant="ghost"
