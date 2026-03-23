@@ -345,6 +345,12 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
             {/* Step 0: Landing Page */}
             {step === 0 && (
               <div className="space-y-6">
+                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    🏠 <strong>Étape 1/5 : Page d'accueil</strong><br />
+                    Configurez l'en-tête, le message principal et la section des activités.
+                  </p>
+                </div>
                 {/* Header configuration (visible on first step so admin can set title/logo early) */}
                 <div>
                   <label className="block text-sm font-semibold mb-2">Logo du header</label>
@@ -383,8 +389,9 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                     className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     value={form.headerMainTitle}
                     onChange={e => setField('headerMainTitle', e.target.value)}
-                    placeholder="Ex: Paroisse Notre Dame"
+                    placeholder="Ex: Paroisse Notre-Dame de la Compassion – Abidjan"
                   />
+                  <p className="text-xs text-muted-foreground">Exemple: Paroisse Notre-Dame de la Compassion – Abidjan</p>
                 </div>
 
                 <div>
@@ -394,8 +401,9 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                     className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     value={form.headerSubtitle}
                     onChange={e => setField('headerSubtitle', e.target.value)}
-                    placeholder="Ex: de la Compassion"
+                    placeholder="Ex: Une communauté vivante au service de la foi et de la fraternité"
                   />
+                  <p className="text-xs text-muted-foreground">Exemple: Une communauté vivante au service de la foi et de la fraternité</p>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold mb-2">
@@ -472,6 +480,13 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                       ✓ Image chargée
                     </div>
                   )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    📐 Dimension recommandée : <strong>1500 x 800 pixels</strong> (format paysage).<br />
+                    Outils gratuits : <a href="https://www.canva.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">Canva</a>,
+                    <a href="https://www.photopea.com" target="_blank" rel="noopener noreferrer" className="text-primary underline ml-1"> Photopea</a> ou
+                    <a href="https://www.iloveimg.com/resize-image" target="_blank" rel="noopener noreferrer" className="text-primary underline ml-1"> iLoveIMG</a>.
+                    Une image trop petite ou mal proportionnée peut déséquilibrer l'affichage.
+                  </p>
                 </div>
 
                 <div className="border-t border-border pt-6">
@@ -483,7 +498,7 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                     className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     value={form.featuresTitle}
                     onChange={e => setField('featuresTitle', e.target.value)}
-                    placeholder="Ex: Nos activités"
+                    placeholder="Ex: Nos activités et célébrations"
                   />
                 </div>
 
@@ -502,6 +517,12 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
             {/* Step 1: About */}
             {step === 1 && (
               <div className="space-y-6">
+                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    📖 <strong>Étape 2/5 : Page "À propos"</strong><br />
+                    Présentez l'histoire, la mission et les valeurs de votre paroisse.
+                  </p>
+                </div>
                 <div>
                   <label className="block text-sm font-semibold mb-2">
                     Contenu "À Propos" <span className="text-red-500">*</span>
@@ -513,7 +534,16 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                     className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm h-96"
                     value={form.aboutContent}
                     onChange={e => setField('aboutContent', e.target.value)}
-                    placeholder="{...}"
+                    placeholder={
+`{
+  "history": "La paroisse a été fondée en ...",
+  "mission": "Annoncer l'Évangile et servir la communauté",
+  "values": ["Foi", "Espérance", "Charité"],
+  "team": [
+    {"name": "Père Basile", "role": "Curé", "photo": "url"}
+  ]
+}`
+                    }
                   />
                 </div>
               </div>
@@ -522,6 +552,12 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
             {/* Step 2: Branding */}
             {step === 2 && (
               <div className="space-y-6">
+                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    🏷️ <strong>Étape 3/5 : Identité de la paroisse</strong><br />
+                    Le nom, le logo et l'email principal qui apparaîtront sur tout le site.
+                  </p>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold mb-2">
@@ -532,8 +568,9 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                       className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                       value={form.brandingName}
                       onChange={e => setField('brandingName', e.target.value)}
-                      placeholder="Ma Paroisse"
+                      placeholder="Ex: Notre-Dame de la Compassion"
                     />
+                    <p className="text-xs text-muted-foreground">Ce nom apparaîtra dans le logo et le pied de page</p>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold mb-2">
@@ -584,6 +621,12 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
             {/* Step 3: Footer (site) */}
             {step === 3 && (
               <div className="space-y-6">
+                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    📞 <strong>Étape 4/5 : Pied de page</strong><br />
+                    Coordonnées, réseaux sociaux et copyright.
+                  </p>
+                </div>
                 <div>
                   <h4 className="text-lg font-semibold text-foreground mb-1">Pied de page</h4>
                   <p className="text-sm text-muted-foreground">
@@ -599,7 +642,7 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                     className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary min-h-[88px]"
                     value={form.footerAddress}
                     onChange={e => setField('footerAddress', e.target.value)}
-                    placeholder={"123 rue de la Paix\n75000 Paris"}
+                    placeholder={`Boulevard de la Compassion\nAbidjan, Côte d'Ivoire`}
                   />
                 </div>
 
@@ -612,8 +655,9 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                     className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     value={form.footerEmail}
                     onChange={e => setField('footerEmail', e.target.value)}
-                    placeholder="contact@paroisse.local"
+                    placeholder="Ex: contact@nd-compassion.ci"
                   />
+                  <p className="text-xs text-muted-foreground">Email principal affiché dans le pied de page</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -709,6 +753,12 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
             {/* Step 4: Premier compte administrateur */}
             {step === 4 && (
               <div className="space-y-6">
+                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    👤 <strong>Étape 5/5 : Compte administrateur</strong><br />
+                    Créez le premier compte (super administrateur). Vous pourrez inviter d'autres membres ensuite.
+                  </p>
+                </div>
                 <div>
                   <h4 className="text-lg font-semibold text-foreground mb-1">Compte administrateur</h4>
                   <p className="text-sm text-muted-foreground">
@@ -725,7 +775,7 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                     className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     value={adminFullName}
                     onChange={e => setAdminFullName(e.target.value)}
-                    placeholder="Ex: Marie Dupont"
+                    placeholder="Ex: Père Basile Diané"
                     autoComplete="name"
                   />
                 </div>
@@ -739,7 +789,7 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                     className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     value={adminEmail}
                     onChange={e => setAdminEmail(e.target.value)}
-                    placeholder="admin@exemple.fr"
+                    placeholder="Ex: basile@nd-compassion.ci"
                     autoComplete="email"
                   />
                 </div>

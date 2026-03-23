@@ -11,13 +11,13 @@
  */
 
 import React, { useMemo, useState, useEffect } from 'react';
-import {
-  streamManager,
-  type StreamSources,
-  type ProviderType,
-  type Playback,
-  type PlayerOptions,
-} from '@/lib/providers';
+import { streamManager } from '@/lib/providers';
+import type {
+  StreamSources,
+  ProviderType,
+  Playback,
+  PlayerOptions,
+} from '@/lib/providers/types';
 
 type Props = {
   // New API (preferred)

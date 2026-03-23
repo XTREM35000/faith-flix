@@ -192,7 +192,30 @@ export async function saveInitialSetup(data: SetupData) {
 
     if (error) throw error;
 
-    const row = result as { paroisse_id?: string } | null;
+    // Normalize RPC result shape.
+    // Depending on how the Postgres function is exposed, supabase.rpc may return:
+    // - an array like [{ init_system: { paroisse_id: '...' } }]
+    // - an object like { init_system: { ... } }
+    // - or directly the object { paroisse_id: '...' }
+    let row: { paroisse_id?: string } | null = null;
+    try {
+      if (Array.isArray(result) && result.length > 0) {
+        const first = result[0] as any;
+        row = first && typeof first === 'object' && 'init_system' in first ? first.init_system : first;
+      } else if (result && typeof result === 'object' && 'init_system' in (result as any)) {
+        row = (result as any).init_system;
+      } else {
+        row = result as any;
+      }
+    } catch (e) {
+      console.warn('saveInitialSetup: failed to normalize rpc result', e, result);
+      row = result as any;
+    }
+
+    // Debug log to help troubleshoot frontend not receiving paroisse_id
+    // eslint-disable-next-line no-console
+    console.debug('saveInitialSetup: rpc result', { raw: result, normalized: row });
+
     if (row?.paroisse_id) {
       try {
         localStorage.setItem('selectedParoisse', row.paroisse_id);
