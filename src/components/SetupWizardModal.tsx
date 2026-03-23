@@ -33,9 +33,17 @@ type FormState = {
   brandingName: string;
   brandingLogo?: string;
   brandingEmail: string;
-  brandingPhone?: string;
-  brandingAddress?: string;
-  brandingFooterText?: string;
+
+  footerAddress: string;
+  footerEmail: string;
+  footerModeratorPhone: string;
+  footerSuperAdminPhone: string;
+  footerSuperAdminEmail: string;
+  footerFacebookUrl: string;
+  footerYoutubeUrl: string;
+  footerInstagramUrl: string;
+  footerWhatsappUrl: string;
+  footerCopyrightText: string;
 
   // Header fields
   headerLogo?: string;
@@ -45,7 +53,7 @@ type FormState = {
 
 type ImageField = 'heroImageUrl' | 'brandingLogo' | 'headerLogo';
 
-const WIZARD_STEPS = 4;
+const WIZARD_STEPS = 5;
 
 export default function SetupWizardModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { markCompleted } = useSetup();
@@ -82,9 +90,16 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
     brandingName: user?.email?.split('@')[0] ?? 'Ma Paroisse',
     brandingLogo: undefined,
     brandingEmail: user?.email ?? 'contact@paroisse.local',
-    brandingPhone: '',
-    brandingAddress: '',
-    brandingFooterText: '© Ma Paroisse 2026',
+    footerAddress: '',
+    footerEmail: user?.email ?? 'contact@paroisse.local',
+    footerModeratorPhone: '',
+    footerSuperAdminPhone: '',
+    footerSuperAdminEmail: '',
+    footerFacebookUrl: '',
+    footerYoutubeUrl: '',
+    footerInstagramUrl: '',
+    footerWhatsappUrl: '',
+    footerCopyrightText: `© ${new Date().getFullYear()} Ma Paroisse`,
     headerLogo: undefined,
     headerMainTitle: user?.email?.split('@')[0] ?? 'Ma Paroisse',
     headerSubtitle: 'Une communauté de foi et de service',
@@ -94,6 +109,14 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
 
   useEffect(() => {
     if (step !== 3) return;
+    setForm(prev => ({
+      ...prev,
+      footerEmail: prev.footerEmail.trim() ? prev.footerEmail : prev.brandingEmail,
+    }));
+  }, [step]);
+
+  useEffect(() => {
+    if (step !== 4) return;
     setAdminEmail(prev => (prev.trim() ? prev : form.brandingEmail));
   }, [step, form.brandingEmail]);
 
@@ -138,6 +161,9 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
       return !!form.brandingName && !!form.brandingEmail;
     }
     if (step === 3) {
+      return !!form.footerEmail.trim() && isValidEmail(form.footerEmail.trim());
+    }
+    if (step === 4) {
       return (
         adminFullName.trim().length >= 2 &&
         isValidEmail(adminEmail.trim()) &&
@@ -194,9 +220,22 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
         name: form.brandingName,
         logo: form.brandingLogo ?? null,
         email: form.brandingEmail,
-        phone: form.brandingPhone ?? null,
-        address: form.brandingAddress ?? null,
-        footer_text: form.brandingFooterText ?? null,
+        phone: form.footerModeratorPhone.trim() || null,
+        address: form.footerAddress.trim() || null,
+        footer_text: form.footerCopyrightText.trim() || null,
+      };
+
+      const footer = {
+        address: form.footerAddress.trim() || null,
+        email: form.footerEmail.trim(),
+        moderator_phone: form.footerModeratorPhone.trim() || null,
+        super_admin_phone: form.footerSuperAdminPhone.trim() || null,
+        super_admin_email: form.footerSuperAdminEmail.trim() || null,
+        facebook_url: form.footerFacebookUrl.trim() || null,
+        youtube_url: form.footerYoutubeUrl.trim() || null,
+        instagram_url: form.footerInstagramUrl.trim() || null,
+        whatsapp_url: form.footerWhatsappUrl.trim() || null,
+        copyright_text: form.footerCopyrightText.trim() || null,
       };
 
       const help = { faq: [] };
@@ -205,6 +244,7 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
         sections,
         about,
         branding,
+        footer,
         help,
         headerLogo: form.headerLogo,
         headerMainTitle: form.headerMainTitle,
@@ -223,6 +263,7 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
       );
 
       await queryClient.invalidateQueries({ queryKey: ['header-config'] });
+      await queryClient.invalidateQueries({ queryKey: ['footer-config'] });
 
       markCompleted();
       onClose();
@@ -264,11 +305,11 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
         <div className="flex items-center justify-between w-full">
           <div>
             <h3 className="text-2xl font-bold">Assistant de configuration</h3>
-            <p className="text-sm text-muted-foreground mt-1">Configurez votre paroisse en 4 étapes</p>
+            <p className="text-sm text-muted-foreground mt-1">Configurez votre paroisse en 5 étapes</p>
           </div>
           <div className="text-right">
             <div className="text-3xl font-bold text-primary">{step + 1}</div>
-            <div className="text-xs text-muted-foreground">sur 4</div>
+            <div className="text-xs text-muted-foreground">sur 5</div>
           </div>
         </div>
       }
@@ -537,44 +578,136 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* Step 3: Footer (site) */}
+            {step === 3 && (
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-lg font-semibold text-foreground mb-1">Pied de page</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Coordonnées et liens affichés en bas du site. Les réseaux sociaux sont facultatifs.
+                  </p>
+                </div>
 
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Téléphone</label>
-                  <input
-                    type="tel"
-                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    value={form.brandingPhone}
-                    onChange={e => setField('brandingPhone', e.target.value)}
-                    placeholder="+33 1 23 45 67 89"
+                  <label className="block text-sm font-semibold mb-2">
+                    Adresse
+                  </label>
+                  <textarea
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary min-h-[88px]"
+                    value={form.footerAddress}
+                    onChange={e => setField('footerAddress', e.target.value)}
+                    placeholder={"123 rue de la Paix\n75000 Paris"}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Adresse</label>
+                  <label className="block text-sm font-semibold mb-2">
+                    Email <span className="text-red-500">*</span>
+                  </label>
                   <input
-                    type="text"
+                    type="email"
                     className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    value={form.brandingAddress}
-                    onChange={e => setField('brandingAddress', e.target.value)}
-                    placeholder="123 rue de la Paix, 75000 Paris"
+                    value={form.footerEmail}
+                    onChange={e => setField('footerEmail', e.target.value)}
+                    placeholder="contact@paroisse.local"
                   />
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Téléphone modérateur</label>
+                    <input
+                      type="tel"
+                      className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={form.footerModeratorPhone}
+                      onChange={e => setField('footerModeratorPhone', e.target.value)}
+                      placeholder="+33 …"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Téléphone super admin</label>
+                    <input
+                      type="tel"
+                      className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={form.footerSuperAdminPhone}
+                      onChange={e => setField('footerSuperAdminPhone', e.target.value)}
+                      placeholder="+33 …"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Texte footer</label>
+                  <label className="block text-sm font-semibold mb-2">Email super admin</label>
+                  <input
+                    type="email"
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={form.footerSuperAdminEmail}
+                    onChange={e => setField('footerSuperAdminEmail', e.target.value)}
+                    placeholder="superadmin@exemple.fr"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Facebook (URL)</label>
+                    <input
+                      type="url"
+                      className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      value={form.footerFacebookUrl}
+                      onChange={e => setField('footerFacebookUrl', e.target.value)}
+                      placeholder="https://facebook.com/…"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">YouTube (URL)</label>
+                    <input
+                      type="url"
+                      className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      value={form.footerYoutubeUrl}
+                      onChange={e => setField('footerYoutubeUrl', e.target.value)}
+                      placeholder="https://youtube.com/…"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Instagram (URL)</label>
+                    <input
+                      type="url"
+                      className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      value={form.footerInstagramUrl}
+                      onChange={e => setField('footerInstagramUrl', e.target.value)}
+                      placeholder="https://instagram.com/…"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">WhatsApp (URL)</label>
+                    <input
+                      type="url"
+                      className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      value={form.footerWhatsappUrl}
+                      onChange={e => setField('footerWhatsappUrl', e.target.value)}
+                      placeholder="https://wa.me/…"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Texte du copyright</label>
                   <input
                     type="text"
                     className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    value={form.brandingFooterText}
-                    onChange={e => setField('brandingFooterText', e.target.value)}
-                    placeholder="© Ma Paroisse 2026"
+                    value={form.footerCopyrightText}
+                    onChange={e => setField('footerCopyrightText', e.target.value)}
+                    placeholder={`© ${new Date().getFullYear()} Ma Paroisse`}
                   />
                 </div>
               </div>
             )}
 
-            {/* Step 3: Premier compte administrateur */}
-            {step === 3 && (
+            {/* Step 4: Premier compte administrateur */}
+            {step === 4 && (
               <div className="space-y-6">
                 <div>
                   <h4 className="text-lg font-semibold text-foreground mb-1">Compte administrateur</h4>
@@ -730,20 +863,34 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                 <div className="p-4 bg-background rounded-lg border border-border space-y-2">
                   <p className="font-bold text-foreground">{form.brandingName || '(nom vide)'}</p>
                   <p className="text-sm text-muted-foreground break-all">{form.brandingEmail}</p>
-                  {form.brandingPhone && (
-                    <p className="text-sm text-muted-foreground">{form.brandingPhone}</p>
-                  )}
-                  {form.brandingAddress && (
-                    <p className="text-sm text-muted-foreground">{form.brandingAddress}</p>
-                  )}
-                </div>
-                <div className="text-xs text-muted-foreground p-3 bg-background rounded-lg border border-border">
-                  {form.brandingFooterText}
                 </div>
               </div>
             )}
 
             {step === 3 && (
+              <div className="space-y-3 text-sm">
+                <div className="p-4 bg-background rounded-lg border border-border space-y-2">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Pied de page</p>
+                  <p className="text-muted-foreground whitespace-pre-line">{form.footerAddress || '(adresse vide)'}</p>
+                  <p className="break-all">{form.footerEmail || '(email)'}</p>
+                  {(form.footerModeratorPhone || form.footerSuperAdminPhone) && (
+                    <p className="text-xs text-muted-foreground">
+                      {form.footerModeratorPhone ? `Mod. ${form.footerModeratorPhone}` : ''}
+                      {form.footerModeratorPhone && form.footerSuperAdminPhone ? ' · ' : ''}
+                      {form.footerSuperAdminPhone ? `Super ${form.footerSuperAdminPhone}` : ''}
+                    </p>
+                  )}
+                  {form.footerSuperAdminEmail && (
+                    <p className="text-xs break-all text-muted-foreground">{form.footerSuperAdminEmail}</p>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground p-2 bg-muted/50 rounded border border-border">
+                  {form.footerCopyrightText}
+                </p>
+              </div>
+            )}
+
+            {step === 4 && (
               <div className="space-y-4">
                 <div className="p-4 bg-background rounded-lg border border-border space-y-2">
                   <p className="text-xs text-muted-foreground uppercase tracking-wide">Administrateur</p>

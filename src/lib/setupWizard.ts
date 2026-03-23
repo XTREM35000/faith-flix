@@ -114,6 +114,19 @@ export async function saveHeaderConfig(headerData: {
   }
 }
 /** Données assistant setup : champs header optionnels (sinon dérivés du branding). */
+export type SetupFooterPayload = {
+  address?: string | null;
+  email?: string | null;
+  moderator_phone?: string | null;
+  super_admin_phone?: string | null;
+  super_admin_email?: string | null;
+  facebook_url?: string | null;
+  youtube_url?: string | null;
+  instagram_url?: string | null;
+  whatsapp_url?: string | null;
+  copyright_text?: string | null;
+};
+
 export type SetupData = {
   sections: HomepageSectionRow[];
   about: unknown;
@@ -125,6 +138,8 @@ export type SetupData = {
     address?: string | null;
     footer_text?: string | null;
   };
+  /** Contenu `footer_config` (paroisse) — remplit aussi téléphone/adresse paroisse via branding lors de l’init. */
+  footer?: SetupFooterPayload | null;
   help?: unknown;
   headerLogo?: string | null;
   headerMainTitle?: string;
@@ -141,6 +156,7 @@ export async function saveInitialSetup(data: SetupData) {
 
     const slug = data.branding.name.toLowerCase().replace(/\s+/g, '-');
 
+    const footer = data.footer ?? null;
     const { data: result, error } = await supabase.rpc('init_system', {
       p_paroisse_nom: data.branding.name,
       p_paroisse_slug: slug,
@@ -159,6 +175,18 @@ export async function saveInitialSetup(data: SetupData) {
         phone: data.branding.phone ?? null,
         address: data.branding.address ?? null,
         footer_text: data.branding.footer_text ?? null,
+      } as Json,
+      p_footer_config: {
+        address: footer?.address ?? null,
+        email: footer?.email ?? null,
+        moderator_phone: footer?.moderator_phone ?? null,
+        super_admin_email: footer?.super_admin_email ?? null,
+        super_admin_phone: footer?.super_admin_phone ?? null,
+        facebook_url: footer?.facebook_url ?? null,
+        youtube_url: footer?.youtube_url ?? null,
+        instagram_url: footer?.instagram_url ?? null,
+        whatsapp_url: footer?.whatsapp_url ?? null,
+        copyright_text: footer?.copyright_text ?? null,
       } as Json,
     });
 

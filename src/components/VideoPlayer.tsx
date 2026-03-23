@@ -67,18 +67,48 @@ const VideoPlayer: React.FC<Props> = ({
     return url ? { url } : {};
   }, [sources, url]);
 
+  // Helper: convert YouTube watch/share URLs to embed URLs so iframe embedding works
+  const getYouTubeEmbedUrl = (u: string) => {
+    if (!u) return u;
+    try {
+      // Typical formats:
+      // - https://www.youtube.com/watch?v=VIDEOID
+      // - https://youtu.be/VIDEOID
+      // - https://www.youtube.com/embed/VIDEOID
+      const m = u.match(/(?:youtube\.com\/watch\?v=|youtube\.com\/embed\/|youtu\.be\/)([^&?/\n]+)/i);
+      const videoId = m?.[1];
+      if (videoId) {
+        return `https://www.youtube.com/embed/${videoId}`;
+      }
+    } catch (e) {
+      // noop - return original
+    }
+    return u;
+  };
+
+  // Normalize sources and convert YouTube share/watch links to embed form for iframe players
+  const normalizedSources = useMemo(() => {
+    if (sources && Object.keys(sources).length > 0) return sources;
+    if (url) {
+      const strUrl = String(url);
+      const isYouTube = strUrl.includes('youtube.com') || strUrl.includes('youtu.be');
+      return isYouTube ? { url: getYouTubeEmbedUrl(strUrl) } : { url: strUrl };
+    }
+    return {};
+  }, [sources, url]);
+
   // Normalize and get playback strategy
   useEffect(() => {
     try {
       // Validate we have sources
-      if (!actualSources || Object.keys(actualSources).length === 0) {
+      if (!normalizedSources || Object.keys(normalizedSources).length === 0) {
         setError(new Error('Aucune source disponible'));
         setPlayback(null);
         return;
       }
 
       // Normalize using provider-specific normalizer
-      const normalized = streamManager.normalize(provider, actualSources);
+      const normalized = streamManager.normalize(provider, normalizedSources);
 
       // Validate the normalized sources
       if (!streamManager.validate(provider, normalized.sources)) {
@@ -103,7 +133,7 @@ const VideoPlayer: React.FC<Props> = ({
       setPlayback(null);
       onError?.(error);
     }
-  }, [provider, actualSources, onError, onPlayerReady]);
+  }, [provider, normalizedSources, onError, onPlayerReady]);
 
   // Handle error and try fallback
   const handlePlayerError = (fallbackIndex = 0) => {
@@ -126,7 +156,7 @@ const VideoPlayer: React.FC<Props> = ({
   };
 
   // No sources error
-  if (!actualSources || Object.keys(actualSources).length === 0) {
+  if (!normalizedSources || Object.keys(normalizedSources).length === 0) {
     return (
       <div className="aspect-video w-full bg-gray-100 dark:bg-gray-900 rounded-lg flex items-center justify-center">
         <div className="text-center">

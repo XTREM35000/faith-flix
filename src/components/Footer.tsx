@@ -1,12 +1,17 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { MapPin, Phone, Mail, Clock, Facebook, Youtube, Instagram } from "lucide-react";
+import { MapPin, Phone, Mail, Clock, Facebook, Youtube, Instagram, MessageCircle } from "lucide-react";
 import AnimatedLogo from "./AnimatedLogo";
 import { useHomepageContent } from "@/hooks/useHomepageContent";
+import { useParoisse } from "@/contexts/ParoisseContext";
+import { useHeaderConfig } from "@/hooks/useHeaderConfig";
+import { useMemo } from "react";
 
 const Footer = () => {
-  const { massTimes, contact } = useHomepageContent();
-  
+  const { paroisse } = useParoisse();
+  const { data: headerConfig } = useHeaderConfig();
+  const { massTimes, contact, footer } = useHomepageContent();
+
   const quickLinks = [
     { name: "Accueil", path: "/" },
     { name: "Vidéos", path: "/videos" },
@@ -16,36 +21,66 @@ const Footer = () => {
     { name: "À propos", path: "/a-propos" },
   ];
 
-  // Default mass schedule fallback
   const defaultMassSchedule = [
     { day: "Dimanche", time: "9h00, 11h00, 18h30" },
     { day: "Lundi - Vendredi", time: "8h00, 18h30" },
     { day: "Samedi", time: "9h00, 18h00 (anticipée)" },
   ];
 
-  // Format mass times for display
-  const massSchedule = massTimes ? [
-    { day: "Dimanche", time: Array.isArray(massTimes.sunday) ? massTimes.sunday.join(", ") : massTimes.sunday || "9h00, 11h00, 18h30" },
-    { day: "Lundi - Vendredi", time: Array.isArray(massTimes.weekdays) ? massTimes.weekdays.join(", ") : massTimes.weekdays || "8h00, 18h30" },
-    { day: "Samedi", time: Array.isArray(massTimes.saturday) ? massTimes.saturday.join(", ") : massTimes.saturday || "9h00, 18h00 (anticipée)" },
-  ] : defaultMassSchedule;
+  const massSchedule = massTimes
+    ? [
+        {
+          day: "Dimanche",
+          time: Array.isArray(massTimes.sunday)
+            ? massTimes.sunday.join(", ")
+            : massTimes.sunday || defaultMassSchedule[0].time,
+        },
+        {
+          day: "Lundi - Vendredi",
+          time: Array.isArray(massTimes.weekdays)
+            ? massTimes.weekdays.join(", ")
+            : massTimes.weekdays || defaultMassSchedule[1].time,
+        },
+        {
+          day: "Samedi",
+          time: Array.isArray(massTimes.saturday)
+            ? massTimes.saturday.join(", ")
+            : massTimes.saturday || defaultMassSchedule[2].time,
+        },
+      ]
+    : defaultMassSchedule;
 
-  // Default contact info fallback
-  const defaultContact = {
-    address: "Boulevard de la Compassion\nAbidjan, Côte d'Ivoire",
-    email: "compassionotredame5@gmail.com",
-    moderator_phone: "0720035585",
-    super_admin_email: "basilediane71@gmail.com",
-    super_admin_phone: "0505263030"
-  };
+  const contactInfo = useMemo(() => {
+    const f = footer;
+    const c = contact;
+    return {
+      address: (f?.address?.trim() || c?.address?.trim() || "").trim(),
+      email: (f?.email?.trim() || c?.email?.trim() || "").trim(),
+      moderator_phone: (f?.moderator_phone?.trim() || c?.moderator_phone?.trim() || "").trim(),
+      super_admin_email: (f?.super_admin_email?.trim() || c?.super_admin_email?.trim() || "").trim(),
+      super_admin_phone: (f?.super_admin_phone?.trim() || c?.super_admin_phone?.trim() || "").trim(),
+    };
+  }, [footer, contact]);
 
-  const contactInfo = contact || defaultContact;
+  const displayTitle = headerConfig?.main_title?.trim() || paroisse?.nom || "Paroisse";
+  const displaySubtitle = headerConfig?.subtitle?.trim() || "";
+
+  const year = new Date().getFullYear();
+  const copyrightLine =
+    footer?.copyright_text?.trim() ||
+    `© ${year} ${displayTitle}. Tous droits réservés.`;
+
+  const socialEntries = [
+    { href: footer?.facebook_url, Icon: Facebook, label: "Facebook" },
+    { href: footer?.youtube_url, Icon: Youtube, label: "YouTube" },
+    { href: footer?.instagram_url, Icon: Instagram, label: "Instagram" },
+    { href: footer?.whatsapp_url, Icon: MessageCircle, label: "WhatsApp" },
+  ].filter((e) => typeof e.href === "string" && e.href.trim().length > 0);
 
   return (
     <footer className="bg-card border-t border-border cross-pattern">
       <div className="container mx-auto px-4 py-12 lg:py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
-          {/* Logo & Description */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -55,36 +90,34 @@ const Footer = () => {
             <div className="flex items-center gap-3">
               <AnimatedLogo size="md" />
               <div>
-                <h3 className="font-display text-lg font-semibold leading-tight">Paroisse Notre Dame</h3>
-                <p className="text-xs text-muted-foreground">de la Compassion</p>
+                <h3 className="font-display text-lg font-semibold leading-tight">{displayTitle}</h3>
+                {displaySubtitle ? (
+                  <p className="text-xs text-muted-foreground">{displaySubtitle}</p>
+                ) : null}
               </div>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Une communauté accueillante au cœur d'Abidjan, au service de la foi, de l'espérance et de la charité.
+              {displaySubtitle ||
+                "Une communauté accueillante au service de la foi, de l’espérance et de la charité."}
             </p>
-            <div className="flex gap-3">
-              <a
-                href="#"
-                className="p-2 rounded-full bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
-              >
-                <Facebook className="h-4 w-4" />
-              </a>
-              <a
-                href="#"
-                className="p-2 rounded-full bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
-              >
-                <Youtube className="h-4 w-4" />
-              </a>
-              <a
-                href="#"
-                className="p-2 rounded-full bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
-              >
-                <Instagram className="h-4 w-4" />
-              </a>
-            </div>
+            {socialEntries.length > 0 ? (
+              <div className="flex flex-wrap gap-3">
+                {socialEntries.map(({ href, Icon, label }) => (
+                  <a
+                    key={label}
+                    href={href!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={label}
+                    className="p-2 rounded-full bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
+                  >
+                    <Icon className="h-4 w-4" />
+                  </a>
+                ))}
+              </div>
+            ) : null}
           </motion.div>
 
-          {/* Quick Links */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -107,7 +140,6 @@ const Footer = () => {
             </ul>
           </motion.div>
 
-          {/* Mass Schedule */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -129,7 +161,6 @@ const Footer = () => {
             </ul>
           </motion.div>
 
-          {/* Contact */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -142,43 +173,47 @@ const Footer = () => {
               <li className="flex items-start gap-3">
                 <MapPin className="h-4 w-4 text-gold mt-0.5 shrink-0" />
                 <span className="text-muted-foreground whitespace-pre-line">
-                  {contactInfo.address}
+                  {contactInfo.address || "Adresse à renseigner"}
                 </span>
               </li>
-              <li className="flex items-center gap-3">
-                <Mail className="h-4 w-4 text-gold shrink-0" />
-                <a href={`mailto:${contactInfo.email}`} className="text-muted-foreground hover:text-primary">
-                  {contactInfo.email}
-                </a>
-              </li>
-              {contactInfo.moderator_phone && (
-                <li className="flex items-center gap-3">
-                  <Phone className="h-4 w-4 text-gold shrink-0" />
-                  <span className="text-xs text-muted-foreground">Modérateur: {contactInfo.moderator_phone}</span>
-                </li>
-              )}
-              {contactInfo.super_admin_email && (
+              {contactInfo.email ? (
                 <li className="flex items-center gap-3">
                   <Mail className="h-4 w-4 text-gold shrink-0" />
-                  <a href={`mailto:${contactInfo.super_admin_email}`} className="text-muted-foreground hover:text-primary text-xs">
-                    Super Admin: {contactInfo.super_admin_email}
+                  <a href={`mailto:${contactInfo.email}`} className="text-muted-foreground hover:text-primary">
+                    {contactInfo.email}
                   </a>
                 </li>
-              )}
-              {contactInfo.super_admin_phone && (
+              ) : null}
+              {contactInfo.moderator_phone ? (
                 <li className="flex items-center gap-3">
                   <Phone className="h-4 w-4 text-gold shrink-0" />
-                  <span className="text-xs text-muted-foreground">Super Admin: {contactInfo.super_admin_phone}</span>
+                  <span className="text-xs text-muted-foreground">Modérateur : {contactInfo.moderator_phone}</span>
                 </li>
-              )}
+              ) : null}
+              {contactInfo.super_admin_email ? (
+                <li className="flex items-center gap-3">
+                  <Mail className="h-4 w-4 text-gold shrink-0" />
+                  <a
+                    href={`mailto:${contactInfo.super_admin_email}`}
+                    className="text-muted-foreground hover:text-primary text-xs"
+                  >
+                    Super admin : {contactInfo.super_admin_email}
+                  </a>
+                </li>
+              ) : null}
+              {contactInfo.super_admin_phone ? (
+                <li className="flex items-center gap-3">
+                  <Phone className="h-4 w-4 text-gold shrink-0" />
+                  <span className="text-xs text-muted-foreground">Super admin : {contactInfo.super_admin_phone}</span>
+                </li>
+              ) : null}
             </ul>
           </motion.div>
         </div>
 
-        {/* Bottom Bar */}
         <div className="liturgical-divider mt-10 mb-6" />
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <p>© 2024 Paroisse Notre Dame de la Compassion. Tous droits réservés.</p>
+          <p>{copyrightLine}</p>
           <div className="flex gap-6">
             <Link to="/mentions-legales" className="hover:text-primary transition-colors">
               Mentions légales

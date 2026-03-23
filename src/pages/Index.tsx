@@ -214,11 +214,8 @@ const Index = () => {
         {/* Hero Section - Dynamic from Database */}
         <HomepageHero data={hero} isLoading={isLoading} />
 
-        {/* Live / Dernière vidéo mise en avant */}
-        <LiveHeroSection
-          latestVideos={latestVideos as any}
-          onOpenVideo={(video) => handleVideoSelect(video as any)}
-        />
+        {/* Live → dernière vidéo publiée → placeholder (voir useFeaturedVideo) */}
+        <LiveHeroSection onOpenVideo={(video) => handleVideoSelect(video as any)} />
 
         {/* Photo Gallery Section */}
         <section className="py-12 lg:py-16">
@@ -269,7 +266,10 @@ const Index = () => {
                     <VideoCard
                       video={video as any}
                       onOpen={() => handleVideoSelect(video as any)}
-                      onDeleted={() => { queryClient.invalidateQueries({ queryKey: ['homepage-videos'] }); }}
+                      onDeleted={() => {
+                        void queryClient.invalidateQueries({ queryKey: ['homepage-videos'] });
+                        void queryClient.invalidateQueries({ queryKey: ['featured-video'] });
+                      }}
                     />
                   </motion.div>
                 ))
@@ -449,13 +449,6 @@ const Index = () => {
           </div>
         </section>
       </main>
-
-      {/* Video Modal */}
-      <VideoPlayerModal
-        video={selectedVideo}
-        isOpen={!!selectedVideo}
-        onClose={() => setSelectedVideo(null)}
-      />
 
       {/* AuthModal moved to Header */}
     </div>

@@ -1,80 +1,32 @@
-import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { supabase } from "@/integrations/supabase/client";
-import { fetchActiveLiveStream, type LiveStream } from "@/lib/supabase/mediaQueries";
 import type { Video } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Play } from "lucide-react";
+import { useFeaturedVideo } from "@/hooks/useFeaturedVideo";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface LiveHeroSectionProps {
-  latestVideos: Video[] | null | undefined;
   onOpenVideo?: (video: Video) => void;
 }
 
-const LiveHeroSection = ({ latestVideos, onOpenVideo }: LiveHeroSectionProps) => {
-  const [status, setStatus] = useState<"loading" | "live" | "vod" | "empty">(
-    "loading"
-  );
-  const [liveStream, setLiveStream] = useState<LiveStream | null>(null);
-  const [heroVideo, setHeroVideo] = useState<Video | null>(null);
+const LiveHeroSection = ({ onOpenVideo }: LiveHeroSectionProps) => {
+  const { live, video: heroVideo, isLive, loading, state } = useFeaturedVideo();
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
-      try {
-        const stream = await fetchActiveLiveStream();
-        if (cancelled) return;
-        if (stream) {
-          setLiveStream(stream);
-          setStatus("live");
-        } else if (latestVideos && latestVideos.length > 0) {
-          setHeroVideo(latestVideos[0] as Video);
-          setStatus("vod");
-        } else {
-          setStatus("empty");
-        }
-      } catch (e) {
-        console.error("[LiveHeroSection] error", e);
-        if (!cancelled) setStatus("empty");
-      }
-    };
-
-    void load();
-
-    const channel = supabase
-      .channel("public:live_streams_hero")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "live_streams" },
-        () => {
-          void load();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      cancelled = true;
-      supabase.removeChannel(channel);
-    };
-  }, [latestVideos]);
-
-  if (status === "loading") {
+  if (loading) {
     return (
       <section className="py-10 lg:py-14">
         <div className="container mx-auto px-4">
-          <div className="h-64 md:h-80 rounded-2xl bg-muted animate-pulse" />
+          <Skeleton className="aspect-video max-w-3xl mx-auto w-full rounded-2xl" />
         </div>
       </section>
     );
   }
 
-  if (status === "live" && liveStream) {
+  if (isLive && live) {
     return (
       <section className="py-10 lg:py-14">
         <div className="container mx-auto px-4">
           <div className="relative max-w-3xl mx-auto bg-gradient-to-br from-red-900/20 to-red-600/20 rounded-2xl overflow-hidden shadow-2xl">
-            {/* Badge DIRECT */}
             <div className="absolute top-4 left-4 z-20">
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-red-500 rounded-full blur-md animate-pulse" />
@@ -83,35 +35,33 @@ const LiveHeroSection = ({ latestVideos, onOpenVideo }: LiveHeroSectionProps) =>
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
                   </span>
-                  DIRECT
+                  EN DIRECT
                 </div>
               </div>
             </div>
 
-            {/* Player simple basé sur l'URL fallback */}
             <div className="aspect-video w-full bg-black">
               <iframe
-                src={liveStream.stream_url}
+                src={live.stream_url}
                 className="w-full h-full border-0"
                 allow="autoplay; encrypted-media; picture-in-picture"
                 allowFullScreen
-                title={liveStream.title}
+                title={live.title}
               />
             </div>
 
-            {/* Infos live */}
             <div className="p-6 bg-background/95 backdrop-blur-sm">
               <h2 className="text-2xl md:text-3xl font-bold mb-2">
-                {liveStream.title}
+                {live.title}
               </h2>
-              {liveStream.description && (
+              {live.description && (
                 <p className="text-sm md:text-base text-muted-foreground mb-3 line-clamp-3">
-                  {liveStream.description}
+                  {live.description}
                 </p>
               )}
               <p className="text-xs md:text-sm text-muted-foreground">
-                📺 Direct {liveStream.stream_type === "radio" ? "Radio" : "TV"} —{" "}
-                {new Date(liveStream.created_at).toLocaleString("fr-FR")}
+                Direct {live.stream_type === "radio" ? "Radio" : "TV"} —{" "}
+                {new Date(live.created_at).toLocaleString("fr-FR")}
               </p>
             </div>
           </div>
@@ -120,24 +70,23 @@ const LiveHeroSection = ({ latestVideos, onOpenVideo }: LiveHeroSectionProps) =>
     );
   }
 
-  if (status === "vod" && heroVideo) {
+  if (state?.kind === "vod" && heroVideo) {
     return (
       <section className="py-10 lg:py-14">
         <div className="container mx-auto px-4">
           <div className="relative max-w-3xl mx-auto bg-gradient-to-br from-blue-900/20 to-purple-600/20 rounded-2xl overflow-hidden shadow-2xl group">
-            {/* Badge dernière vidéo */}
             <div className="absolute top-4 left-4 z-20">
               <div className="px-4 py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs md:text-sm font-bold rounded-full shadow-lg flex items-center gap-2">
-                <span>📺</span>
+                <span>📹</span>
                 DERNIÈRE VIDÉO
               </div>
             </div>
 
-            {/* Thumbnail */}
             <div className="aspect-video w-full relative">
               <img
                 src={
-                  (heroVideo as any).thumbnail_url || "/images/default-thumbnail.jpg"
+                  (heroVideo as { thumbnail_url?: string | null }).thumbnail_url ||
+                  "/images/default-thumbnail.jpg"
                 }
                 alt={heroVideo.title}
                 className="w-full h-full object-cover"
@@ -154,7 +103,6 @@ const LiveHeroSection = ({ latestVideos, onOpenVideo }: LiveHeroSectionProps) =>
               </div>
             </div>
 
-            {/* Infos vidéo */}
             <div className="p-6 bg-background/95 backdrop-blur-sm">
               <h2 className="text-2xl md:text-3xl font-bold mb-2">
                 {heroVideo.title}
@@ -171,7 +119,7 @@ const LiveHeroSection = ({ latestVideos, onOpenVideo }: LiveHeroSectionProps) =>
                     "fr-FR"
                   )}
                 </span>
-                <span>👁️ {(heroVideo as any).views || 0} vues</span>
+                <span>👁️ {(heroVideo as { views?: number }).views ?? 0} vues</span>
               </div>
             </div>
           </div>
@@ -180,8 +128,24 @@ const LiveHeroSection = ({ latestVideos, onOpenVideo }: LiveHeroSectionProps) =>
     );
   }
 
-  return null;
+  return (
+    <section className="py-10 lg:py-14">
+      <div className="container mx-auto px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-3xl mx-auto aspect-video w-full rounded-2xl border border-border bg-muted/50 flex flex-col items-center justify-center gap-2 px-6 text-center"
+        >
+          <p className="text-muted-foreground text-lg">
+            Pas de vidéo pour le moment
+          </p>
+          <p className="text-sm text-muted-foreground/80">
+            Revenez plus tard pour un direct ou une nouvelle vidéo.
+          </p>
+        </motion.div>
+      </div>
+    </section>
+  );
 };
 
 export default LiveHeroSection;
-

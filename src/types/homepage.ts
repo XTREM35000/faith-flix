@@ -55,6 +55,24 @@ export interface ContactData {
   super_admin_phone?: string;
 }
 
+/** Ligne `footer_config` pour la paroisse active. */
+export interface FooterConfigData {
+  id: string;
+  paroisse_id: string;
+  address: string | null;
+  email: string | null;
+  moderator_phone: string | null;
+  super_admin_email: string | null;
+  super_admin_phone: string | null;
+  facebook_url: string | null;
+  youtube_url: string | null;
+  instagram_url: string | null;
+  whatsapp_url: string | null;
+  copyright_text: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
 // Type pour les images de galerie
 export type GalleryImage = Database["public"]["Tables"]["gallery_images"]["Row"];
 
@@ -71,6 +89,8 @@ export interface HomepageContentData {
   eventsSectionConfig: EventDisplayData | null;
   massTimes: MassTimesData | null;
   contact: ContactData | null;
+  /** Config footer dédiée (table `footer_config`), prioritaire sur `contact` issu des sections. */
+  footer: FooterConfigData | null;
   latestPhotos: GalleryImage[];
   latestVideos: Video[];
   upcomingEvents: Event[];

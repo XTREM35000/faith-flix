@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { HomepageSection, HomepageContentData, MassTimesData, ContactData, GalleryDisplayData, VideoDisplayData, EventDisplayData } from '@/types/homepage';
+import type { HomepageSection, HomepageContentData, MassTimesData, ContactData, FooterConfigData, GalleryDisplayData, VideoDisplayData, EventDisplayData } from '@/types/homepage';
 import { useParoisse } from '@/contexts/ParoisseContext';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,6 +31,28 @@ export const useHomepageContent = () => {
 
       return (data || []) as HomepageSection[];
     },
+  });
+
+  const { data: footer = null, isLoading: footerLoading } = useQuery({
+    queryKey: ['footer-config', paroisseId ?? null],
+    queryFn: async () => {
+      if (!paroisseId) return null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.from('footer_config' as any) as any)
+        .select('*')
+        .eq('paroisse_id', paroisseId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Erreur chargement footer_config:', error);
+        return null;
+      }
+
+      return (data || null) as FooterConfigData | null;
+    },
+    enabled: !!paroisseId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 
   // Récupérer les 4 dernières photos de la galerie (préférer les images approuvées, sinon compléter avec les images publiques)
@@ -277,7 +299,7 @@ export const useHomepageContent = () => {
     ? (JSON.parse(eventsSectionConfig.content) as EventDisplayData)
     : { limit: 2, upcoming_only: true };
 
-  const isLoading = sectionsLoading || photosLoading || videosLoading || eventsLoading;
+  const isLoading = sectionsLoading || photosLoading || videosLoading || eventsLoading || footerLoading;
 
   return {
     sections,
@@ -287,6 +309,7 @@ export const useHomepageContent = () => {
     eventsSectionConfig: parsedEventsConfig,
     massTimes: parsedMassTimes,
     contact: parsedContact,
+    footer,
     latestPhotos,
     latestVideos,
     upcomingEvents,
