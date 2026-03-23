@@ -1,12 +1,19 @@
-import React, { useMemo, useState, useRef } from 'react';
+// src\components\SetupWizardModal.tsx
+// 
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import DraggableModal from './DraggableModal';
-import { saveInitialSetup, uploadImageToStorage, saveHeaderConfig } from '@/lib/setupWizard';
+import { initFirstParoisseAndUser, uploadImageToStorage } from '@/lib/setupWizard';
 import { useSetup } from '@/contexts/SetupContext';
 import type { HomepageSectionRow } from '@/lib/setupWizard';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Upload, Loader2 } from 'lucide-react';
+import { Upload, Loader2, Camera, UserCircle2 } from 'lucide-react';
+import PasswordField from '@/components/ui/password-field';
+import { Checkbox } from '@/components/ui/checkbox';
+import { isValidEmail } from '@/utils/emailSanitizer';
+import { RestoreFromFileModal } from '@/components/admin-master/RestoreFromFileModal';
+import { Button } from '@/components/ui/button';
 
 type FormState = {
   heroTitle: string;
@@ -38,6 +45,8 @@ type FormState = {
 
 type ImageField = 'heroImageUrl' | 'brandingLogo' | 'headerLogo';
 
+const WIZARD_STEPS = 4;
+
 export default function SetupWizardModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { markCompleted } = useSetup();
   const { user } = useAuth();
@@ -45,10 +54,19 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
   const queryClient = useQueryClient();
 
   const [step, setStep] = useState(0);
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [adminFullName, setAdminFullName] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [useGravatar, setUseGravatar] = useState(false);
+  const [adminAvatarFile, setAdminAvatarFile] = useState<File | null>(null);
+  const [adminAvatarPreview, setAdminAvatarPreview] = useState<string | null>(null);
+  const adminAvatarInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<FormState>({
     heroTitle: 'Bienvenue sur notre paroisse',
@@ -72,7 +90,12 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
     headerSubtitle: 'Une communauté de foi et de service',
   });
 
-  const progress = useMemo(() => Math.round(((step + 1) / 3) * 100), [step]);
+  const progress = useMemo(() => Math.round(((step + 1) / WIZARD_STEPS) * 100), [step]);
+
+  useEffect(() => {
+    if (step !== 3) return;
+    setAdminEmail(prev => (prev.trim() ? prev : form.brandingEmail));
+  }, [step, form.brandingEmail]);
 
   const setField = <K extends keyof FormState>(k: K, v: FormState[K]) => {
     setForm(prev => ({ ...prev, [k]: v }));
@@ -114,13 +137,20 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
     if (step === 2) {
       return !!form.brandingName && !!form.brandingEmail;
     }
+    if (step === 3) {
+      return (
+        adminFullName.trim().length >= 2 &&
+        isValidEmail(adminEmail.trim()) &&
+        adminPassword.length >= 6
+      );
+    }
     return true;
   };
 
   const handleNext = () => {
     if (!validateStep()) return setError('Veuillez remplir les champs requis (*)');
     setError(null);
-    setStep(s => Math.min(2, s + 1));
+    setStep(s => Math.min(WIZARD_STEPS - 1, s + 1));
   };
 
   const handlePrev = () => {
@@ -171,24 +201,49 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
 
       const help = { faq: [] };
 
-      const [mainRes, headerRes] = await Promise.all([
-        saveInitialSetup({ sections, about, branding, help }),
-        saveHeaderConfig({
-          logo_url: form.headerLogo ?? undefined,
-          main_title: form.headerMainTitle,
-          subtitle: form.headerSubtitle,
-        }, queryClient),
-      ]);
+      const setupPayload = {
+        sections,
+        about,
+        branding,
+        help,
+        headerLogo: form.headerLogo,
+        headerMainTitle: form.headerMainTitle,
+        headerSubtitle: form.headerSubtitle,
+      };
 
-      if (!mainRes.success) throw mainRes.error || new Error('Erreur inconnue');
-      if (!headerRes.success) throw headerRes.error || new Error('Erreur config header');
+      const { authData } = await initFirstParoisseAndUser(
+        setupPayload,
+        {
+          full_name: adminFullName.trim(),
+          email: adminEmail.trim(),
+          password: adminPassword,
+          useGravatar: useGravatar && !adminAvatarFile,
+        },
+        adminAvatarFile,
+      );
+
+      await queryClient.invalidateQueries({ queryKey: ['header-config'] });
 
       markCompleted();
       onClose();
-      navigate('/?mode=register#auth');
-    } catch (err: any) {
+
+      if (authData.session) {
+        window.location.assign('/admin');
+        return;
+      }
+
+      navigate('/email-confirmation-sent', {
+        replace: true,
+        state: { email: adminEmail.trim() },
+      });
+    } catch (err: unknown) {
       console.error(err);
-      setError(err?.message ?? 'Erreur d\'enregistrement');
+      const e = err as { message?: string; code?: string };
+      const raw =
+        (typeof e?.message === 'string' && e.message !== '[object Object]' ? e.message : '') ||
+        e?.code ||
+        (err instanceof Error ? err.message : '');
+      setError(raw || JSON.stringify(err));
     } finally {
       setLoading(false);
     }
@@ -209,11 +264,11 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
         <div className="flex items-center justify-between w-full">
           <div>
             <h3 className="text-2xl font-bold">Assistant de configuration</h3>
-            <p className="text-sm text-muted-foreground mt-1">Configurez votre paroisse en 3 étapes</p>
+            <p className="text-sm text-muted-foreground mt-1">Configurez votre paroisse en 4 étapes</p>
           </div>
           <div className="text-right">
             <div className="text-3xl font-bold text-primary">{step + 1}</div>
-            <div className="text-xs text-muted-foreground">sur 3</div>
+            <div className="text-xs text-muted-foreground">sur 4</div>
           </div>
         </div>
       }
@@ -232,6 +287,20 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
         <div className="flex max-h-[calc(90vh-180px)]">
           {/* Form Panel */}
           <div className="flex-1 p-8 overflow-y-auto">
+            <div className="mb-6 p-4 bg-muted rounded-lg">
+              <p className="text-sm text-muted-foreground mb-3">
+                Vous avez déjà configuré une paroisse ? Vous pouvez restaurer une sauvegarde.
+              </p>
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => setShowRestoreModal(true)}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Restaurer une sauvegarde
+              </Button>
+            </div>
+
             {/* Step 0: Landing Page */}
             {step === 0 && (
               <div className="space-y-6">
@@ -504,6 +573,109 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
               </div>
             )}
 
+            {/* Step 3: Premier compte administrateur */}
+            {step === 3 && (
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-lg font-semibold text-foreground mb-1">Compte administrateur</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Créez le premier utilisateur (super administrateur de cette paroisse). Vous pourrez inviter d’autres membres ensuite.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">
+                    Nom complet <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={adminFullName}
+                    onChange={e => setAdminFullName(e.target.value)}
+                    placeholder="Ex: Marie Dupont"
+                    autoComplete="name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={adminEmail}
+                    onChange={e => setAdminEmail(e.target.value)}
+                    placeholder="admin@exemple.fr"
+                    autoComplete="email"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">
+                    Mot de passe <span className="text-red-500">*</span>
+                  </label>
+                  <PasswordField
+                    value={adminPassword}
+                    onChange={e => setAdminPassword(e.target.value)}
+                    placeholder="Au moins 6 caractères"
+                    autoComplete="new-password"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Minimum 6 caractères (exigence Supabase).</p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="setup-gravatar"
+                    checked={useGravatar}
+                    disabled={!!adminAvatarFile}
+                    onCheckedChange={c => setUseGravatar(c === true)}
+                  />
+                  <label htmlFor="setup-gravatar" className="text-sm cursor-pointer">
+                    Utiliser Gravatar pour la photo de profil (si pas d’image ci-dessous)
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Photo de profil (optionnel)</label>
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={() => adminAvatarInputRef.current?.click()}
+                      className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted text-sm"
+                    >
+                      <Camera className="h-4 w-4" />
+                      Choisir une image
+                    </button>
+                    {adminAvatarPreview && (
+                      <img src={adminAvatarPreview} alt="" className="h-16 w-16 rounded-full object-cover border border-border" />
+                    )}
+                    {!adminAvatarPreview && (
+                      <UserCircle2 className="h-16 w-16 text-muted-foreground" />
+                    )}
+                  </div>
+                  <input
+                    ref={adminAvatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => {
+                      const file = e.target.files?.[0] ?? null;
+                      setAdminAvatarFile(file);
+                      setUseGravatar(false);
+                      if (file) {
+                        const r = new FileReader();
+                        r.onload = () => setAdminAvatarPreview(String(r.result));
+                        r.readAsDataURL(file);
+                      } else {
+                        setAdminAvatarPreview(null);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Error */}
             {error && (
               <div className="mt-4 p-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
@@ -570,6 +742,19 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                 </div>
               </div>
             )}
+
+            {step === 3 && (
+              <div className="space-y-4">
+                <div className="p-4 bg-background rounded-lg border border-border space-y-2">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Administrateur</p>
+                  <p className="font-medium text-foreground">{adminFullName.trim() || '(nom)'}</p>
+                  <p className="text-sm text-muted-foreground break-all">{adminEmail.trim() || form.brandingEmail}</p>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Après validation, la paroisse et le contenu sont enregistrés, puis ce compte est créé.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -589,16 +774,18 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
             Les champs avec <span className="text-red-500">*</span> sont obligatoires
           </div>
           <div>
-            {step < 2 && (
+            {step < WIZARD_STEPS - 1 && (
               <button
+                type="button"
                 onClick={handleNext}
                 className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium transition"
               >
                 Suivant →
               </button>
             )}
-            {step === 2 && (
+            {step === WIZARD_STEPS - 1 && (
               <button
+                type="button"
                 onClick={handleFinish}
                 disabled={loading}
                 className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium transition"
@@ -618,6 +805,15 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
           onChange={(e) => {
             const field = (e.target as any)?.dataset?.field as ImageField;
             if (field) handleImageUpload(e, field);
+          }}
+        />
+
+        <RestoreFromFileModal
+          open={showRestoreModal}
+          onOpenChange={setShowRestoreModal}
+          onRestoreSuccess={() => {
+            onClose();
+            markCompleted();
           }}
         />
       </div>

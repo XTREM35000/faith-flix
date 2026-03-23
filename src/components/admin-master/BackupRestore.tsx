@@ -10,8 +10,10 @@ import {
   Save,
   Database,
   History,
+  Trash,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchBackups as fetchBackupsQuery, deleteBackup as deleteBackupQuery } from '@/lib/supabase/backupQueries';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -76,6 +78,8 @@ export function BackupRestore({ isMaster }: BackupRestoreProps) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [restoreTarget, setRestoreTarget] = useState<Backup | null>(null);
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Backup | null>(null);
   const [newName, setNewName] = useState("");
   const [newDescription, setNewDescription] = useState("");
 
@@ -88,13 +92,8 @@ export function BackupRestore({ isMaster }: BackupRestoreProps) {
   const fetchBackups = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("backups")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setBackups((data as Backup[]) || []);
+      const data = await fetchBackupsQuery();
+      setBackups(data || []);
     } catch (e) {
       console.error("[AdminMaster] Erreur chargement backups:", e);
       toast({
@@ -271,6 +270,31 @@ export function BackupRestore({ isMaster }: BackupRestoreProps) {
   const requestRestore = (backup: Backup) => {
     setRestoreTarget(backup);
     setRestoreDialogOpen(true);
+  };
+
+  const requestDelete = (backup: Backup) => {
+    setDeleteTarget(backup);
+    setDeleteDialogOpen(true);
+  };
+
+  const performDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteDialogOpen(false);
+    try {
+      setLoading(true);
+      const res = await deleteBackupQuery(deleteTarget.id);
+      if (res.deleted) {
+        toast({ title: 'Sauvegarde supprimée' });
+      } else if (res.reason === 'latest') {
+        toast({ title: 'Action refusée', description: "Impossible de supprimer la dernière sauvegarde.", variant: 'destructive' });
+      }
+      await fetchBackups();
+    } catch (e) {
+      console.error('[AdminMaster] Erreur suppression sauvegarde:', e);
+      toast({ title: 'Erreur', description: 'Impossible de supprimer la sauvegarde.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRestore = async (backupId: string) => {
@@ -523,6 +547,14 @@ export function BackupRestore({ isMaster }: BackupRestoreProps) {
                               <Download className="h-4 w-4" />
                             </Button>
                             <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Supprimer"
+                              onClick={() => requestDelete(b)}
+                            >
+                              <Trash className="h-4 w-4 text-destructive" />
+                            </Button>
+                            <Button
                               variant="outline"
                               size="sm"
                               className="ml-1"
@@ -588,6 +620,22 @@ export function BackupRestore({ isMaster }: BackupRestoreProps) {
             <AlertDialogAction onClick={performRestore}>
               Continuer
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Voulez‑vous vraiment supprimer la sauvegarde <strong>{deleteTarget?.name || 'sélectionnée'}</strong> ?
+              Cette opération est irréversible. La suppression sera refusée si il s'agit de la dernière sauvegarde.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={performDelete}>Supprimer</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

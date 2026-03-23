@@ -1,14 +1,19 @@
 import React, { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import LoginForm from "@/components/LoginForm";
 import RegisterForm from "@/components/RegisterForm";
 import ForgotPasswordForm from "@/components/ForgotPasswordForm";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { CheckCircle2 } from "lucide-react";
 
 type AuthPageProps = {
   initialMode?: "login" | "register" | "forgot-password";
 };
 
 const AuthPage: React.FC<AuthPageProps> = ({ initialMode = "login" }) => {
+  const [searchParams] = useSearchParams();
+  const confirmed = searchParams.get("confirmed") === "true";
   const [activeTab, setActiveTab] = useState<"login" | "register" | "forgot-password">(initialMode);
 
   return (
@@ -22,6 +27,15 @@ const AuthPage: React.FC<AuthPageProps> = ({ initialMode = "login" }) => {
         </div>
 
         <div className="w-full md:w-2/3">
+          {confirmed && (
+            <Alert className="mb-4 border-green-500/50 bg-green-500/10">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <AlertTitle>Email confirmé</AlertTitle>
+              <AlertDescription>
+                Votre compte est activé. Vous pouvez vous connecter avec votre adresse email et votre mot de passe.
+              </AlertDescription>
+            </Alert>
+          )}
           <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as typeof activeTab)} className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="login" className="text-xs">Connexion</TabsTrigger>

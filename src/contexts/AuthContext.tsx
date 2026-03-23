@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { getAuthCallbackUrl, supabase } from '@/integrations/supabase/client';
 
 import type { Profile } from '@/types/database';
 import { AuthContext } from './auth-context-def';
@@ -127,18 +127,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   ) => {
     setLoading(true);
     try {
+      const redirect = getAuthCallbackUrl();
+      const emailRedirectTo = redirect && /^https?:\/\//i.test(redirect) ? redirect : undefined;
+
+      const userMeta: Record<string, string> = {};
+      if (metadata?.full_name?.trim()) userMeta.full_name = metadata.full_name.trim();
+      if (metadata?.phone?.trim()) userMeta.phone = metadata.phone.trim();
+      if (metadata?.role?.trim()) userMeta.role = metadata.role.trim();
+
+      if (import.meta.env.DEV) {
+        console.debug('[AuthContext] signUp request', {
+          email: email.trim(),
+          emailRedirectTo,
+          userMetaKeys: Object.keys(userMeta),
+        });
+      }
+
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: email.trim(),
         password,
         options: {
-          data: {
-            full_name: metadata?.full_name,
-            phone: metadata?.phone,
-            role: metadata?.role,
-          },
+          ...(emailRedirectTo ? { emailRedirectTo } : {}),
+          ...(Object.keys(userMeta).length > 0 ? { data: userMeta } : {}),
         },
       });
-      if (error) throw error;
+
+      if (error) {
+        if (import.meta.env.DEV) {
+          console.error('[AuthContext] signUp error', {
+            message: error.message,
+            name: error.name,
+            status: (error as { status?: number }).status,
+            code: (error as { code?: string }).code,
+          });
+        }
+        throw error;
+      }
       // Session présente seulement si la confirmation email est désactivée côté projet
       if (data.session) {
         setSession(data.session);

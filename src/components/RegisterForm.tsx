@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { Camera } from "lucide-react";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
 import PasswordField from '@/components/ui/password-field';
@@ -118,103 +117,80 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin 
 
     setLoading(true);
     try {
-      // Déterminer le rôle à attribuer (premier utilisateur = admin, deuxième = moderateur)
-      // Utiliser les valeurs canoniques françaises acceptées par la contrainte CHECK
-      let assignedRole = 'membre';
-      try {
-        const { data: countData, error: countErr, count } = await supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true });
-
-        if (!countErr) {
-          if (typeof count === 'number' && count === 0) assignedRole = 'admin';
-          else if (typeof count === 'number' && count === 1) assignedRole = 'moderateur';
-        }
-      } catch (err) {
-        console.error('Impossible de compter les profiles, assignation par défaut:', err);
-      }
-
-      // 1) Créer l'utilisateur d'abord et récupérer la réponse
+      // Rôle : laissé au trigger SQL (handle_auth_user_created) — évite un SELECT profiles avant signup
+      // (anon / RLS) et aligne le flux sur un signUp minimal type curl.
       type AuthSignUpRes = {
         data?: { user?: { id?: string } | null; session?: unknown } | null;
       };
       const registerRes = (await signUpWithEmail(emailToSubmit, password, {
         full_name: fullName,
-        phone: fullPhone,
-        role: assignedRole,
+        phone: fullPhone || undefined,
       })) as unknown as AuthSignUpRes;
 
-      // Essayer d'extraire l'utilisateur depuis la réponse
-      let createdUser = registerRes?.data?.user ?? null;
+      const createdUser = registerRes?.data?.user ?? null;
+      const hasSession = !!registerRes?.data?.session;
 
-      // Si l'utilisateur n'est pas dans la réponse, attendre qu'il apparaisse via getUser()
-      if (!createdUser) {
-        const maxAttempts = 8;
-        const delayMs = 300;
-        for (let attempt = 0; attempt < maxAttempts; attempt++) {
-          try {
-            const resp = await supabase.auth.getUser();
-            const maybeUser = resp?.data?.user ?? null;
-            if (maybeUser) {
-              createdUser = maybeUser;
-              break;
-            }
-          } catch (e) {
-            // ignore and retry
-          }
-          await new Promise((r) => setTimeout(r, delayMs));
-        }
-      }
-
-      // If still no createdUser, throw so we don't create a profile without id
-      if (!createdUser) {
-        throw new Error('User not available after registration; profile creation aborted');
-      }
-
-      // Profil public : trigger SQL côté Supabase ou création si session active (email confirm désactivé)
-      if (registerRes?.data?.session && createdUser.id) {
+      // Session active = confirmation email désactivée côté projet : compléter profil / avatar tout de suite
+      if (hasSession && createdUser?.id) {
         try {
           await ensureProfileExists(createdUser.id);
         } catch (profileErr) {
           console.error('ensureProfileExists après inscription:', profileErr);
         }
+        if (avatarFile) {
+          try {
+            await persistPendingAvatar(createdUser.id, avatarFile);
+            console.log('✅ Avatar stocké en sessionStorage (pending)');
+          } catch (err) {
+            console.error('Erreur stockage avatar en sessionStorage:', err);
+          }
+        }
+        toast({
+          title: '✅ Inscription réussie',
+          description: 'Votre compte est prêt.',
+        });
+        if (onSuccess) {
+          setTimeout(() => onSuccess(), 300);
+        } else {
+          setTimeout(() => navigate('/'), 300);
+        }
+        return;
       }
 
-      // Avatar : stockage synchrone avant le toast (upload au 1er login dans ensureProfileExists)
-      if (avatarFile && createdUser.id) {
+      // Pas de session : confirmation par email (comportement attendu si « Confirm email » est activé)
+      if (createdUser?.id && avatarFile) {
         try {
           await persistPendingAvatar(createdUser.id, avatarFile);
-          console.log('✅ Avatar stocké en sessionStorage (pending)');
         } catch (err) {
           console.error('Erreur stockage avatar en sessionStorage:', err);
         }
       }
 
-      // 3) Les données sont déjà sauvegardées dans les metadata lors du register() dans useAuth
-      // On affiche juste le toast de confirmation
       toast({
-        title: '✅ Inscription réussie',
-        description: 'Un email de confirmation a été envoyé. Veuillez vérifier votre boîte mail pour confirmer votre compte.',
-        variant: 'default',
+        title: '✅ Presque terminé',
+        description: 'Un email de confirmation vous a été envoyé.',
       });
-      
-      if (onSuccess) {
-        setTimeout(() => {
-          // Revenir à l'onglet connexion au lieu de fermer
-          onSwitchToLogin?.();
-        }, 500);
-      } else {
-        setTimeout(() => {
-          navigate('/');
-        }, 500);
-      }
-    } catch (err) {
+      navigate('/email-confirmation-sent', { state: { email: emailToSubmit }, replace: true });
+    } catch (err: unknown) {
       console.error('❌ Erreur lors de l\'enregistrement:', err);
-      // Afficher quand même le toast car l'utilisateur peut être créé même avec une erreur partielle
+      const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+      const already =
+        msg.includes('already registered') ||
+        msg.includes('already been registered') ||
+        msg.includes('user already exists');
+      if (already) {
+        toast({
+          title: 'Compte déjà existant',
+          description: 'Cette adresse est déjà utilisée. Connectez-vous ou réinitialisez votre mot de passe.',
+          variant: 'destructive',
+        });
+        onSwitchToLogin?.();
+        return;
+      }
       toast({
         title: '⚠️ Erreur lors de l\'inscription',
-        description: 'Une erreur est survenue, mais votre compte peut avoir été créé. Veuillez vérifier votre email.',
-        variant: 'default',
+        description: err instanceof Error ? err.message : 'Veuillez réessayer ou vérifier votre email.',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);

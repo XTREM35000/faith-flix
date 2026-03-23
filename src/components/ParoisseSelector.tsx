@@ -12,7 +12,7 @@ interface ParoisseSelectorProps {
 }
 
 /**
- * Modal paroisse : rendu via createPortal sur document.body (z-index élevé).
+ * Modal paroisse : createPortal sur document.body (z-index élevé), sans conteneur retiré à la main.
  * Évite les bugs du Dialog Radix contrôlé (fermeture immédiate / overlay sans panneau).
  */
 export const ParoisseSelector: React.FC<ParoisseSelectorProps> = ({ open, onClose }) => {
@@ -35,10 +35,18 @@ export const ParoisseSelector: React.FC<ParoisseSelectorProps> = ({ open, onClos
     };
     document.addEventListener('keydown', onKey);
     const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    try {
+      document.body.style.overflow = 'hidden';
+    } catch {
+      // ignore
+    }
     return () => {
       document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prev;
+      try {
+        document.body.style.overflow = prev;
+      } catch {
+        // ignore
+      }
     };
   }, [open, handleDismiss]);
 

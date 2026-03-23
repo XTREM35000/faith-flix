@@ -13,6 +13,7 @@ import { ConfigCritical } from "@/components/admin-master/ConfigCritical";
 import { ConfigAdmins } from "@/components/admin-master/ConfigAdmins";
 import { AuditLogs } from "@/components/admin-master/AuditLogs";
 import { ConfigFactoryReset } from "@/components/admin-master/ConfigFactoryReset";
+import SetupWizardModal from "@/components/SetupWizardModal";
 
 const TABS = [
   { id: "backup", label: "Sauvegarde & restauration" },
@@ -32,8 +33,17 @@ export default function AdminMasterReset() {
   const { data: hero, save: saveHero } = usePageHero(location.pathname);
   const { hasRole } = useRoleCheck();
   const [activeTab, setActiveTab] = useState<TabId>("backup");
+  const [showSetupWizard, setShowSetupWizard] = useState(false);
 
   const isMaster = hasRole("super_admin");
+
+  const handleFactoryResetComplete = (result: {
+    launchSetupWizard?: boolean;
+  }) => {
+    if (result?.launchSetupWizard) {
+      setShowSetupWizard(true);
+    }
+  };
 
   if (!isMaster) {
     return (
@@ -99,12 +109,21 @@ export default function AdminMasterReset() {
             {activeTab === "banners" && <ConfigBanners />}
             {activeTab === "text" && <ConfigText />}
             {activeTab === "critical" && <ConfigCritical />}
-            {activeTab === "factory" && <ConfigFactoryReset />}
+            {activeTab === "factory" && (
+              <ConfigFactoryReset
+                onFactoryResetComplete={handleFactoryResetComplete}
+              />
+            )}
             {activeTab === "admins" && <ConfigAdmins />}
             {activeTab === "logs" && <AuditLogs />}
           </div>
         </div>
       </main>
+
+      <SetupWizardModal
+        open={showSetupWizard}
+        onClose={() => setShowSetupWizard(false)}
+      />
     </div>
   );
 }

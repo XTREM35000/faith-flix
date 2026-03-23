@@ -378,6 +378,23 @@ export async function uploadDirectoryImage(file: File, bucketName: string = STOR
   }
 }
 
+/** Avatar utilisateur → bucket `avatars` (préférer `storePendingAvatarForUpload` + `uploadPendingAvatar` si session incertaine). */
+export async function uploadUserAvatar(file: File, userId: string) {
+  const ext = getFileExtension(file.name);
+  const mimeType = file.type || `image/${ext}`;
+  const key = `${userId}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
+
+  const { data, error } = await supabase.storage.from(STORAGE_BUCKETS.AVATARS).upload(key, file, {
+    cacheControl: '3600',
+    upsert: true,
+    contentType: mimeType,
+  });
+  if (error) throw error;
+  const { data: publicData } = supabase.storage.from(STORAGE_BUCKETS.AVATARS).getPublicUrl(data.path);
+  if (!publicData?.publicUrl) throw new Error('URL publique avatar introuvable');
+  return publicData.publicUrl;
+}
+
 /** Upload logo paroisse → bucket `paroisses` (ou VITE_BUCKET_PAROISSES). */
 export async function uploadParoisseLogo(file: File, slugHint?: string) {
   const ext = getFileExtension(file.name);

@@ -1,24 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, GripVertical } from 'lucide-react';
+import { X, GripVertical, CheckCircle2 } from 'lucide-react';
 import DraggableModal from './DraggableModal';
 import LoginForm from '@/components/LoginForm';
 import RegisterForm from '@/components/RegisterForm';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultMode?: 'login' | 'register';
   onForgotPassword?: () => void;
+  /** Après confirmation email (retour `/auth/callback` → `/?confirmed=true#auth`) */
+  showEmailConfirmedBanner?: boolean;
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMode = 'login', onForgotPassword }) => {
+const AuthModal: React.FC<AuthModalProps> = ({
+  isOpen,
+  onClose,
+  defaultMode = 'login',
+  onForgotPassword,
+  showEmailConfirmedBanner = false,
+}) => {
   const [mode, setMode] = useState<'login' | 'register'>(defaultMode);
 
   useEffect(() => {
     setMode(defaultMode);
   }, [defaultMode, isOpen]);
+
+  useEffect(() => {
+    if (isOpen && showEmailConfirmedBanner) setMode('login');
+  }, [isOpen, showEmailConfirmedBanner]);
 
   // Empêcher le scroll de la page quand le modal est ouvert
   useEffect(() => {
@@ -87,6 +100,16 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMode = 'l
             {/* Form Section */}
             <div className={`w-full md:w-2/3 flex flex-col ${formMinH} ${mode === 'register' ? ' text-sm' : ''}`} style={{ minWidth: 280 }}>
               {/* Tabs */}
+              {showEmailConfirmedBanner && (
+                <Alert className="mb-3 border-green-500/50 bg-green-500/10 shrink-0">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <AlertTitle>Email confirmé</AlertTitle>
+                  <AlertDescription>
+                    Votre compte est activé. Connectez-vous avec votre email et votre mot de passe.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               <div className="flex items-center justify-between mb-3">
                 <h1 className="text-lg font-semibold">{mode === 'login' ? 'Connexion' : 'Inscription'}</h1>
                 <div className="flex gap-2">

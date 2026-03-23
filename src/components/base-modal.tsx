@@ -87,7 +87,7 @@ export default function BaseModal({ open, onClose, children, center = false }: B
     };
   }, [open]);
 
-  if (!open) return null;
+  if (!open || typeof document === 'undefined') return null;
 
   const modal = (
     <div
@@ -118,10 +118,6 @@ export default function BaseModal({ open, onClose, children, center = false }: B
     </div>
   );
 
-  // Render into document.body to escape any local stacking contexts
-  if (typeof document !== 'undefined' && document.body) {
-    return createPortal(modal, document.body);
-  }
-
-  return modal;
+  // Portal direct sur body : pas de conteneur dédié ni removeChild manuel (évite les courses avec React / StrictMode).
+  return createPortal(modal, document.body);
 }

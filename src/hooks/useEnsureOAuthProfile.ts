@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { oauthAvatarFromMetadata } from '@/utils/oauthAvatar';
 
 /**
  * Hook qui gère la création/mise à jour du profil après OAuth
@@ -29,12 +30,14 @@ export function useEnsureOAuthProfile() {
         // Si le profil n'existe pas, le créer
         if (!profile) {
           // Extraire les informations du user_metadata (fourni par OAuth)
-          const userMetadata = user.user_metadata || {};
-          const fullName = userMetadata.full_name || 
-                          `${userMetadata.first_name || ''} ${userMetadata.last_name || ''}`.trim() || 
-                          user.email?.split('@')[0] || 'Utilisateur';
-          
-          const avatarUrl = userMetadata.avatar_url || null;
+          const userMetadata = (user.user_metadata || {}) as Record<string, unknown>;
+          const fullName =
+            (typeof userMetadata.full_name === 'string' && userMetadata.full_name) ||
+            `${typeof userMetadata.first_name === 'string' ? userMetadata.first_name : ''} ${typeof userMetadata.last_name === 'string' ? userMetadata.last_name : ''}`.trim() ||
+            user.email?.split('@')[0] ||
+            'Utilisateur';
+
+          const avatarUrl = oauthAvatarFromMetadata(userMetadata);
 
           const { error: upsertError } = await supabase
             .from('profiles')

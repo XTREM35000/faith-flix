@@ -2,13 +2,41 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const rawUrl = String(import.meta.env.VITE_SUPABASE_URL ?? '').trim();
+const rawKey = String(import.meta.env.VITE_SUPABASE_ANON_KEY ?? '').trim();
+
+const supabaseUrl = rawUrl.replace(/\/+$/, '');
+const supabaseAnonKey = rawKey;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+  throw new Error(
+    'Variables Supabase manquantes : définissez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans .env.local (préfixe VITE_ obligatoire pour Vite).',
+  );
 }
 
+if (!/^https?:\/\//i.test(supabaseUrl)) {
+  throw new Error(`VITE_SUPABASE_URL invalide (attendu une URL https) : reçu « ${supabaseUrl.slice(0, 24)}… »`);
+}
+
+/** Aperçu clé pour logs (jamais la clé complète). */
+export const maskSupabaseKeyForLogs = (key: string) =>
+  key.length <= 12 ? '***' : `${key.slice(0, 8)}…${key.slice(-4)}`;
+
+if (import.meta.env.DEV) {
+  console.info('[Supabase]', {
+    url: supabaseUrl,
+    anonKey: maskSupabaseKeyForLogs(supabaseAnonKey),
+  });
+}
+
+/** Base des redirections auth (confirmation email, magic link). */
+export const getAuthCallbackUrl = () =>
+  typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : '';
+
+/**
+ * Client unique : pas de `auth.redirectTo` global ici — il est passé uniquement à `signUp({ options: { emailRedirectTo } })`
+ * pour coller à un appel minimal type curl et éviter un `redirect_to` systématique sur signup.
+ */
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,

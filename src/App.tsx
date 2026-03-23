@@ -70,13 +70,17 @@ import DataDeletionPage from './pages/DataDeletionPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import DocProjetPage from './pages/DocProjetPage';
 import AuthCallback from './pages/AuthCallback';
+import EmailConfirmationSent from './pages/EmailConfirmationSent';
 import AdminMemberCards from './pages/AdminMemberCards';
 import AdminCertificates from './pages/AdminCertificates';
 import AdminMasterReset from './pages/AdminMasterReset';
 import AdminParoisses from './pages/AdminParoisses';
 import WelcomeModal from './components/WelcomeModal';
 import { ParoisseProvider, useParoisse } from '@/contexts/ParoisseContext';
+import { SetupProvider } from '@/contexts/SetupContext';
 import { ParoisseSelector } from '@/components/ParoisseSelector';
+import SetupWizardModal from '@/components/SetupWizardModal';
+import { useCheckEmptyDatabase } from '@/hooks/useCheckEmptyDatabase';
 
 /**
  * Debug uniquement : `true` = ouvre le sélecteur à chaque chargement (ignore la paroisse sauvegardée).
@@ -88,6 +92,8 @@ const queryClient = new QueryClient();
 
 const AppInner = () => {
   const { paroisse, isLoading, isSelectorOpen, setSelectorOpen } = useParoisse();
+  const { loading: checkDbLoading, isEmpty } = useCheckEmptyDatabase();
+  const [showSetupWizardAuto, setShowSetupWizardAuto] = useState(false);
 
   /** Après choix / restauration paroisse, ou prompt déjà terminé — alors seulement le splash welcome peut s'afficher. */
   const [paroisseGateDone, setParoisseGateDone] = useState(false);
@@ -123,23 +129,40 @@ const AppInner = () => {
     setSelectorOpen(true);
   }, [isLoading, paroisse, setSelectorOpen]);
 
+  // Ouvrir automatiquement le SetupWizard si la base est vide
+  useEffect(() => {
+    if (checkDbLoading) return;
+    if (isEmpty) setShowSetupWizardAuto(true);
+  }, [checkDbLoading, isEmpty]);
+
+  // Pendant le check initial de la DB, afficher un spinner global
+  if (checkDbLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-12 h-12 border-4 border-primary rounded-full animate-spin border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
-    <>
+    <div>
       <BrowserRouter
         future={{
           v7_startTransition: true,
           v7_relativeSplatPath: true,
         }}
       >
-        <ScrollToTop />
+  <ScrollToTop />
         <RedirectHandler />
         {paroisseGateDone ? <WelcomeModal autoCloseDelayMs={5000} /> : null}
+  <SetupWizardModal open={showSetupWizardAuto} onClose={() => setShowSetupWizardAuto(false)} />
         <Routes>
           <Route path="/" element={<Layout><Index /></Layout>} />
           <Route path="/connexion" element={<Navigate to="/#auth" replace />} />
           <Route path="/inscription" element={<Navigate to="/?mode=register#auth" replace />} />
           <Route path="/auth" element={<Layout><Index /></Layout>} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/email-confirmation-sent" element={<EmailConfirmationSent />} />
           <Route path="/email-confirmed" element={<EmailConfirmedPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
@@ -338,7 +361,7 @@ const AppInner = () => {
         {/* Dans le Router pour que ParoisseSelector puisse utiliser useNavigate() */}
         <ParoisseSelector open={isSelectorOpen} onClose={handleParoisseSelectorClose} />
       </BrowserRouter>
-    </>
+    </div>
   );
 };
 
@@ -370,7 +393,9 @@ const App = () => {
           <AuthProvider>
           <ToastProvider>
           <ParoisseProvider>
-            <AppInner />
+            <SetupProvider>
+              <AppInner />
+            </SetupProvider>
           </ParoisseProvider>
           </ToastProvider>
         </AuthProvider>

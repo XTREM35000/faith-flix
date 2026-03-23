@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { uploadPendingAvatar } from './uploadPendingAvatar';
+import { oauthAvatarFromMetadata } from './oauthAvatar';
 
 /**
  * Crée un profil dans public.profiles si l'utilisateur n'en a pas
@@ -38,12 +39,12 @@ export async function ensureProfileExists(userId: string) {
     }
 
     const user = authData.user;
-    const metadata = user.user_metadata || {};
+    const metadata = (user.user_metadata || {}) as Record<string, unknown>;
 
     console.log('🔍 Création du profil avec les metadata:', metadata);
 
-    // Uploader l'avatar en attente si disponible
-    let avatar_url = metadata.avatar_url || null;
+    // OAuth : Google (`picture`), Facebook / autres (`avatar_url`)
+    let avatar_url = oauthAvatarFromMetadata(metadata);
     if (!avatar_url) {
       console.log('⏳ Tentative upload avatar en attente...');
       const uploadedUrl = await uploadPendingAvatar(user.id);
@@ -57,10 +58,10 @@ export async function ensureProfileExists(userId: string) {
     const profileData = {
       id: user.id,
       email: user.email,
-      full_name: metadata.full_name || null,
+      full_name: typeof metadata.full_name === 'string' ? metadata.full_name : null,
       avatar_url: avatar_url || null,
-      phone: metadata.phone || null,
-      role: metadata.role || 'membre', // Utiliser le rôle des metadata, sinon défaut
+      phone: typeof metadata.phone === 'string' ? metadata.phone : null,
+      role: typeof metadata.role === 'string' ? metadata.role : 'membre',
       is_active: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),

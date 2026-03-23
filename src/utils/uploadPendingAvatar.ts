@@ -1,5 +1,29 @@
 import { supabase } from '@/integrations/supabase/client';
 
+/** Stocke un fichier image pour `uploadPendingAvatar` après session active (même clé que l’inscription classique). */
+export function storePendingAvatarForUpload(userId: string, file: File): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        sessionStorage.setItem(
+          'pending_avatar_upload',
+          JSON.stringify({
+            fileData: reader.result,
+            fileName: `${userId}/${Date.now()}_avatar.${file.name.split('.').pop()}`,
+            mimeType: file.type,
+          }),
+        );
+        resolve();
+      } catch (e) {
+        reject(e);
+      }
+    };
+    reader.onerror = () => reject(reader.error ?? new Error('FileReader error'));
+    reader.readAsDataURL(file);
+  });
+}
+
 /**
  * Upload l'avatar en attente stocké en sessionStorage lors du signup
  * Appelé lors du premier login après confirmation d'email

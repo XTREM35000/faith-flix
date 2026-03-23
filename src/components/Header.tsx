@@ -68,6 +68,7 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
   
   const location = useLocation();
   const authMode = new URLSearchParams(location.search).get("mode") === "register" ? "register" : "login";
+  const emailJustConfirmed = new URLSearchParams(location.search).get("confirmed") === "true";
   const navigate = useNavigate();
   const { user, signOut } = useAuthContext();
   const { profile } = useUser();
@@ -577,6 +578,7 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
       <Suspense fallback={null}>
         <AuthModal 
           isOpen={isAuthModalOpen} 
+          showEmailConfirmedBanner={emailJustConfirmed}
           onClose={() => {
             setIsAuthModalOpen(false);
             // Si l'URL a '#auth', on l'enlève et on force le retour à la page d'accueil

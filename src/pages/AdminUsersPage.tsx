@@ -12,6 +12,7 @@ import { updateProfileRole } from '@/lib/supabase/rpc';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import useUserRoles from '@/hooks/useUserRoles';
+import { useAuth } from '@/hooks/useAuth';
 
 interface User {
   id: string;
@@ -41,6 +42,7 @@ const AdminUsersPage: React.FC = () => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
   const { canEditRole, isSuperAdmin } = useUserRoles();
   const [editingRole, setEditingRole] = useState<Record<string, string>>({});
 
@@ -68,20 +70,16 @@ const AdminUsersPage: React.FC = () => {
     if (!deleteConfirmId) return;
     try {
       console.debug('Deleting user', { userId: deleteConfirmId });
-      // Try to delete directly using Supabase SDK
-      // RLS policy on profiles table will allow this if user is admin
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', deleteConfirmId);
 
-      if (error) {
-        console.error('Supabase delete error', { error, status: (error as any).status, details: (error as any).details });
-        // Check if it's a permission error
-        if ((error as any).status === 403 || error.message.includes('permission')) {
-          throw new Error(`Permission refusée: Vous ne disposez pas des droits suffisants pour supprimer cet utilisateur. ${error.message}`);
-        }
-        throw error;
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { user_id: deleteConfirmId },
+      });
+
+      if (error) throw error;
+
+      const payload = data as { success?: boolean; error?: string } | null;
+      if (payload?.error) {
+        throw new Error(payload.error);
       }
 
       await fetchUsers();
@@ -89,7 +87,11 @@ const AdminUsersPage: React.FC = () => {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Erreur inconnue lors de la suppression';
       console.error('Erreur delete user', { error: err, message: errorMsg });
-      toast({ title: 'Erreur', description: `Suppression échouée: ${errorMsg}`, variant: 'destructive' });
+      toast({
+        title: 'Erreur',
+        description: `Suppression échouée: ${errorMsg}`,
+        variant: 'destructive',
+      });
     } finally {
       setDeleteConfirmId(null);
     }
@@ -390,15 +392,17 @@ const AdminUsersPage: React.FC = () => {
                           <Edit className="w-4 h-4" />
                           Éditer
                         </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => deleteUser(user.id)}
-                          className="gap-1"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Supprimer
-                        </Button>
+                        {isSuperAdmin && user.id !== currentUser?.id && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => deleteUser(user.id)}
+                            className="gap-1"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Supprimer
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>

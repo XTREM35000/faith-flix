@@ -1,5 +1,9 @@
-import { supabase } from '@/integrations/supabase/client';
-import type { UseQueryClient } from '@tanstack/react-query';
+import { getAuthCallbackUrl, supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
+import { gravatarUrlFromEmail } from '@/utils/gravatar';
+import { ensureProfileExists } from '@/utils/ensureProfileExists';
+import { storePendingAvatarForUpload, uploadPendingAvatar } from '@/utils/uploadPendingAvatar';
+import { STORAGE_SELECTED_PAROISSE } from '@/lib/paroisseStorage';
 
 export type HomepageSectionRow = {
   section_key: string;
@@ -109,35 +113,155 @@ export async function saveHeaderConfig(headerData: {
     return { success: false, error: err };
   }
 }
-export async function saveInitialSetup(data: {
+/** Données assistant setup : champs header optionnels (sinon dérivés du branding). */
+export type SetupData = {
   sections: HomepageSectionRow[];
-  about: any;
-  branding: any;
-  help?: any;
-}) {
-  // Upsert homepage_sections rows (insert if not exists, update if exists)
+  about: unknown;
+  branding: {
+    name: string;
+    logo?: string | null;
+    email: string;
+    phone?: string | null;
+    address?: string | null;
+    footer_text?: string | null;
+  };
+  help?: unknown;
+  headerLogo?: string | null;
+  headerMainTitle?: string;
+  headerSubtitle?: string;
+};
+
+export async function saveInitialSetup(data: SetupData) {
   try {
-    const sections = data.sections.map((s, idx) => ({ ...s, display_order: s.display_order ?? idx, is_active: true }));
+    const sections = data.sections.map((s, idx) => ({
+      ...s,
+      display_order: s.display_order ?? idx,
+      is_active: s.is_active ?? true,
+    }));
 
-    const { error: secErr } = await supabase.from('homepage_sections').upsert(sections, { onConflict: 'section_key' });
-    if (secErr) throw secErr;
+    const slug = data.branding.name.toLowerCase().replace(/\s+/g, '-');
 
-    const contentRows = [
-      { section: 'about', content: data.about },
-      { section: 'branding', content: data.branding },
-    ];
+    const { data: result, error } = await supabase.rpc('init_system', {
+      p_paroisse_nom: data.branding.name,
+      p_paroisse_slug: slug,
+      p_paroisse_description: `Paroisse ${data.branding.name}`,
+      p_sections: sections as unknown as Json,
+      p_header_config: {
+        logo_url: data.headerLogo ?? data.branding.logo ?? null,
+        main_title: data.headerMainTitle ?? data.branding.name,
+        subtitle: data.headerSubtitle ?? '',
+      } as Json,
+      p_about_config: data.about as Json,
+      p_branding: {
+        name: data.branding.name,
+        logo: data.branding.logo ?? null,
+        email: data.branding.email,
+        phone: data.branding.phone ?? null,
+        address: data.branding.address ?? null,
+        footer_text: data.branding.footer_text ?? null,
+      } as Json,
+    });
 
-    if (data.help) contentRows.push({ section: 'help', content: data.help });
+    if (error) throw error;
 
-    // Upsert homepage_content rows (insert if not exists, update if exists)
-    const { error: contentErr } = await supabase.from('homepage_content').upsert(contentRows, { onConflict: 'section' });
-    if (contentErr) throw contentErr;
+    const row = result as { paroisse_id?: string } | null;
+    if (row?.paroisse_id) {
+      try {
+        localStorage.setItem('selectedParoisse', row.paroisse_id);
+      } catch {
+        // ignore
+      }
+    }
 
-    return { success: true };
-  } catch (err) {
-    console.error('saveInitialSetup error', err);
-    return { success: false, error: err };
+    return { success: true as const, data: result };
+  } catch (error) {
+    console.error('saveInitialSetup error', error);
+    return { success: false as const, error };
   }
 }
 
 export default saveInitialSetup;
+
+export type FirstAdminUserData = {
+  full_name: string;
+  email: string;
+  password: string;
+  /** Si vrai et pas de fichier : URL Gravatar dans les métadonnées à l’inscription. */
+  useGravatar: boolean;
+};
+
+/**
+ * Après `saveInitialSetup` (RPC `init_system` → paroisse + contenu), crée le premier compte
+ * avec `paroisse_id` dans les métadonnées (trigger → `super_admin` pour le 1er utilisateur de la paroisse).
+ */
+export async function initFirstParoisseAndUser(
+  setupData: SetupData,
+  userData: FirstAdminUserData,
+  avatarFile?: File | null,
+) {
+  const setupRes = await saveInitialSetup(setupData);
+  if (!setupRes.success) {
+    const err = setupRes.error as { message?: string; code?: string } | null;
+    const msg =
+      (typeof err?.message === 'string' && err.message) ||
+      err?.code ||
+      (err != null ? JSON.stringify(err) : null) ||
+      'Échec de la configuration initiale';
+    throw new Error(msg);
+  }
+
+  const row = setupRes.data as { paroisse_id?: string } | null;
+  const paroisseId = row?.paroisse_id;
+  if (!paroisseId) {
+    throw new Error('Identifiant de paroisse manquant après la configuration initiale.');
+  }
+
+  try {
+    localStorage.setItem(STORAGE_SELECTED_PAROISSE, paroisseId);
+  } catch {
+    // ignore
+  }
+
+  const email = userData.email.trim();
+  const fullName = userData.full_name.trim();
+
+  let avatarUrlForMeta: string | undefined;
+  if (!avatarFile && userData.useGravatar) {
+    avatarUrlForMeta = gravatarUrlFromEmail(email);
+  }
+
+  const redirect = getAuthCallbackUrl();
+  const emailRedirectTo = redirect && /^https?:\/\//i.test(redirect) ? redirect : undefined;
+
+  const { data: authData, error: signErr } = await supabase.auth.signUp({
+    email,
+    password: userData.password,
+    options: {
+      ...(emailRedirectTo ? { emailRedirectTo } : {}),
+      data: {
+        full_name: fullName,
+        paroisse_id: paroisseId,
+        ...(avatarUrlForMeta ? { avatar_url: avatarUrlForMeta } : {}),
+      },
+    },
+  });
+
+  if (signErr) throw signErr;
+
+  const uid = authData.user?.id;
+  const hasSession = !!authData.session;
+
+  if (uid && avatarFile) {
+    try {
+      await storePendingAvatarForUpload(uid, avatarFile);
+    } catch (e) {
+      console.error('storePendingAvatarForUpload', e);
+    }
+    if (hasSession) {
+      await ensureProfileExists(uid);
+      await uploadPendingAvatar(uid);
+    }
+  }
+
+  return { paroisseId, authData };
+}

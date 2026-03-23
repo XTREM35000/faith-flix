@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { AlertTriangle, Skull, RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Skull, RefreshCw, Upload } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,20 +19,84 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { RestoreFromFileModal } from "./RestoreFromFileModal";
+import { fetchBackups as fetchBackupsQuery, deleteBackup as deleteBackupQuery, BackupRow } from '@/lib/supabase/backupQueries';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Trash, Download, Eye } from 'lucide-react';
 
 type Step = "idle" | "first" | "second" | "third" | "executing" | "done";
 
-export function ConfigFactoryReset() {
+export interface ConfigFactoryResetProps {
+  onFactoryResetComplete?: (result: { launchSetupWizard?: boolean }) => void;
+}
+
+export function ConfigFactoryReset({ onFactoryResetComplete }: ConfigFactoryResetProps) {
   const { toast } = useToast();
   const [step, setStep] = useState<Step>("idle");
   const [confirm1Open, setConfirm1Open] = useState(false);
   const [confirm2Open, setConfirm2Open] = useState(false);
   const [confirm3Open, setConfirm3Open] = useState(false);
   const [textConfirm, setTextConfirm] = useState("");
-  const [keepSuperAdmin, setKeepSuperAdmin] = useState(true);
-  const [superAdminEmail, setSuperAdminEmail] = useState("");
+  const [resetOptions, setResetOptions] = useState({
+    keepSuperAdmin: true,
+    superAdminEmail: "compassionnotredame5@gmail.com",
+    deleteAllUsers: false,
+    skipBackup: false,
+    launchSetupWizard: true,
+  });
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
   const [progress, setProgress] = useState(0);
   const [executing, setExecuting] = useState(false);
+  const [systemBackups, setSystemBackups] = useState<BackupRow[]>([]);
+  const [loadingBackups, setLoadingBackups] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<BackupRow | null>(null);
+
+  useEffect(() => {
+    void loadSystemBackups();
+  }, []);
+
+  const loadSystemBackups = async () => {
+    setLoadingBackups(true);
+    try {
+      const data = await fetchBackupsQuery('full');
+      setSystemBackups(data || []);
+    } catch (e) {
+      console.error('[FactoryReset] Erreur chargement backups système:', e);
+    } finally {
+      setLoadingBackups(false);
+    }
+  };
+
+  const requestDelete = (b: BackupRow) => {
+    setDeleteTarget(b);
+    setDeleteDialogOpen(true);
+  };
+
+  const performDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteDialogOpen(false);
+    try {
+      const res = await deleteBackupQuery(deleteTarget.id);
+      if (res.deleted) {
+        // refresh list
+        await loadSystemBackups();
+        toast({ title: 'Sauvegarde système supprimée' });
+      } else if (res.reason === 'latest') {
+        toast({ title: 'Action refusée', description: "Impossible de supprimer la dernière sauvegarde système.", variant: 'destructive' });
+      }
+    } catch (e) {
+      console.error('[FactoryReset] Erreur suppression backup système:', e);
+      toast({ title: 'Erreur', description: 'Impossible de supprimer la sauvegarde système.', variant: 'destructive' });
+    }
+  };
 
   const startSequence = () => {
     setStep("first");
@@ -67,33 +131,40 @@ export function ConfigFactoryReset() {
     setProgress(10);
 
     try {
-      // 1. Sauvegarde complète ultime
-      setProgress(35);
-      const { data: backupData, error: backupError } =
-        await supabase.functions.invoke("backup-full", {
-          body: {},
+      if (!resetOptions.skipBackup) {
+        setProgress(35);
+        const { data: backupData, error: backupError } =
+          await supabase.functions.invoke("backup-full", {
+            body: {},
+          });
+        if (backupError) throw backupError;
+
+        const backupId = (backupData as any)?.backup?.id;
+
+        toast({
+          title: "Sauvegarde ultime créée",
+          description:
+            backupId != null
+              ? `Backup ID: ${backupId}`
+              : "Une sauvegarde complète (DB + fichiers) a été créée.",
         });
-      if (backupError) throw backupError;
-
-      const backupId = (backupData as any)?.backup?.id;
-
-      toast({
-        title: "Sauvegarde ultime créée",
-        description:
-          backupId != null
-            ? `Backup ID: ${backupId}`
-            : "Une sauvegarde complète (DB + fichiers) a été créée.",
-      });
+      } else {
+        setProgress(35);
+      }
 
       setProgress(65);
 
-      // 2. Appel de factory-reset
       const { data, error } = await supabase.functions.invoke(
         "factory-reset",
         {
           body: {
-            keepSuperAdmin,
-            superAdminEmail: keepSuperAdmin ? superAdminEmail || null : null,
+            keepSuperAdmin: resetOptions.keepSuperAdmin,
+            superAdminEmail: resetOptions.keepSuperAdmin
+              ? resetOptions.superAdminEmail || null
+              : null,
+            deleteAllUsers: resetOptions.deleteAllUsers,
+            skipBackup: resetOptions.skipBackup,
+            launchSetupWizard: resetOptions.launchSetupWizard,
           },
         }
       );
@@ -102,6 +173,7 @@ export function ConfigFactoryReset() {
 
       setProgress(95);
       const payload = data as any;
+      const launchSetupWizard = payload?.launchSetupWizard === true && !payload?.dryRun;
 
       toast({
         title: "Factory Reset terminé",
@@ -115,6 +187,10 @@ export function ConfigFactoryReset() {
 
       setProgress(100);
       setStep("done");
+
+      if (launchSetupWizard) {
+        onFactoryResetComplete?.({ launchSetupWizard: true });
+      }
     } catch (e) {
       console.error("[FactoryReset] Erreur pendant la mise à nu complète:", e);
       toast({
@@ -153,7 +229,14 @@ export function ConfigFactoryReset() {
               Ce qui est conservé :
             </p>
             <ul className="text-xs text-red-900/80 list-disc list-inside space-y-1">
-              <li>Comptes utilisateurs et rôles (dont les super_admin).</li>
+              {resetOptions.deleteAllUsers ? (
+                <li>
+                  Un seul super_admin (celui indiqué), tous les autres utilisateurs
+                  sont supprimés.
+                </li>
+              ) : (
+                <li>Comptes utilisateurs et rôles (dont les super_admin).</li>
+              )}
               <li>Structure des tables et configuration technique Supabase.</li>
             </ul>
           </div>
@@ -163,51 +246,104 @@ export function ConfigFactoryReset() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-4"
           >
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium flex items-center gap-2">
+                    Garder un super_admin
+                    <Switch
+                      checked={resetOptions.keepSuperAdmin}
+                      onCheckedChange={(checked) =>
+                        setResetOptions((o) => ({ ...o, keepSuperAdmin: checked }))
+                      }
+                    />
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    Recommandé : permet de garder un compte maître après le reset.
+                  </p>
+                </div>
+                {resetOptions.keepSuperAdmin && (
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">
+                      Email du super_admin à garder
+                    </Label>
+                    <Input
+                      type="email"
+                      value={resetOptions.superAdminEmail}
+                      onChange={(e) =>
+                        setResetOptions((o) => ({
+                          ...o,
+                          superAdminEmail: e.target.value,
+                        }))
+                      }
+                      placeholder="ex: admin@paroisse-ci.org"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Laissez vide pour conserver tous les super_admin existants.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <Label className="text-xs font-medium flex items-center gap-2">
-                  Conserver au moins un super_admin
+                  Supprimer tous les autres utilisateurs
                   <Switch
-                    checked={keepSuperAdmin}
-                    onCheckedChange={setKeepSuperAdmin}
+                    checked={resetOptions.deleteAllUsers}
+                    onCheckedChange={(checked) =>
+                      setResetOptions((o) => ({ ...o, deleteAllUsers: checked }))
+                    }
                   />
                 </Label>
                 <p className="text-[11px] text-muted-foreground">
-                  Recommandé : permet de garder un compte maître après le reset.
+                  Si activé, seuls le ou les super_admin conservés restent.
                 </p>
               </div>
-              {keepSuperAdmin && (
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">
-                    Email du super_admin à conserver
-                  </Label>
-                  <Input
-                    type="email"
-                    value={superAdminEmail}
-                    onChange={(e) => setSuperAdminEmail(e.target.value)}
-                    placeholder="ex: admin@paroisse-ci.org"
+
+              <div className="space-y-2">
+                <Label className="text-xs font-medium flex items-center gap-2">
+                  Ignorer la sauvegarde avant reset
+                  <Switch
+                    checked={resetOptions.skipBackup}
+                    onCheckedChange={(checked) =>
+                      setResetOptions((o) => ({ ...o, skipBackup: checked }))
+                    }
                   />
-                  <p className="text-[11px] text-muted-foreground">
-                    Laissez vide pour conserver tous les super_admin existants.
-                  </p>
-                </div>
-              )}
+                </Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Déconseillé : pas de sauvegarde ultime avant la mise à nu.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-medium flex items-center gap-2">
+                  Lancer l'assistant de configuration après reset
+                  <Switch
+                    checked={resetOptions.launchSetupWizard}
+                    onCheckedChange={(checked) =>
+                      setResetOptions((o) => ({ ...o, launchSetupWizard: checked }))
+                    }
+                  />
+                </Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Ouvre le SetupWizard à la fin pour reconfigurer la paroisse.
+                </p>
+              </div>
             </div>
 
-            {step === "executing" && (
-              <div className="space-y-2">
-                <p className="font-medium flex items-center gap-2">
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  Factory Reset en cours…
-                </p>
-                <Progress value={progress} />
-              </div>
-            )}
-
-            <div className="pt-2 flex justify-end">
+            <div className="flex flex-wrap gap-2 pt-2">
+              <Button
+                variant="outline"
+                className="flex items-center gap-2"
+                onClick={() => setShowRestoreModal(true)}
+                disabled={executing}
+              >
+                <Upload className="h-4 w-4" />
+                Restaurer une sauvegarde
+              </Button>
               <Button
                 variant="destructive"
-                className="w-full md:w-auto font-semibold flex items-center gap-2"
+                className="font-semibold flex items-center gap-2"
                 onClick={startSequence}
                 disabled={executing}
               >
@@ -215,6 +351,62 @@ export function ConfigFactoryReset() {
               </Button>
             </div>
           </motion.div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Sauvegardes système (Factory backups)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingBackups ? (
+              <p className="text-sm text-muted-foreground">Chargement des sauvegardes système...</p>
+            ) : systemBackups.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Aucune sauvegarde système trouvée.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nom</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Taille</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {systemBackups.map((b) => (
+                      <TableRow key={b.id}>
+                        <TableCell className="font-medium">{b.name || 'Sauvegarde système'}</TableCell>
+                        <TableCell>{new Date(b.created_at).toLocaleString('fr-FR')}</TableCell>
+                        <TableCell>{b.size != null ? (b.size > 1024 * 1024 ? `${(b.size / 1024 / 1024).toFixed(1)} Mo` : `${(b.size / 1024).toFixed(1)} Ko`) : '—'}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" onClick={() => { const blob = new Blob([JSON.stringify(b.data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${(b.name || 'backup')}_${b.id}.json`; a.click(); URL.revokeObjectURL(url); }}>
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => { /* preview could be implemented */ }}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => requestDelete(b)}>
+                            <Trash className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+          {step === "executing" && (
+            <div className="space-y-2">
+              <p className="font-medium flex items-center gap-2">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Factory Reset en cours…
+              </p>
+              <Progress value={progress} />
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -271,8 +463,14 @@ export function ConfigFactoryReset() {
           <AlertDialogHeader>
             <AlertDialogTitle>Dernière confirmation</AlertDialogTitle>
             <AlertDialogDescription>
-              Une <span className="font-semibold">sauvegarde ultime</span> va être
-              créée (DB + fichiers) juste avant la mise à nu complète.
+              {resetOptions.skipBackup ? (
+                <>Le Factory Reset sera lancé sans sauvegarde préalable.</>
+              ) : (
+                <>
+                  Une <span className="font-semibold">sauvegarde ultime</span> va
+                  être créée (DB + fichiers) juste avant la mise à nu complète.
+                </>
+              )}{" "}
               Confirmez‑vous vouloir lancer définitivement le Factory Reset ?
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -281,6 +479,27 @@ export function ConfigFactoryReset() {
             <AlertDialogAction onClick={performFactoryReset}>
               Oui, lancer le Factory Reset
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <RestoreFromFileModal
+        open={showRestoreModal}
+        onOpenChange={setShowRestoreModal}
+      />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Voulez‑vous vraiment supprimer la sauvegarde système <strong>{deleteTarget?.name || 'sélectionnée'}</strong> ?
+              Cette opération est irréversible. La suppression sera refusée si il s'agit de la dernière sauvegarde.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={performDelete}>Supprimer</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
