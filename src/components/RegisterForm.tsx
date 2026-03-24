@@ -11,6 +11,9 @@ import PhoneInputWithCountry from "@/components/PhoneInputWithCountry";
 import { EmailFieldPro } from "@/components/ui/email-field-pro";
 import { ensureProfileExists } from "@/utils/ensureProfileExists";
 import { isValidEmail } from "@/utils/emailSanitizer";
+import EmailOtpVerification from './EmailOtpVerification';
+import { supabase } from '@/integrations/supabase/client';
+import { uploadPendingAvatar } from '@/utils/uploadPendingAvatar';
 
 interface RegisterFormProps {
   onSuccess?: () => void;
@@ -30,6 +33,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showOtp, setShowOtp] = useState(false);
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
+  const [pendingUserEmail, setPendingUserEmail] = useState<string | null>(null);
 
   const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
   const fullPhone = phone ? `${countryCode}${phone}` : "";
@@ -166,11 +172,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin 
         }
       }
 
-      toast({
-        title: '✅ Presque terminé',
-        description: 'Un email de confirmation vous a été envoyé.',
-      });
-      navigate('/email-confirmation-sent', { state: { email: emailToSubmit }, replace: true });
+      // Start OTP verification flow instead of showing a static confirmation page
+      setPendingUserId(createdUser?.id ?? null);
+      setPendingUserEmail(emailToSubmit);
+      setShowOtp(true);
     } catch (err: unknown) {
       console.error('❌ Erreur lors de l\'enregistrement:', err);
       const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
@@ -196,6 +201,100 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin 
       setLoading(false);
     }
   };
+  const handleOtpSuccess = async () => {
+    // After OTP is verified server-side, sign the user in with the provided password
+    setLoading(true);
+    try {
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email: pendingUserEmail ?? email,
+        password,
+      });
+      if (signInErr) throw signInErr;
+
+      const { data: { user: signedInUser } } = await supabase.auth.getUser();
+      if (signedInUser?.id) {
+        try {
+          await ensureProfileExists(signedInUser.id);
+        } catch (pErr) {
+          console.error('ensureProfileExists after OTP signin', pErr);
+        }
+        try {
+          await uploadPendingAvatar(signedInUser.id);
+        } catch (uErr) {
+          console.error('uploadPendingAvatar after OTP signin', uErr);
+        }
+      }
+
+      toast({ title: '✅ Compte activé', description: 'Vous êtes connecté.' });
+      setShowOtp(false);
+      if (onSuccess) onSuccess();
+      else navigate('/');
+    } catch (err: any) {
+      toast({ title: 'Erreur', description: err?.message || 'Impossible de se connecter', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (showOtp) {
+    return (
+      <div className="w-full">
+        <EmailOtpVerification
+          email={pendingUserEmail ?? email}
+          userId={pendingUserId ?? undefined}
+          onSuccess={handleOtpSuccess}
+          onCancel={() => setShowOtp(false)}
+        />
+      </div>
+    );
+  }
+
+  // If OTP flow is active, show the OTP verification UI instead of the registration form
+  if (showOtp) {
+    return (
+      <div className="w-full">
+        <EmailOtpVerification
+          email={pendingUserEmail ?? email}
+          userId={pendingUserId ?? undefined}
+          onCancel={() => setShowOtp(false)}
+          onSuccess={async () => {
+            setLoading(true);
+            try {
+              // Sign in the user with the password provided during registration
+              const { error: signInErr } = await supabase.auth.signInWithPassword({
+                email: pendingUserEmail ?? email,
+                password,
+              });
+              if (signInErr) throw signInErr;
+
+              const { data } = await supabase.auth.getUser();
+              const signedInUser = data?.user;
+              if (signedInUser?.id) {
+                try {
+                  await ensureProfileExists(signedInUser.id);
+                } catch (profileErr) {
+                  console.error('ensureProfileExists après OTP:', profileErr);
+                }
+                try {
+                  await uploadPendingAvatar(signedInUser.id);
+                } catch (uploadErr) {
+                  console.error('uploadPendingAvatar après OTP:', uploadErr);
+                }
+              }
+
+              toast({ title: '✅ Compte activé', description: 'Vous êtes connecté.' });
+              if (onSuccess) onSuccess();
+              else navigate('/');
+            } catch (e: any) {
+              toast({ title: 'Erreur connexion', description: e?.message || 'Impossible de se connecter.' , variant: 'destructive'});
+            } finally {
+              setLoading(false);
+            }
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={onSubmit} className="space-y-2 w-full text-sm">
