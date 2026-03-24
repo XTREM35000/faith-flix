@@ -199,19 +199,52 @@ export async function saveInitialSetup(data: SetupData) {
     // - an array like [{ init_system: { paroisse_id: '...' } }]
     // - an object like { init_system: { ... } }
     // - or directly the object { paroisse_id: '...' }
+    const extractParoisseId = (value: unknown): string | undefined => {
+      if (!value) return undefined;
+      if (typeof value === 'string') {
+        try {
+          return extractParoisseId(JSON.parse(value));
+        } catch {
+          return undefined;
+        }
+      }
+      if (Array.isArray(value)) {
+        for (const entry of value) {
+          const found = extractParoisseId(entry);
+          if (found) return found;
+        }
+        return undefined;
+      }
+      if (typeof value === 'object') {
+        const obj = value as Record<string, unknown>;
+        const direct =
+          (typeof obj.paroisse_id === 'string' && obj.paroisse_id) ||
+          (typeof obj.paroisseId === 'string' && obj.paroisseId) ||
+          (typeof obj.id === 'string' && obj.id);
+        if (direct) return direct;
+        if ('init_system' in obj) return extractParoisseId(obj.init_system);
+      }
+      return undefined;
+    };
+
     let row: { paroisse_id?: string } | null = null;
     try {
-      if (Array.isArray(result) && result.length > 0) {
-        const first = result[0] as any;
-        row = first && typeof first === 'object' && 'init_system' in first ? first.init_system : first;
-      } else if (result && typeof result === 'object' && 'init_system' in (result as any)) {
-        row = (result as any).init_system;
-      } else {
-        row = result as any;
-      }
+      const parsedParoisseId = extractParoisseId(result);
+      row = parsedParoisseId ? { paroisse_id: parsedParoisseId } : (result as any);
     } catch (e) {
       console.warn('saveInitialSetup: failed to normalize rpc result', e, result);
       row = result as any;
+    }
+
+    if (!row?.paroisse_id) {
+      const { data: paroisseRow, error: lookupError } = await supabase
+        .from('paroisses')
+        .select('id')
+        .eq('slug', slug)
+        .maybeSingle();
+      if (!lookupError && paroisseRow?.id) {
+        row = { paroisse_id: paroisseRow.id };
+      }
     }
 
     // Debug log to help troubleshoot frontend not receiving paroisse_id
@@ -226,7 +259,7 @@ export async function saveInitialSetup(data: SetupData) {
       }
     }
 
-    return { success: true as const, data: result };
+    return { success: true as const, data: row, raw: result };
   } catch (error) {
     console.error('saveInitialSetup error', error);
     return { success: false as const, error };
