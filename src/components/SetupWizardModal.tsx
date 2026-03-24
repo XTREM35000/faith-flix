@@ -87,6 +87,8 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
   const [otpCode, setOtpCode] = useState('');
   const [otpError, setOtpError] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
+  const [otpResendCooldown, setOtpResendCooldown] = useState(0);
+  const [pendingUser, setPendingUser] = useState<{ id?: string; email?: string } | null>(null);
 
   const [form, setForm] = useState<FormState>({
     heroTitle: 'Bienvenue sur notre paroisse',
@@ -319,7 +321,11 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
       }
 
       // OTP email instead of confirmation link
-      await supabase.functions.invoke('send-email-otp', { body: { email: adminEmail.trim(), user_id: authData.user?.id } });
+      setPendingUser({
+        id: authData.user?.id,
+        email: authData.user?.email ?? adminEmail.trim(),
+      });
+      await sendOtp(adminEmail.trim(), authData.user?.id);
       setShowOtp(true);
       setOtpCode('');
       setOtpError('');
@@ -379,11 +385,30 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
     }
   };
 
+  const sendOtp = async (email: string, userId?: string) => {
+    const normalizedEmail = email.trim().toLowerCase();
+    const { error: fnError } = await supabase.functions.invoke('send-email-otp', {
+      body: { email: normalizedEmail, user_id: userId ?? pendingUser?.id ?? null },
+    });
+    if (fnError) throw fnError;
+    setShowOtp(true);
+    setOtpResendCooldown(60);
+  };
+
+  useEffect(() => {
+    if (otpResendCooldown <= 0) return;
+    const timer = window.setInterval(() => {
+      setOtpResendCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [otpResendCooldown]);
+
   const resendOtp = async () => {
+    if (otpResendCooldown > 0) return;
     setOtpLoading(true);
     setOtpError('');
     try {
-      await supabase.functions.invoke('send-email-otp', { body: { email: adminEmail.trim() } });
+      await sendOtp(pendingUser?.email ?? adminEmail.trim(), pendingUser?.id);
     } catch (e: any) {
       setOtpError(e?.message || "Impossible de renvoyer le code.");
     } finally {
@@ -1059,7 +1084,7 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                       <div className="text-sm font-semibold">Code OTP envoyé par email</div>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Saisissez le <strong>code à 4 chiffres</strong> envoyé à <strong>{adminEmail.trim()}</strong>.
+                      Un <strong>code a 4 chiffres</strong> a ete envoye a <strong>{pendingUser?.email ?? adminEmail.trim()}</strong>. Il est valable 15 minutes.
                     </div>
                     <div className="flex gap-2 items-center">
                       <Input
@@ -1082,10 +1107,10 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                       <button
                         type="button"
                         onClick={resendOtp}
-                        disabled={otpLoading}
+                        disabled={otpLoading || otpResendCooldown > 0}
                         className="text-xs text-primary underline disabled:opacity-50"
                       >
-                        Renvoyer le code
+                        {otpResendCooldown > 0 ? `Renvoyer dans ${otpResendCooldown}s` : 'Renvoyer le code'}
                       </button>
                       <div className="text-[11px] text-muted-foreground">Vérifiez aussi vos spams.</div>
                     </div>

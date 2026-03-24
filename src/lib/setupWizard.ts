@@ -296,6 +296,7 @@ export async function initFirstParoisseAndUser(
       data: {
         full_name: fullName,
         phone,
+        role: 'super_admin',
         paroisse_id: paroisseId,
         ...(avatarUrlForMeta ? { avatar_url: avatarUrlForMeta } : {}),
       },
