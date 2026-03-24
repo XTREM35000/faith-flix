@@ -1,5 +1,7 @@
 import { getAuthCallbackUrl, supabase } from '@/integrations/supabase/client';
-import type { Json } from '@/integrations/supabase/types';
+// `Json` type isn't exported from '@/integrations/supabase/types' in this repo —
+// use a local alias until a shared Json type is available.
+type Json = any;
 import { gravatarUrlFromEmail } from '@/utils/gravatar';
 import { ensureProfileExists } from '@/utils/ensureProfileExists';
 import { storePendingAvatarForUpload, uploadPendingAvatar } from '@/utils/uploadPendingAvatar';
@@ -237,6 +239,7 @@ export type FirstAdminUserData = {
   full_name: string;
   email: string;
   password: string;
+  phone: string;
   /** Si vrai et pas de fichier : URL Gravatar dans les métadonnées à l’inscription. */
   useGravatar: boolean;
 };
@@ -275,6 +278,7 @@ export async function initFirstParoisseAndUser(
 
   const email = userData.email.trim();
   const fullName = userData.full_name.trim();
+  const phone = userData.phone.trim();
 
   let avatarUrlForMeta: string | undefined;
   if (!avatarFile && userData.useGravatar) {
@@ -291,6 +295,7 @@ export async function initFirstParoisseAndUser(
       ...(emailRedirectTo ? { emailRedirectTo } : {}),
       data: {
         full_name: fullName,
+        phone,
         paroisse_id: paroisseId,
         ...(avatarUrlForMeta ? { avatar_url: avatarUrlForMeta } : {}),
       },

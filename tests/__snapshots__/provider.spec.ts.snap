@@ -1,5 +1,45 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`ProviderManager enhancements > should detect instagram urls and render fallback link 1`] = `
+<div
+  className="w-full p-4 bg-card rounded-lg text-center"
+>
+  <p
+    className="mb-2"
+  >
+    Vidéo hébergée sur Instagram.
+  </p>
+  <a
+    className="text-blue-600 underline"
+    href="https://www.instagram.com/tv/ABCDE12345/"
+    rel="noopener noreferrer"
+    target="_blank"
+  >
+    Ouvrir sur Instagram
+  </a>
+</div>
+`;
+
+exports[`ProviderManager enhancements > should detect tiktok urls and render fallback link 1`] = `
+<div
+  className="w-full p-4 bg-card rounded-lg text-center"
+>
+  <p
+    className="mb-2"
+  >
+    Vidéo hébergée sur TikTok.
+  </p>
+  <a
+    className="text-black underline"
+    href="https://www.tiktok.com/@user/video/9876543210"
+    rel="noopener noreferrer"
+    target="_blank"
+  >
+    Ouvrir sur TikTok
+  </a>
+</div>
+`;
+
 exports[`ProviderManager enhancements > should render a facebook iframe element when asked 1`] = `
 <div
   className="w-full bg-black rounded-lg overflow-hidden provider-facebook "

@@ -1,6 +1,7 @@
 // src\components\SetupWizardModal.tsx
 // 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import DraggableModal from './DraggableModal';
 import { initFirstParoisseAndUser, uploadImageToStorage } from '@/lib/setupWizard';
 import { useSetup } from '@/contexts/SetupContext';
@@ -8,12 +9,14 @@ import type { HomepageSectionRow } from '@/lib/setupWizard';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Upload, Loader2, Camera, UserCircle2 } from 'lucide-react';
+import { Upload, Loader2, Camera, UserCircle2, Church, BookOpen, Sparkles, Mail, UserCog } from 'lucide-react';
 import PasswordField from '@/components/ui/password-field';
 import { Checkbox } from '@/components/ui/checkbox';
 import { isValidEmail } from '@/utils/emailSanitizer';
 import { RestoreFromFileModal } from '@/components/admin-master/RestoreFromFileModal';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { supabase } from '@/integrations/supabase/client';
 
 type FormState = {
   heroTitle: string;
@@ -63,6 +66,7 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
 
   const [step, setStep] = useState(0);
   const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [hasBackups, setHasBackups] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -71,10 +75,16 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
   const [adminFullName, setAdminFullName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+  const [adminPhone, setAdminPhone] = useState('');
   const [useGravatar, setUseGravatar] = useState(false);
   const [adminAvatarFile, setAdminAvatarFile] = useState<File | null>(null);
   const [adminAvatarPreview, setAdminAvatarPreview] = useState<string | null>(null);
   const adminAvatarInputRef = useRef<HTMLInputElement>(null);
+
+  const [showOtp, setShowOtp] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
 
   const [form, setForm] = useState<FormState>({
     heroTitle: 'Bienvenue sur notre paroisse',
@@ -105,7 +115,37 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
     headerSubtitle: 'Une communauté de foi et de service',
   });
 
+  // Illustration images per step (public free icons)
+  const stepImages = [
+    'https://cdn-icons-png.flaticon.com/512/6193/6193613.png',
+    'https://cdn-icons-png.flaticon.com/512/2598/2598641.png',
+    'https://cdn-icons-png.flaticon.com/512/2971/2971976.png',
+    'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
+    'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
+  ];
+
+  const stepIcons = [Church, BookOpen, Sparkles, Mail, UserCog];
+
   const progress = useMemo(() => Math.round(((step + 1) / WIZARD_STEPS) * 100), [step]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const checkBackups = async () => {
+      try {
+        const { count, error: countError } = await supabase
+          .from('backups')
+          .select('*', { count: 'exact', head: true });
+        if (countError) throw countError;
+        if (!cancelled) setHasBackups((count ?? 0) > 0);
+      } catch {
+        if (!cancelled) setHasBackups(false);
+      }
+    };
+    checkBackups();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (step !== 3) return;
@@ -118,6 +158,7 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
   useEffect(() => {
     if (step !== 4) return;
     setAdminEmail(prev => (prev.trim() ? prev : form.brandingEmail));
+    setAdminPhone(prev => (prev.trim() ? prev : form.footerSuperAdminPhone.trim() || form.footerModeratorPhone.trim()));
   }, [step, form.brandingEmail]);
 
   const setField = <K extends keyof FormState>(k: K, v: FormState[K]) => {
@@ -167,7 +208,9 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
       return (
         adminFullName.trim().length >= 2 &&
         isValidEmail(adminEmail.trim()) &&
-        adminPassword.length >= 6
+        adminPassword.length >= 6 &&
+        adminPhone.trim().length >= 6 &&
+        (useGravatar || !!adminAvatarFile)
       );
     }
     return true;
@@ -257,6 +300,7 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
           full_name: adminFullName.trim(),
           email: adminEmail.trim(),
           password: adminPassword,
+          phone: adminPhone.trim(),
           useGravatar: useGravatar && !adminAvatarFile,
         },
         adminAvatarFile,
@@ -265,18 +309,18 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
       await queryClient.invalidateQueries({ queryKey: ['header-config'] });
       await queryClient.invalidateQueries({ queryKey: ['footer-config'] });
 
-      markCompleted();
-      onClose();
-
       if (authData.session) {
+        markCompleted();
+        onClose();
         window.location.assign('/admin');
         return;
       }
 
-      navigate('/email-confirmation-sent', {
-        replace: true,
-        state: { email: adminEmail.trim() },
-      });
+      // OTP email instead of confirmation link
+      await supabase.functions.invoke('send-email-otp', { body: { email: adminEmail.trim(), user_id: authData.user?.id } });
+      setShowOtp(true);
+      setOtpCode('');
+      setOtpError('');
     } catch (err: unknown) {
       console.error(err);
       const e = err as { message?: string; code?: string };
@@ -287,6 +331,53 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
       setError(raw || JSON.stringify(err));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const verifyOtp = async () => {
+    setOtpLoading(true);
+    setOtpError('');
+    try {
+      const email = adminEmail.trim();
+      const code = otpCode.trim();
+      if (!/^\d{4}$/.test(code)) {
+        setOtpError('Veuillez saisir un code à 4 chiffres.');
+        return;
+      }
+
+      const { data, error: fnErr } = await supabase.functions.invoke('verify-email-otp', {
+        body: { email, code },
+      });
+      if (fnErr) throw fnErr;
+      if (!data?.success) {
+        throw new Error(data?.error || 'Code incorrect.');
+      }
+
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email,
+        password: adminPassword,
+      });
+      if (signInErr) throw signInErr;
+
+      markCompleted();
+      onClose();
+      window.location.assign('/admin');
+    } catch (e: any) {
+      setOtpError(e?.message || 'Impossible de vérifier le code.');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const resendOtp = async () => {
+    setOtpLoading(true);
+    setOtpError('');
+    try {
+      await supabase.functions.invoke('send-email-otp', { body: { email: adminEmail.trim() } });
+    } catch (e: any) {
+      setOtpError(e?.message || "Impossible de renvoyer le code.");
+    } finally {
+      setOtpLoading(false);
     }
   };
 
@@ -325,7 +416,7 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
         </div>
 
         {/* Content */}
-        <div className="flex max-h-[calc(90vh-180px)]">
+          <div className="flex max-h-[calc(90vh-180px)] bg-gradient-animated rounded-lg">
           {/* Form Panel */}
           <div className="flex-1 p-8 overflow-y-auto">
             <div className="mb-6 p-4 bg-muted rounded-lg">
@@ -335,22 +426,43 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
               <Button
                 variant="outline"
                 type="button"
+                disabled={!hasBackups}
                 onClick={() => setShowRestoreModal(true)}
               >
                 <Upload className="mr-2 h-4 w-4" />
-                Restaurer une sauvegarde
+                {hasBackups ? 'Restaurer une sauvegarde' : 'Aucune sauvegarde disponible'}
               </Button>
             </div>
 
-            {/* Step 0: Landing Page */}
-            {step === 0 && (
-              <div className="space-y-6">
-                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                  <p className="text-sm text-blue-700 dark:text-blue-300">
-                    🏠 <strong>Étape 1/5 : Page d'accueil</strong><br />
-                    Configurez l'en-tête, le message principal et la section des activités.
-                  </p>
-                </div>
+            {/* Step 0..4: steps - animated container */}
+            <AnimatePresence mode="wait">
+              {step === 0 && (
+                <motion.div
+                  key="step-0"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.28 }}
+                >
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-background/60 border border-border">
+                      <img src={stepImages[0]} alt="" className="h-10 w-10 object-contain" />
+                      <div className="leading-tight">
+                        <div className="text-sm font-semibold">🏠 Accueil & Header</div>
+                        <div className="text-xs text-muted-foreground">En-tête, hero et activités.</div>
+                      </div>
+                    </div>
+                    <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg flex items-center gap-3">
+                      <motion.div animate={{ rotate: [0, 6, -6, 0] }} transition={{ duration: 0.6 }}>
+                        <Church className="h-6 w-6 text-primary" />
+                      </motion.div>
+                      <div>
+                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                          <strong>✨ Donnez vie à votre paroisse en ligne</strong><br />
+                          Configurez l'en-tête, le message principal et la section des activités.
+                        </p>
+                      </div>
+                    </div>
                 {/* Header configuration (visible on first step so admin can set title/logo early) */}
                 <div>
                   <label className="block text-sm font-semibold mb-2">Logo du header</label>
@@ -512,11 +624,26 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                   />
                 </div>
               </div>
-            )}
+                </motion.div>
+              )}
 
             {/* Step 1: About */}
             {step === 1 && (
-              <div className="space-y-6">
+              <motion.div
+                key="step-1"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.28 }}
+                className="space-y-6"
+              >
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-background/60 border border-border">
+                  <img src={stepImages[1]} alt="" className="h-10 w-10 object-contain" />
+                  <div className="leading-tight">
+                    <div className="text-sm font-semibold">📖 À propos</div>
+                    <div className="text-xs text-muted-foreground">Histoire, mission, valeurs, équipe.</div>
+                  </div>
+                </div>
                 <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
                   <p className="text-sm text-blue-700 dark:text-blue-300">
                     📖 <strong>Étape 2/5 : Page "À propos"</strong><br />
@@ -546,12 +673,26 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                     }
                   />
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {/* Step 2: Branding */}
             {step === 2 && (
-              <div className="space-y-6">
+              <motion.div
+                key="step-2"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.28 }}
+                className="space-y-6"
+              >
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-background/60 border border-border">
+                  <img src={stepImages[2]} alt="" className="h-10 w-10 object-contain" />
+                  <div className="leading-tight">
+                    <div className="text-sm font-semibold">🏷️ Branding</div>
+                    <div className="text-xs text-muted-foreground">Nom, logo, email principal.</div>
+                  </div>
+                </div>
                 <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
                   <p className="text-sm text-blue-700 dark:text-blue-300">
                     🏷️ <strong>Étape 3/5 : Identité de la paroisse</strong><br />
@@ -581,7 +722,7 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                       className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                       value={form.brandingEmail}
                       onChange={e => setField('brandingEmail', e.target.value)}
-                      placeholder="contact@paroisse.local"
+                      placeholder="contact@votre-paroisse.ci"
                     />
                   </div>
                 </div>
@@ -615,12 +756,26 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                     </div>
                   )}
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {/* Step 3: Footer (site) */}
             {step === 3 && (
-              <div className="space-y-6">
+              <motion.div
+                key="step-3"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.28 }}
+                className="space-y-6"
+              >
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-background/60 border border-border">
+                  <img src={stepImages[3]} alt="" className="h-10 w-10 object-contain" />
+                  <div className="leading-tight">
+                    <div className="text-sm font-semibold">📞 Pied de page</div>
+                    <div className="text-xs text-muted-foreground">Contacts et réseaux sociaux.</div>
+                  </div>
+                </div>
                 <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
                   <p className="text-sm text-blue-700 dark:text-blue-300">
                     📞 <strong>Étape 4/5 : Pied de page</strong><br />
@@ -642,7 +797,7 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                     className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary min-h-[88px]"
                     value={form.footerAddress}
                     onChange={e => setField('footerAddress', e.target.value)}
-                    placeholder={`Boulevard de la Compassion\nAbidjan, Côte d'Ivoire`}
+                    placeholder={`123 rue de la Paix, Abidjan`}
                   />
                 </div>
 
@@ -655,7 +810,7 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                     className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     value={form.footerEmail}
                     onChange={e => setField('footerEmail', e.target.value)}
-                    placeholder="Ex: contact@nd-compassion.ci"
+                    placeholder="contact@votre-paroisse.ci"
                   />
                   <p className="text-xs text-muted-foreground">Email principal affiché dans le pied de page</p>
                 </div>
@@ -668,7 +823,7 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                       className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                       value={form.footerModeratorPhone}
                       onChange={e => setField('footerModeratorPhone', e.target.value)}
-                      placeholder="+33 …"
+                      placeholder="+225 07 XX XX XX XX"
                     />
                   </div>
                   <div>
@@ -678,7 +833,7 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                       className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                       value={form.footerSuperAdminPhone}
                       onChange={e => setField('footerSuperAdminPhone', e.target.value)}
-                      placeholder="+33 …"
+                      placeholder="+225 07 XX XX XX XX"
                     />
                   </div>
                 </div>
@@ -747,12 +902,26 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                     placeholder={`© ${new Date().getFullYear()} Ma Paroisse`}
                   />
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {/* Step 4: Premier compte administrateur */}
             {step === 4 && (
-              <div className="space-y-6">
+              <motion.div
+                key="step-4"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.28 }}
+                className="space-y-6"
+              >
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-background/60 border border-border">
+                  <img src={stepImages[4]} alt="" className="h-10 w-10 object-contain" />
+                  <div className="leading-tight">
+                    <div className="text-sm font-semibold">👑 Compte admin</div>
+                    <div className="text-xs text-muted-foreground">Super admin avec téléphone + avatar obligatoires.</div>
+                  </div>
+                </div>
                 <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
                   <p className="text-sm text-blue-700 dark:text-blue-300">
                     👤 <strong>Étape 5/5 : Compte administrateur</strong><br />
@@ -777,6 +946,20 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                     onChange={e => setAdminFullName(e.target.value)}
                     placeholder="Ex: Père Basile Diané"
                     autoComplete="name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">
+                    Téléphone <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={adminPhone}
+                    onChange={e => setAdminPhone(e.target.value)}
+                    placeholder="+225 07 XX XX XX XX"
+                    autoComplete="tel"
                   />
                 </div>
 
@@ -815,12 +998,14 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                     onCheckedChange={c => setUseGravatar(c === true)}
                   />
                   <label htmlFor="setup-gravatar" className="text-sm cursor-pointer">
-                    Utiliser Gravatar pour la photo de profil (si pas d’image ci-dessous)
+                    Utiliser Gravatar pour la photo de profil (sinon choisissez une image)
                   </label>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Photo de profil (optionnel)</label>
+                  <label className="block text-sm font-semibold mb-2">
+                    Photo de profil <span className="text-red-500">*</span>
+                  </label>
                   <div className="flex items-center gap-4">
                     <button
                       type="button"
@@ -856,7 +1041,48 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                     }}
                   />
                 </div>
-              </div>
+
+                {showOtp && (
+                  <div className="mt-6 p-4 rounded-lg border border-border bg-muted/40 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-primary" />
+                      <div className="text-sm font-semibold">Code OTP envoyé par email</div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Saisissez le <strong>code à 4 chiffres</strong> envoyé à <strong>{adminEmail.trim()}</strong>.
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        placeholder="Code à 4 chiffres"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={4}
+                        value={otpCode}
+                        onChange={(e) => {
+                          const v = e.target.value.replace(/\D/g, '').slice(0, 4);
+                          setOtpCode(v);
+                          setOtpError('');
+                        }}
+                      />
+                      <Button type="button" onClick={verifyOtp} disabled={otpLoading || otpCode.trim().length !== 4}>
+                        {otpLoading ? 'Vérification…' : 'Confirmer'}
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={resendOtp}
+                        disabled={otpLoading}
+                        className="text-xs text-primary underline disabled:opacity-50"
+                      >
+                        Renvoyer le code
+                      </button>
+                      <div className="text-[11px] text-muted-foreground">Vérifiez aussi vos spams.</div>
+                    </div>
+                    {otpError && <div className="text-sm text-red-600">{otpError}</div>}
+                  </div>
+                )}
+              </motion.div>
             )}
 
             {/* Error */}
@@ -865,6 +1091,7 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
                 <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
               </div>
             )}
+            </AnimatePresence>
           </div>
 
           {/* Preview Panel */}
@@ -984,10 +1211,10 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
               <button
                 type="button"
                 onClick={handleFinish}
-                disabled={loading}
+                disabled={loading || showOtp}
                 className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium transition"
               >
-                {loading ? 'Enregistrement...' : '✓ Terminer'}
+                {loading ? 'Enregistrement...' : showOtp ? 'En attente du code…' : '✓ Terminer'}
               </button>
             )}
           </div>
