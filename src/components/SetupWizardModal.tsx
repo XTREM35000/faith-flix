@@ -430,7 +430,9 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
       title={
         <div className="flex items-center justify-between w-full">
           <div>
-            <h3 className="text-2xl font-bold">Assistant de configuration</h3>
+            <h3 className="text-2xl font-bold text-primary drop-shadow-sm">
+              Assistant de configuration
+            </h3>
             <p className="text-sm text-muted-foreground mt-1">Configurez votre paroisse en 5 étapes</p>
           </div>
           <div className="text-right">
