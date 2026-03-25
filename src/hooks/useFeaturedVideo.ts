@@ -61,20 +61,44 @@ async function fetchFeatured(paroisseId: string | undefined): Promise<FeaturedVi
     console.warn('[useFeaturedVideo] live_streams:', e);
   }
 
-  // Schémas qui exposent is_live au lieu de (ou en plus de) is_active
+  // Schéma : essayer d'abord `is_active` (standard actuel), puis basculer
+  // sur `is_live` pour les anciens schémas qui n'ont pas encore été migrés.
   try {
     const { data: liveByFlag, error: e2 } = await supabase
       .from('live_streams')
       .select('*')
-      .eq('is_live', true)
+      .eq('is_active', true)
       .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle();
+
     if (!e2 && liveByFlag) {
       return { kind: 'live', live: liveByFlag as LiveStream, video: null };
     }
+
+    // Si la colonne `is_active` est absente ou une erreur liée à cette colonne apparaît,
+    // on tente la colonne legacy `is_live` en fallback.
+    if (e2) {
+      const message = String(e2.message || '').toLowerCase();
+      if (e2.code === '42703' || message.includes('is_active') || message.includes('column') ) {
+        try {
+          const { data: liveByLegacy, error: e3 } = await supabase
+            .from('live_streams')
+            .select('*')
+            .eq('is_live', true)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (!e3 && liveByLegacy) {
+            return { kind: 'live', live: liveByLegacy as LiveStream, video: null };
+          }
+        } catch {
+          /* fallback failed, on continue */
+        }
+      }
+    }
   } catch {
-    /* colonne absente */
+    /* ignore et continuer vers les VOD */
   }
 
   const latest = await fetchLatestPublishedVideo(paroisseId);
