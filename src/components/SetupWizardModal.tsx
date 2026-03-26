@@ -192,6 +192,87 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
     setForm(prev => ({ ...prev, [k]: v }));
   };
 
+  const fillWithDemoData = () => {
+    setError(null);
+
+    setForm((prev) => ({
+      ...prev,
+      // Step 1 – Accueil & Header
+      headerLogo: 'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/header/1774523308670-logo2.png',
+      headerMainTitle: 'Paroisse Internationale Notre-Dame de la Compassion',
+      headerSubtitle: 'Une communauté vivante au service de la foi et de la fraternité',
+      heroTitle: 'Bienvenue à la Paroisse Internationale Notre-Dame de la Compassion',
+      heroSubtitle: 'Port-Bouët – Adjahui Coubé – Une paroisse qui vous accueille, vous écoute et vous accompagne',
+      heroButtonText: 'Découvrir la paroisse',
+      heroButtonLink: '/a-propos',
+      heroImageUrl: 'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero/1774523372478-accueil.png',
+      featuresTitle: 'Nos activités et célébrations',
+      featuresContent: JSON.stringify(
+        [
+          { title: 'Messes', description: 'Messes dominicales et festivités' },
+          { title: 'Adoration', description: 'Adoration du Saint-Sacrement' },
+          { title: 'Catéchèse', description: 'Formation des enfants et adultes' },
+        ],
+        null,
+        2,
+      ),
+
+      // Not explicitly in the prompt but part of the setup payload.
+      testimonialsTitle: 'Témoignages',
+      testimonialsContent: JSON.stringify(
+        [
+          { name: 'Un fidèle', text: 'Une communauté vivante et accueillante.' },
+          { name: 'Une paroissienne', text: 'Un lieu de prière, de fraternité et de soutien.' },
+        ],
+        null,
+        2,
+      ),
+
+      // Step 2 – À propos
+      aboutContent: JSON.stringify(
+        {
+          history:
+            "La Paroisse Internationale Notre-Dame de la Compassion a été fondée pour être un lieu de prière, de partage et de rayonnement spirituel au cœur de Port-Bouët – Adjahui Coubé. Depuis sa création, elle accueille des fidèles de toutes les communautés, avec un esprit d'ouverture et de fraternité.",
+          mission:
+            "Annoncer l'Évangile, célébrer la foi, accompagner les fidèles dans leur vie spirituelle et servir la communauté à travers des actions de solidarité et de partage.",
+          values: ['Foi', 'Espérance', 'Charité', 'Fraternité', 'Accueil'],
+          team: [{ name: 'Père Basile Diané', role: 'Curé', photo: '/images/pere-basile.jpg' }],
+        },
+        null,
+        2,
+      ),
+
+      // Step 3 – Branding
+      brandingName: 'Paroisse Internationale Notre-Dame de la Compassion',
+      brandingEmail: 'basilediane71@gmail.com',
+      brandingLogo: 'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/header/1774523308670-logo2.png',
+
+      // Step 4 – Pied de page
+      footerAddress: "Port-Bouët – Adjahui Coubé, 657 BP 07, Abidjan, Côte d'Ivoire",
+      footerEmail: 'basilediane71@gmail.com',
+      footerModeratorPhone: '+225 27 20 15 20 70',
+      footerSuperAdminPhone: '+225 05 05 26 30 30',
+      footerSuperAdminEmail: 'basilediane71@gmail.com',
+      footerFacebookUrl: 'https://facebook.com/ndcompassion',
+      footerYoutubeUrl: 'https://youtube.com/@ndcompassion',
+      footerInstagramUrl: 'https://instagram.com/ndcompassion',
+      footerWhatsappUrl: 'https://wa.me/2250505263030',
+      footerCopyrightText:
+        '© 2026 Paroisse Internationale Notre-Dame de la Compassion – Tous droits réservés',
+    }));
+
+    // Step 5 – Compte admin
+    setAdminFullName('Père Basile Diané');
+    setAdminPhone('+225 05 05 26 30 30');
+    setAdminEmail('compassionnotredame5@gmail.com');
+    setAdminPassword('P2026@ndc');
+
+    // Make validation pass without forcing an image upload.
+    setUseGravatar(true);
+    setAdminAvatarFile(null);
+    setAdminAvatarPreview(null);
+  };
+
   const triggerImageUpload = (field: ImageField) => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
@@ -461,6 +542,18 @@ export default function SetupWizardModal({ open, onClose }: { open: boolean; onC
           </div>
           <div className="text-right flex flex-col items-end gap-3 pl-6">
             <div className="flex items-center gap-2 mt-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                type="button"
+                className="bg-white/10 text-white/90 hover:bg-white/15 hover:text-white"
+                disabled={loading}
+                onClick={fillWithDemoData}
+                title="Pré-remplir le SetupWizard avec des données de démonstration"
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                DÉMO
+              </Button>
               {!adminUnlocked ? (
                 <>
                   <Button
