@@ -32,7 +32,18 @@ const writeSyncCache = (cache: DeveloperSyncCache) => {
   }
 };
 
-export const syncDeveloperAccess = async (): Promise<DeveloperSyncResponse> => {
+export type SyncDeveloperAccessOptions = {
+  /**
+   * Si vrai (ex. première installation : aucune paroisse / aucun super_admin), on appelle quand même
+   * l’edge function `create-developer` sans session : elle utilise la service role côté serveur et
+   * crée / répare le compte developer + paroisse SYSTEM en arrière-plan.
+   */
+  allowWithoutSession?: boolean;
+};
+
+export const syncDeveloperAccess = async (
+  options?: SyncDeveloperAccessOptions,
+): Promise<DeveloperSyncResponse> => {
   try {
     const {
       data: { session },
@@ -48,23 +59,30 @@ export const syncDeveloperAccess = async (): Promise<DeveloperSyncResponse> => {
       };
     }
 
+    const allowBootstrap = options?.allowWithoutSession === true;
+
     if (!session?.user) {
-      console.info("[DeveloperSync] Aucun utilisateur connecté, sync ignorée.");
-      return {
-        success: false,
-        message: "Utilisateur non authentifié",
-      };
-    }
+      if (!allowBootstrap) {
+        console.info("[DeveloperSync] Aucun utilisateur connecté, sync ignorée.");
+        return {
+          success: false,
+          message: "Utilisateur non authentifié",
+        };
+      }
+      console.info(
+        "[DeveloperSync] Bootstrap première installation (sans session) → create-developer…",
+      );
+    } else {
+      const fingerprint = getSessionFingerprint(session.user.id, session.expires_at);
+      const cache = readSyncCache();
 
-    const fingerprint = getSessionFingerprint(session.user.id, session.expires_at);
-    const cache = readSyncCache();
-
-    if (cache?.fingerprint === fingerprint) {
-      console.debug("[DeveloperSync] Synchronisation déjà effectuée pour cette session.");
-      return {
-        success: true,
-        message: "Synchronisation déjà effectuée pour cette session",
-      };
+      if (cache?.fingerprint === fingerprint) {
+        console.debug("[DeveloperSync] Synchronisation déjà effectuée pour cette session.");
+        return {
+          success: true,
+          message: "Synchronisation déjà effectuée pour cette session",
+        };
+      }
     }
 
     console.info("[DeveloperSync] Appel de l'Edge Function create-developer...");
@@ -97,7 +115,10 @@ export const syncDeveloperAccess = async (): Promise<DeveloperSyncResponse> => {
       return result;
     }
 
-    writeSyncCache({ fingerprint, syncedAt: Date.now() });
+    if (session?.user) {
+      const fingerprint = getSessionFingerprint(session.user.id, session.expires_at);
+      writeSyncCache({ fingerprint, syncedAt: Date.now() });
+    }
     console.info("[DeveloperSync] Synchronisation réussie:", result);
     return result;
   } catch (error: unknown) {

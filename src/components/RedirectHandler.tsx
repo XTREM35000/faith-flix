@@ -22,8 +22,8 @@ const RedirectHandler: React.FC = () => {
         // Use replace to avoid polluting history
         navigate(path, { replace: true });
       } catch (e) {
-        // If something goes wrong, fallback to setting location (rare)
-        try { window.location.replace(path || '/'); } catch { /* ignore */ }
+        // Keep SPA navigation fallback only.
+        navigate(path || '/', { replace: true });
       }
     };
 

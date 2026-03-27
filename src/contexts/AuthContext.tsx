@@ -28,63 +28,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadSession = async () => {
-      setLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user || null);
-      if (session?.user) {
-        // Toujours récupérer le profil le plus à jour depuis Supabase
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .maybeSingle();
+  const loadSession = async (options?: { silent?: boolean }) => {
+    const silent = options?.silent === true;
+    if (!silent) setLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    setSession(session);
+    setUser(session?.user || null);
+    if (session?.user) {
+      // Toujours récupérer le profil le plus à jour depuis Supabase
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .maybeSingle();
 
-        if (error) {
-          console.error('AuthContext: error fetching profile', error);
-        }
-
-        const row = data as RawProfileRow | null;
-        const mergedProfile: Profile | null = row
-          ? {
-              id: session.user.id,
-              email: session.user.email ?? null,
-              full_name: row.full_name ?? null,
-              display_name: row.display_name ?? row.full_name ?? '',
-              avatar_url: row.avatar_url ?? null,
-              bio: row.bio ?? null,
-              phone: row.phone ?? null,
-              location: row.location ?? '',
-              date_of_birth: row.date_of_birth ?? '',
-              is_active: typeof row.is_active === 'boolean' ? row.is_active : true,
-              notification_preferences: row.notification_preferences ?? { email: true, push: false, sms: false },
-              created_at: row.created_at ?? new Date().toISOString(),
-              updated_at: row.updated_at ?? new Date().toISOString(),
-            }
-          : null;
-
-        setProfile(mergedProfile);
-        setRole(row?.role ?? session.user.user_metadata?.role ?? null);
-
-        try {
-          localStorage.setItem('ff_profile_cache', JSON.stringify({ data, cachedAt: Date.now() }));
-        } catch {
-          // ignore cache errors
-        }
-        setLoading(false);
-      } else {
-        setProfile(null);
-        setRole(null);
-        try { localStorage.removeItem('ff_profile_cache'); } catch { /* ignore */ }
-        setLoading(false);
+      if (error) {
+        console.error('AuthContext: error fetching profile', error);
       }
-    };
-    loadSession();
+
+      const row = data as RawProfileRow | null;
+      const mergedProfile: Profile | null = row
+        ? {
+            id: session.user.id,
+            email: session.user.email ?? null,
+            full_name: row.full_name ?? null,
+            display_name: row.display_name ?? row.full_name ?? '',
+            avatar_url: row.avatar_url ?? null,
+            bio: row.bio ?? null,
+            phone: row.phone ?? null,
+            location: row.location ?? '',
+            date_of_birth: row.date_of_birth ?? '',
+            is_active: typeof row.is_active === 'boolean' ? row.is_active : true,
+            notification_preferences: row.notification_preferences ?? { email: true, push: false, sms: false },
+            created_at: row.created_at ?? new Date().toISOString(),
+            updated_at: row.updated_at ?? new Date().toISOString(),
+          }
+        : null;
+
+      setProfile(mergedProfile);
+      setRole(row?.role ?? session.user.user_metadata?.role ?? null);
+
+      try {
+        localStorage.setItem('ff_profile_cache', JSON.stringify({ data, cachedAt: Date.now() }));
+      } catch {
+        // ignore cache errors
+      }
+      if (!silent) setLoading(false);
+    } else {
+      setProfile(null);
+      setRole(null);
+      try { localStorage.removeItem('ff_profile_cache'); } catch { /* ignore */ }
+      if (!silent) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadSession();
     // Listen for auth changes
-    const { data } = supabase.auth.onAuthStateChange(() => {
-      loadSession();
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      const silent = event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED';
+      void loadSession({ silent });
     });
     return () => {
       data?.subscription?.unsubscribe();

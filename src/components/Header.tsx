@@ -316,13 +316,7 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => {
-                    try {
-                      navigate('/lexique?mobile=1');
-                    } catch (e) {
-                      window.location.href = '/lexique?mobile=1';
-                    }
-                  }}
+                  onClick={() => navigate('/lexique?mobile=1')}
                   className="text-muted-foreground hover:text-foreground"
                   title="Lexique"
                 >
@@ -397,13 +391,7 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
                     <HelpCircle className="mr-2 h-4 w-4" /> Aide
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => {
-                      try {
-                        navigate('/lexique?mobile=1');
-                      } catch (e) {
-                        window.location.href = '/lexique?mobile=1';
-                      }
-                    }}
+                    onClick={() => navigate('/lexique?mobile=1')}
                   >
                     <BookOpen className="mr-2 h-4 w-4" /> Lexique
                   </DropdownMenuItem>
@@ -485,9 +473,7 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => {
-                      window.location.hash = '#auth';
-                    }}
+                    onClick={() => navigate('/#auth')}
                     className="relative"
                     title="Se connecter"
                   >

@@ -590,7 +590,7 @@ const AdminAboutEditor: React.FC = () => {
             <CardContent className="pt-6">
               <div className="text-center py-8">
                 <p className="text-muted-foreground mb-4">Aucune section trouvée</p>
-                <Button onClick={() => window.location.reload()}>
+                <Button onClick={() => void queryClient.refetchQueries({ queryKey: ['about-page'] })}>
                   Recharger la page
                 </Button>
               </div>

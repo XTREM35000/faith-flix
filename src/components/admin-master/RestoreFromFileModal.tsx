@@ -100,7 +100,6 @@ export function RestoreFromFileModal({
       });
       onOpenChange(false);
       onRestoreSuccess?.();
-      window.location.reload();
     } catch (err: any) {
       console.error("[RestoreModal] Erreur restauration:", err);
       toast({
@@ -154,7 +153,6 @@ export function RestoreFromFileModal({
       setBackupFile(null);
       onOpenChange(false);
       onRestoreSuccess?.();
-      window.location.reload();
     } catch (err: any) {
       console.error("[RestoreModal] Erreur restauration fichier:", err);
       toast({

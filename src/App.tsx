@@ -75,6 +75,7 @@ import AdminMemberCards from './pages/AdminMemberCards';
 import AdminCertificates from './pages/AdminCertificates';
 import AdminMasterReset from './pages/AdminMasterReset';
 import AdminParoisses from './pages/AdminParoisses';
+import DeveloperAdminPage from './pages/DeveloperAdminPage';
 import WelcomeModal from './components/WelcomeModal';
 import { ParoisseProvider, useParoisse } from '@/contexts/ParoisseContext';
 import { SetupProvider } from '@/contexts/SetupContext';
@@ -99,6 +100,10 @@ const AppInner = () => {
 
   /** Après choix / restauration paroisse, ou prompt déjà terminé — alors seulement le splash welcome peut s'afficher. */
   const [paroisseGateDone, setParoisseGateDone] = useState(false);
+  const isDeveloperAdminRoute =
+    typeof window !== 'undefined' &&
+    (window.location.pathname.startsWith('/developer/admin') ||
+      window.location.pathname.startsWith('/developper/admin'));
 
   const handleParoisseSelectorClose = useCallback(() => {
     setSelectorOpen(false);
@@ -120,6 +125,15 @@ const AppInner = () => {
     if (FORCE_PAROISSE_MODAL_ON_LAUNCH) return;
 
     if (isLoading) return;
+
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+    const shouldSkipParoisseSelector =
+      pathname.startsWith('/developer/admin') || pathname.startsWith('/developper/admin');
+    if (shouldSkipParoisseSelector) {
+      setSelectorOpen(false);
+      setParoisseGateDone(true);
+      return;
+    }
 
     if (paroisse) {
       setSelectorOpen(false);
@@ -336,6 +350,15 @@ const AppInner = () => {
             }
           />
           <Route
+            path="/developer/admin"
+            element={
+              <ProtectedRoute>
+                <DeveloperAdminPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/developper/admin" element={<Navigate to="/developer/admin" replace />} />
+          <Route
             path="/admin/tutoriels"
             element={<ProtectedRoute requiredRole="admin"><Layout><AdminTutorielsPage /></Layout></ProtectedRoute>}
           />
@@ -373,7 +396,7 @@ const AppInner = () => {
         </Routes>
 
         {/* Dans le Router pour que ParoisseSelector puisse utiliser useNavigate() */}
-        <ParoisseSelector open={isSelectorOpen} onClose={handleParoisseSelectorClose} />
+        <ParoisseSelector open={isSelectorOpen && !isDeveloperAdminRoute} onClose={handleParoisseSelectorClose} />
       </BrowserRouter>
     </div>
   );

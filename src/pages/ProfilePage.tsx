@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import ChangePasswordForm from '@/components/ChangePasswordForm';
 import type { Database } from '@/integrations/supabase/types';
+import { useToast } from '@/hooks/use-toast';
 
 interface UserData {
   full_name: string;
@@ -32,6 +33,7 @@ const ProfilePage = () => {
   const { user, signOut } = useAuth();
   const { profile, isLoading: profileLoading } = useUser();
   const { data: hero, save: saveHero } = usePageHero(location.pathname); // ✅ Utilisable ici
+  const { toast } = useToast();
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -169,23 +171,37 @@ const ProfilePage = () => {
 
       if (updateError) throw updateError;
 
-      // Update user metadata (phone, full_name)
-      const { error: metadataError } = await supabase.auth.updateUser({
-        data: {
-          full_name: userData.full_name,
-          phone: userData.phone,
-          avatar_url: updatedAvatarUrl,
-        },
-      });
+      // Update auth metadata only when values changed (reduces unnecessary global auth events).
+      const currentMeta = (user.user_metadata || {}) as Record<string, unknown>;
+      const nextMeta = {
+        full_name: userData.full_name,
+        phone: userData.phone,
+        avatar_url: updatedAvatarUrl,
+      };
+      const shouldUpdateMetadata =
+        String(currentMeta.full_name || '') !== String(nextMeta.full_name || '') ||
+        String(currentMeta.phone || '') !== String(nextMeta.phone || '') ||
+        String(currentMeta.avatar_url || '') !== String(nextMeta.avatar_url || '');
 
-      if (metadataError) throw metadataError;
+      if (shouldUpdateMetadata) {
+        const { error: metadataError } = await supabase.auth.updateUser({
+          data: nextMeta,
+        });
+        if (metadataError) throw metadataError;
+      }
 
       setUserData((prev) => ({ ...prev, avatar_url: updatedAvatarUrl }));
       setAvatarFile(null);
       setAvatarPreview(null);
       setIsEditing(false);
+      toast({ title: 'Profil mis a jour', description: 'Vos modifications ont ete enregistrees.' });
     } catch (err) {
       console.error('Erreur lors de la sauvegarde:', err);
+      toast({
+        title: 'Erreur',
+        description: "Impossible d'enregistrer le profil",
+        variant: 'destructive',
+      });
     } finally {
       setIsSaving(false);
     }

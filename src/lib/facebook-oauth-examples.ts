@@ -209,7 +209,8 @@ async function facebookLogout() {
   const { supabase } = await import('@/integrations/supabase/client');
   await supabase.auth.signOut();
   
-  window.location.href = '/';
+  window.history.pushState({}, '', '/');
+  window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
 // ============================================
