@@ -1,3 +1,5 @@
+// src\components\SetupWizardModal.tsx
+// 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DraggableModal from './DraggableModal';
@@ -25,14 +27,19 @@ type FormState = {
   heroButtonText: string;
   heroButtonLink: string;
   heroImageUrl?: string;
+
   featuresTitle: string;
   featuresContent: string;
+
   testimonialsTitle: string;
   testimonialsContent: string;
+
   aboutContent: string;
+
   brandingName: string;
   brandingLogo?: string;
   brandingEmail: string;
+
   footerAddress: string;
   footerEmail: string;
   footerModeratorPhone: string;
@@ -43,6 +50,8 @@ type FormState = {
   footerInstagramUrl: string;
   footerWhatsappUrl: string;
   footerCopyrightText: string;
+
+  // Header fields
   headerLogo?: string;
   headerMainTitle: string;
   headerSubtitle: string;
@@ -97,6 +106,9 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
   const [pendingUser, setPendingUser] = useState<{ id?: string; email?: string } | null>(null);
   const [pendingParishId, setPendingParishId] = useState<string | null>(null);
 
+  // Intentionally empty by default to avoid accidental auth calls (400) with stale credentials.
+  // Prefill developer credentials so SYSTEM works from a clean UI.
+  // (Do not auto-connect; user still clicks "Se connecter".)
   const [devEmail, setDevEmail] = useState('dibothierrygogo@gmail.com');
   const [devPassword, setDevPassword] = useState('P2024Mano"');
   const [devBootstrapError, setDevBootstrapError] = useState<string | null>(null);
@@ -130,6 +142,7 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
     headerSubtitle: 'Une communauté de foi et de service',
   });
 
+  // Illustration images per step (public free icons)
   const stepImages = [
     'https://cdn-icons-png.flaticon.com/512/6193/6193613.png',
     'https://cdn-icons-png.flaticon.com/512/2598/2598641.png',
@@ -175,6 +188,7 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
     setAdminPhone(prev => (prev.trim() ? prev : form.footerSuperAdminPhone.trim() || form.footerModeratorPhone.trim()));
   }, [step, form.brandingEmail]);
 
+  // Security/UX: reset the unlock state when the modal closes.
   useEffect(() => {
     if (!open) {
       setAdminUnlockOpen(false);
@@ -190,8 +204,10 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
 
   const fillWithDemoData = () => {
     setError(null);
+
     setForm((prev) => ({
       ...prev,
+      // Step 1 – Accueil & Header
       headerLogo: 'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/header/1774523308670-logo2.png',
       headerMainTitle: 'Paroisse Internationale Notre-Dame de la Compassion',
       headerSubtitle: 'Une communauté vivante au service de la foi et de la fraternité',
@@ -210,6 +226,8 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
         null,
         2,
       ),
+
+      // Not explicitly in the prompt but part of the setup payload.
       testimonialsTitle: 'Témoignages',
       testimonialsContent: JSON.stringify(
         [
@@ -219,19 +237,27 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
         null,
         2,
       ),
+
+      // Step 2 – À propos
       aboutContent: JSON.stringify(
         {
-          history: "La Paroisse Internationale Notre-Dame de la Compassion a été fondée pour être un lieu de prière, de partage et de rayonnement spirituel au cœur de Port-Bouët – Adjahui Coubé. Depuis sa création, elle accueille des fidèles de toutes les communautés, avec un esprit d'ouverture et de fraternité.",
-          mission: "Annoncer l'Évangile, célébrer la foi, accompagner les fidèles dans leur vie spirituelle et servir la communauté à travers des actions de solidarité et de partage.",
+          history:
+            "La Paroisse Internationale Notre-Dame de la Compassion a été fondée pour être un lieu de prière, de partage et de rayonnement spirituel au cœur de Port-Bouët – Adjahui Coubé. Depuis sa création, elle accueille des fidèles de toutes les communautés, avec un esprit d'ouverture et de fraternité.",
+          mission:
+            "Annoncer l'Évangile, célébrer la foi, accompagner les fidèles dans leur vie spirituelle et servir la communauté à travers des actions de solidarité et de partage.",
           values: ['Foi', 'Espérance', 'Charité', 'Fraternité', 'Accueil'],
           team: [{ name: 'Père Basile Diané', role: 'Curé', photo: '/images/pere-basile.jpg' }],
         },
         null,
         2,
       ),
+
+      // Step 3 – Branding
       brandingName: 'Paroisse Internationale Notre-Dame de la Compassion',
       brandingEmail: 'basilediane71@gmail.com',
       brandingLogo: 'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/header/1774523308670-logo2.png',
+
+      // Step 4 – Pied de page
       footerAddress: "Port-Bouët – Adjahui Coubé, 657 BP 07, Abidjan, Côte d'Ivoire",
       footerEmail: 'basilediane71@gmail.com',
       footerModeratorPhone: '+225 27 20 15 20 70',
@@ -241,13 +267,17 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
       footerYoutubeUrl: 'https://youtube.com/@ndcompassion',
       footerInstagramUrl: 'https://instagram.com/ndcompassion',
       footerWhatsappUrl: 'https://wa.me/2250505263030',
-      footerCopyrightText: '© 2026 Paroisse Internationale Notre-Dame de la Compassion – Tous droits réservés',
+      footerCopyrightText:
+        '© 2026 Paroisse Internationale Notre-Dame de la Compassion – Tous droits réservés',
     }));
 
+    // Step 5 – Compte admin
     setAdminFullName('Père Basile Diané');
     setAdminPhone('+225 05 05 26 30 30');
     setAdminEmail('compassionnotredame5@gmail.com');
     setAdminPassword('P2026@ndc');
+
+    // Make validation pass without forcing an image upload.
     setUseGravatar(true);
     setAdminAvatarFile(null);
     setAdminAvatarPreview(null);
@@ -321,7 +351,9 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
       .update({ role: 'super_admin' })
       .eq('id', userId);
     if (profileRoleError) {
-      throw new Error(`Impossible de definir le role super_admin sur le profil: ${profileRoleError.message}`);
+      throw new Error(
+        `Impossible de définir le rôle super_admin sur le profil : ${profileRoleError.message}`,
+      );
     }
 
     const { error: memberError } = await supabase
@@ -331,7 +363,9 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
         { onConflict: 'parish_id,user_id' },
       );
     if (memberError) {
-      throw new Error(`Impossible de definir le role super_admin dans parish_members: ${memberError.message}`);
+      throw new Error(
+        `Impossible de définir le rôle super_admin dans parish_members : ${memberError.message}`,
+      );
     }
   };
 
@@ -430,6 +464,7 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
         return;
       }
 
+      // OTP email instead of confirmation link
       setPendingParishId(paroisseId);
       setPendingUser({
         id: authData.user?.id,
@@ -552,291 +587,1020 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
         verticalOnly={false}
         center={true}
         maxWidthClass="max-w-5xl"
-        title={
-          <div className="flex items-center justify-between w-full">
-            {/* Bloc gauche : Logo + Info utilisateur */}
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <img
-                  src="/profile01.png"
-                  alt="Logo"
-                  className="w-12 h-12 rounded-full object-cover border-2 border-white/30 shadow-lg"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://ui-avatars.com/api/?background=ffb347&color=fff&size=48&bold=true&name=TG';
-                  }}
-                />
-              </div>
-              <div className="hidden sm:block">
-                <div className="text-sm font-medium text-white/90">Thierry Gogo</div>
-                <div className="text-xs text-white/70">Développeur Web Full Stack</div>
-                <div className="text-xs text-white/60 mt-1 flex flex-col gap-0.5">
-                  <div className="flex items-center gap-1">
-                    <Mail className="h-3 w-3" />
-                    <span>dibothierrygogo@gmail.com</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Phone className="h-3 w-3" />
-                    <span>+225 0758966156 / 0103644527</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    <span>01 BP 5341 AB 01</span>
-                  </div>
+        lockIntrinsicSizeOnOpen={false}
+        minHeight="0"
+        className="h-[calc(100dvh-3rem)] max-h-[calc(100dvh-3rem)] min-h-0 w-full"
+        bodyClassName="min-h-0 flex-1 overflow-hidden p-1 sm:p-2"
+      title={
+        <div className="flex w-full items-center justify-between gap-2 sm:gap-3">
+          <div className="flex min-w-0 max-w-[min(100%,280px)] shrink-0 items-center gap-3 sm:max-w-xs">
+            <div className="relative shrink-0">
+              <img
+                src="/profile01.png"
+                alt=""
+                className="h-12 w-12 rounded-full border-2 border-white/30 object-cover shadow-lg sm:h-14 sm:w-14"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src =
+                    'https://ui-avatars.com/api/?background=ffb347&color=fff&size=56&bold=true&name=TG';
+                }}
+              />
+            </div>
+            <div className="min-w-0 text-left leading-tight">
+              <div className="text-sm font-medium text-white/90">Thierry Gogo</div>
+              <div className="text-[11px] text-white/70 sm:text-xs">Développeur Web Full Stack</div>
+              <div className="mt-1 flex flex-col gap-0.5 text-[10px] text-white/60 sm:text-xs">
+                <div className="flex items-start gap-1">
+                  <Mail className="mt-0.5 h-3 w-3 shrink-0" />
+                  <span className="break-all">dibothierrygogo@gmail.com</span>
+                </div>
+                <div className="flex items-start gap-1">
+                  <Phone className="mt-0.5 h-3 w-3 shrink-0" />
+                  <span className="break-words">+225 0758966156 / 0103644527</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <MapPin className="h-3 w-3 shrink-0" />
+                  <span>01 BP 5341 AB 01</span>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Titre central */}
-            <div className="text-center">
-              <h3 className="text-2xl font-bold text-white drop-shadow-sm">Assistant de configuration</h3>
-              <p className="text-sm text-white/90 mt-1">Configurez votre paroisse en 5 étapes</p>
-            </div>
+          <div className="min-w-0 flex-1 px-2 text-center">
+            <h3 className="text-2xl font-bold text-white drop-shadow-sm">Assistant de configuration</h3>
+            <p className="mt-1 text-sm text-white/90">Configurez votre paroisse en 5 étapes</p>
+          </div>
 
-            {/* Bloc droit : Boutons DÉMO & ADMIN */}
-            <div className="text-right flex flex-col items-end gap-3">
-              <div className="flex items-center gap-2 mt-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  type="button"
-                  className="bg-white/10 text-white/90 hover:bg-white/15 hover:text-white"
-                  disabled={loading}
-                  onClick={fillWithDemoData}
-                  title="Pré-remplir le SetupWizard avec des données de démonstration"
-                >
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  DÉMO
-                </Button>
-                {!adminUnlocked ? (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      type="button"
-                      className="bg-white/10 text-white/90 hover:bg-white/15 hover:text-white"
+          <div className="flex min-w-[140px] shrink-0 flex-col items-end gap-2">
+            <div className="flex max-w-[100vw] flex-wrap items-center justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                type="button"
+                className="whitespace-nowrap bg-white/10 text-white/90 hover:bg-white/15 hover:text-white"
+                disabled={loading}
+                onClick={fillWithDemoData}
+                title="Pré-remplir le SetupWizard avec des données de démonstration"
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                DÉMO
+              </Button>
+              {!adminUnlocked ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    className="whitespace-nowrap bg-white/10 text-white/90 hover:bg-white/15 hover:text-white"
+                    disabled={loading}
+                    onClick={() => {
+                      setAdminUnlockError(null);
+                      setAdminUnlockOpen((v) => !v);
+                    }}
+                  >
+                    <UserCircle2 className="mr-2 h-4 w-4" />
+                    ADMIN
+                  </Button>
+                  {adminUnlockOpen ? (
+                    <Input
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={4}
+                      placeholder="Code"
+                      className="w-28 bg-white/10 border-white/20 text-white placeholder:text-white/70 focus-visible:ring-white/40"
+                      value={adminCode}
                       disabled={loading}
-                      onClick={() => {
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, '').slice(0, 4);
+                        setAdminCode(digits);
                         setAdminUnlockError(null);
-                        setAdminUnlockOpen((v) => !v);
-                      }}
-                    >
-                      <UserCircle2 className="mr-2 h-4 w-4" />
-                      ADMIN
-                    </Button>
 
-                    {adminUnlockOpen ? (
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="password"
-                          inputMode="numeric"
-                          maxLength={4}
-                          placeholder="Code"
-                          className="w-28 bg-white/10 border-white/20 text-white placeholder:text-white/70 focus-visible:ring-white/40"
-                          value={adminCode}
-                          disabled={loading}
-                          onChange={(e) => {
-                            const digits = e.target.value.replace(/\D/g, '').slice(0, 4);
-                            setAdminCode(digits);
+                        if (digits.length === 4) {
+                          if (digits === ADMIN_UNLOCK_CODE) {
+                            setAdminUnlocked(true);
+                            setAdminUnlockOpen(false);
                             setAdminUnlockError(null);
-
-                            if (digits.length === 4) {
-                              if (digits === ADMIN_UNLOCK_CODE) {
-                                setAdminUnlocked(true);
-                                setAdminUnlockOpen(false);
-                                setAdminUnlockError(null);
-                                setAdminCode('');
-                              } else {
-                                setAdminUnlockError('Code incorrect.');
-                                setAdminCode('');
-                              }
-                            }
-                          }}
-                        />
-                      </div>
-                    ) : null}
-                  </>
-                ) : (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      type="button"
-                      className="bg-white text-black hover:bg-white/90"
-                      onClick={() => {
-                        setDevBootstrapError(null);
-                        setShowDevBootstrap(true);
+                            setAdminCode('');
+                          } else {
+                            setAdminUnlockError('Code incorrect.');
+                            setAdminCode('');
+                          }
+                        }
                       }}
-                    >
-                      <UserCog className="mr-2 h-4 w-4" />
-                      SYSTEM
-                    </Button>
+                    />
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    className="whitespace-nowrap bg-white text-black hover:bg-white/90"
+                    onClick={() => {
+                      setDevBootstrapError(null);
+                      setShowDevBootstrap(true);
+                    }}
+                  >
+                    <UserCog className="mr-2 h-4 w-4" />
+                    SYSTEM
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    className="whitespace-nowrap bg-white text-black hover:bg-white/90"
+                    onClick={async () => {
+                      if (
+                        !confirm(
+                          '⚠️ NETTOYAGE COMPLET\n\n' +
+                            'Cette action supprimera TOUTES les données (paroisses, vidéos, événements, etc.)\n\n' +
+                            '✅ Le compte développeur et la paroisse SYSTEM seront conservés.\n\n' +
+                            "✅ L'application reviendra comme une nouvelle installation.\n\n" +
+                            'Confirmer ?',
+                        )
+                      ) {
+                        return;
+                      }
 
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      type="button"
-                      className="bg-white text-black hover:bg-white/90"
-                      onClick={async () => {
-                        if (
-                          !confirm(
-                            '⚠️ NETTOYAGE COMPLET\n\n' +
-                              'Cette action supprimera TOUTES les données (paroisses, vidéos, événements, etc.)\n\n' +
-                              '✅ Le compte développeur et la paroisse SYSTEM seront conservés.\n\n' +
-                              '✅ L\'application reviendra comme une nouvelle installation.\n\n' +
-                              'Confirmer ?',
-                          )
-                        ) {
+                      try {
+                        const {
+                          data: { session },
+                        } = await supabase.auth.getSession();
+                        if (!session) {
+                          alert('Veuillez vous connecter avec SYSTEM avant de lancer le RESET.');
                           return;
                         }
 
-                        try {
-                          const {
-                            data: { session },
-                          } = await supabase.auth.getSession();
-                          if (!session) {
-                            alert('Veuillez vous connecter avec SYSTEM avant de lancer le RESET.');
-                            return;
-                          }
+                        const { error } = await supabase.rpc('reset_all_data');
+                        if (error) throw error;
 
-                          const { error } = await supabase.rpc('reset_all_data');
-                          if (error) throw error;
-
-                          alert(
-                            '✅ Nettoyage terminé !\n\n' +
-                              'La base a été réinitialisée.\n' +
-                              'Le compte développeur est prêt.\n\n' +
-                              'Redirection vers l’accueil.',
-                          );
-                          navigate('/', { replace: true });
-                        } catch (err: any) {
-                          alert('❌ Erreur lors du nettoyage: ' + (err?.message || String(err)));
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      RESET
-                    </Button>
-                  </>
-                )}
-              </div>
-
-              {adminUnlockOpen && !adminUnlocked && adminUnlockError ? (
-                <div className="text-xs font-medium text-destructive bg-destructive/10 border border-destructive/30 rounded px-2 py-1">
-                  {adminUnlockError}
-                </div>
-              ) : null}
-
-              <div>
-                <div className="text-3xl font-bold text-white">{step + 1}</div>
-                <div className="text-xs text-white/90">sur 5</div>
-              </div>
-            </div>
-          </div>
-        }
-        headerClassName="bg-amber-800"
-      >
-        <div className="bg-background text-foreground rounded-lg shadow-2xl w-full max-w-5xl mx-4 overflow-hidden border border-border">
-          {/* Progress Bar */}
-          <div className="h-1 bg-muted">
-            <div
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-
-          {/* Content */}
-          <div className="flex max-h-[calc(90vh-180px)] bg-gradient-animated rounded-lg">
-            {/* Form Panel */}
-            <div className="flex-1 p-8 overflow-y-auto">
-              <div className="mb-6 p-4 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground mb-3">
-                  Vous avez déjà configuré une paroisse ? Vous pouvez restaurer une sauvegarde.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    type="button"
-                    disabled={!hasBackups}
-                    onClick={() => setShowRestoreModal(true)}
+                        alert(
+                          '✅ Nettoyage terminé !\n\n' +
+                            'La base a été réinitialisée.\n' +
+                            'Le compte développeur est prêt.\n\n' +
+                            'Redirection vers l’accueil.',
+                        );
+                        navigate('/', { replace: true });
+                      } catch (err: any) {
+                        alert('❌ Erreur lors du nettoyage: ' + (err?.message || String(err)));
+                      }
+                    }}
                   >
-                    <Upload className="mr-2 h-4 w-4" />
-                    {hasBackups ? 'Restaurer une sauvegarde' : 'Aucune sauvegarde disponible'}
+                    <Trash2 className="mr-1 h-4 w-4" />
+                    RESET
                   </Button>
-                </div>
+                </>
+              )}
+            </div>
+
+            {adminUnlockOpen && !adminUnlocked && adminUnlockError ? (
+              <div className="max-w-[220px] rounded border border-destructive/30 bg-destructive/10 px-2 py-1 text-right text-xs font-medium text-destructive">
+                {adminUnlockError}
               </div>
+            ) : null}
 
-              {/* Steps content - kept as in original but truncated for brevity */}
-              <AnimatePresence mode="sync">
-                {/* Step content remains unchanged from your original file */}
-                {/* ... (keep all step content as in your original file) ... */}
-              </AnimatePresence>
-            </div>
-
-            {/* Preview Panel */}
-            <div className="w-80 border-l border-border p-8 bg-muted/30 overflow-y-auto">
-              <h5 className="font-bold text-lg mb-6">Aperçu</h5>
-              {/* Preview content remains unchanged */}
+            <div className="text-right">
+              <div className="text-3xl font-bold text-white">{step + 1}</div>
+              <div className="text-xs text-white/90">sur 5</div>
             </div>
           </div>
-
-          {/* Footer Navigation */}
-          <div className="border-t border-border p-6 flex items-center justify-between bg-muted/30">
-            <div>
-              {step > 0 && (
-                <button
-                  onClick={handlePrev}
-                  className="px-6 py-2 border border-border rounded-lg text-foreground hover:bg-muted font-medium transition"
-                >
-                  ← Précédent
-                </button>
-              )}
-            </div>
-            <div className="text-sm text-muted-foreground">
-              Les champs avec <span className="text-red-500">*</span> sont obligatoires
-            </div>
-            <div>
-              {step < WIZARD_STEPS - 1 && (
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium transition"
-                >
-                  Suivant →
-                </button>
-              )}
-              {step === WIZARD_STEPS - 1 && (
-                <button
-                  type="button"
-                  onClick={handleFinish}
-                  disabled={loading || showOtp}
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium transition"
-                >
-                  {loading ? 'Enregistrement...' : showOtp ? 'En attente du code…' : '✓ Terminer'}
-                </button>
-              )}
-            </div>
-          </div>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const field = (e.target as any)?.dataset?.field as ImageField;
-              if (field) handleImageUpload(e, field);
-            }}
-          />
-
-          <RestoreFromFileModal
-            open={showRestoreModal}
-            onOpenChange={setShowRestoreModal}
-            onRestoreSuccess={() => {
-              onClose();
-              markCompleted();
-            }}
+        </div>
+      }
+      headerClassName="bg-amber-800"
+    >
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-1 flex-col overflow-hidden rounded-lg border border-border bg-background px-1 text-foreground shadow-2xl sm:px-2">
+        <div className="h-1 shrink-0 bg-muted">
+          <div
+            className="h-full bg-primary transition-all duration-300"
+            style={{ width: `${progress}%` }}
           />
         </div>
+
+        <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-gradient-animated rounded-lg">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-8">
+            <div className="mb-6 p-4 bg-muted rounded-lg">
+              <p className="text-sm text-muted-foreground mb-3">
+                Vous avez déjà configuré une paroisse ? Vous pouvez restaurer une sauvegarde.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  type="button"
+                  disabled={!hasBackups}
+                  onClick={() => setShowRestoreModal(true)}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {hasBackups ? 'Restaurer une sauvegarde' : 'Aucune sauvegarde disponible'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Step 0..4: steps - animated container */}
+            <AnimatePresence mode="sync">
+              {step === 0 && (
+                <motion.div
+                  key="step-0"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.28 }}
+                >
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-background/60 border border-border">
+                      <img src={stepImages[0]} alt="" className="h-10 w-10 object-contain" />
+                      <div className="leading-tight">
+                        <div className="text-sm font-semibold">🏠 Accueil & Header</div>
+                        <div className="text-xs text-muted-foreground">En-tête, hero et activités.</div>
+                      </div>
+                    </div>
+                    <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg flex items-center gap-3">
+                      <motion.div animate={{ rotate: [0, 6, -6, 0] }} transition={{ duration: 0.6 }}>
+                        <Church className="h-6 w-6 text-primary" />
+                      </motion.div>
+                      <div>
+                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                          <strong>✨ Donnez vie à votre paroisse en ligne</strong><br />
+                          Configurez l'en-tête, le message principal et la section des activités.
+                        </p>
+                      </div>
+                    </div>
+                {/* Header configuration (visible on first step so admin can set title/logo early) */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Logo du header</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      className="flex-1 px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={form.headerLogo ?? ''}
+                      onChange={e => setField('headerLogo', e.target.value)}
+                      placeholder="URL du logo du header..."
+                    />
+                    <button
+                      onClick={() => triggerImageUpload('headerLogo')}
+                      disabled={uploading === 'headerLogo'}
+                      className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2 font-medium"
+                    >
+                      {uploading === 'headerLogo' ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4" />
+                      )}
+                      Upload
+                    </button>
+                  </div>
+                  {form.headerLogo && (
+                    <div className="mt-2 text-xs text-green-600 bg-green-50 dark:bg-green-950 p-2 rounded">
+                      ✓ Logo du header chargé
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Titre principal (header)</label>
+                  <input
+                    type="text"
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={form.headerMainTitle}
+                    onChange={e => setField('headerMainTitle', e.target.value)}
+                    placeholder="Ex: Paroisse Notre-Dame de la Compassion – Abidjan"
+                  />
+                  <p className="text-xs text-muted-foreground">Exemple: Paroisse Notre-Dame de la Compassion – Abidjan</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Sous-titre (header)</label>
+                  <input
+                    type="text"
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={form.headerSubtitle}
+                    onChange={e => setField('headerSubtitle', e.target.value)}
+                    placeholder="Ex: Une communauté vivante au service de la foi et de la fraternité"
+                  />
+                  <p className="text-xs text-muted-foreground">Exemple: Une communauté vivante au service de la foi et de la fraternité</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2">
+                    Titre principal <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={form.heroTitle}
+                    onChange={e => setField('heroTitle', e.target.value)}
+                    placeholder="Ex: Bienvenue sur notre paroisse"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Sous-titre</label>
+                  <input
+                    type="text"
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={form.heroSubtitle}
+                    onChange={e => setField('heroSubtitle', e.target.value)}
+                    placeholder="Ex: Une communauté de foi et de service"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Texte bouton</label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={form.heroButtonText}
+                      onChange={e => setField('heroButtonText', e.target.value)}
+                      placeholder="Ex: Découvrir"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Lien bouton</label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={form.heroButtonLink}
+                      onChange={e => setField('heroButtonLink', e.target.value)}
+                      placeholder="/homepage"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Image hero</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      className="flex-1 px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={form.heroImageUrl ?? ''}
+                      onChange={e => setField('heroImageUrl', e.target.value)}
+                      placeholder="URL de l'image..."
+                    />
+                    <button
+                      onClick={() => triggerImageUpload('heroImageUrl')}
+                      disabled={uploading === 'heroImageUrl'}
+                      className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2 font-medium"
+                    >
+                      {uploading === 'heroImageUrl' ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4" />
+                      )}
+                      Upload
+                    </button>
+                  </div>
+                  {form.heroImageUrl && (
+                    <div className="mt-2 text-xs text-green-600 bg-green-50 dark:bg-green-950 p-2 rounded">
+                      ✓ Image chargée
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    📐 Dimension recommandée : <strong>1500 x 800 pixels</strong> (format paysage).<br />
+                    Outils gratuits : <a href="https://www.canva.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">Canva</a>,
+                    <a href="https://www.photopea.com" target="_blank" rel="noopener noreferrer" className="text-primary underline ml-1"> Photopea</a> ou
+                    <a href="https://www.iloveimg.com/resize-image" target="_blank" rel="noopener noreferrer" className="text-primary underline ml-1"> iLoveIMG</a>.
+                    Une image trop petite ou mal proportionnée peut déséquilibrer l'affichage.
+                  </p>
+                </div>
+
+                <div className="border-t border-border pt-6">
+                  <label className="block text-sm font-semibold mb-2">
+                    Titre section activités <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={form.featuresTitle}
+                    onChange={e => setField('featuresTitle', e.target.value)}
+                    placeholder="Ex: Nos activités et célébrations"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Contenu (JSON)</label>
+                  <textarea
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm h-32"
+                    value={form.featuresContent}
+                    onChange={e => setField('featuresContent', e.target.value)}
+                    placeholder="[{...}]"
+                  />
+                </div>
+              </div>
+                </motion.div>
+              )}
+
+            {/* Step 1: About */}
+            {step === 1 && (
+              <motion.div
+                key="step-1"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.28 }}
+                className="space-y-6"
+              >
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-background/60 border border-border">
+                  <img src={stepImages[1]} alt="" className="h-10 w-10 object-contain" />
+                  <div className="leading-tight">
+                    <div className="text-sm font-semibold">📖 À propos</div>
+                    <div className="text-xs text-muted-foreground">Histoire, mission, valeurs, équipe.</div>
+                  </div>
+                </div>
+                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    📖 <strong>Étape 2/5 : Page "À propos"</strong><br />
+                    Présentez l'histoire, la mission et les valeurs de votre paroisse.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2">
+                    Contenu "À Propos" <span className="text-red-500">*</span>
+                  </label>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Format JSON pour stocker l'historique, la mission, les valeurs et l'équipe
+                  </p>
+                  <textarea
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm h-96"
+                    value={form.aboutContent}
+                    onChange={e => setField('aboutContent', e.target.value)}
+                    placeholder={
+`{
+  "history": "La paroisse a été fondée en ...",
+  "mission": "Annoncer l'Évangile et servir la communauté",
+  "values": ["Foi", "Espérance", "Charité"],
+  "team": [
+    {"name": "Père Basile", "role": "Curé", "photo": "url"}
+  ]
+}`
+                    }
+                  />
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 2: Branding */}
+            {step === 2 && (
+              <motion.div
+                key="step-2"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.28 }}
+                className="space-y-6"
+              >
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-background/60 border border-border">
+                  <img src={stepImages[2]} alt="" className="h-10 w-10 object-contain" />
+                  <div className="leading-tight">
+                    <div className="text-sm font-semibold">🏷️ Branding</div>
+                    <div className="text-xs text-muted-foreground">Nom, logo, email principal.</div>
+                  </div>
+                </div>
+                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    🏷️ <strong>Étape 3/5 : Identité de la paroisse</strong><br />
+                    Le nom, le logo et l'email principal qui apparaîtront sur tout le site.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">
+                      Nom de la paroisse <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={form.brandingName}
+                      onChange={e => setField('brandingName', e.target.value)}
+                      placeholder="Ex: Notre-Dame de la Compassion"
+                    />
+                    <p className="text-xs text-muted-foreground">Ce nom apparaîtra dans le logo et le pied de page</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">
+                      Email contact <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={form.brandingEmail}
+                      onChange={e => setField('brandingEmail', e.target.value)}
+                      placeholder="contact@votre-paroisse.ci"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Logo</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      className="flex-1 px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={form.brandingLogo ?? ''}
+                      onChange={e => setField('brandingLogo', e.target.value)}
+                      placeholder="URL du logo..."
+                    />
+                    <button
+                      onClick={() => triggerImageUpload('brandingLogo')}
+                      disabled={uploading === 'brandingLogo'}
+                      className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2 font-medium"
+                    >
+                      {uploading === 'brandingLogo' ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4" />
+                      )}
+                      Upload
+                    </button>
+                  </div>
+                  {form.brandingLogo && (
+                    <div className="mt-2 text-xs text-green-600 bg-green-50 dark:bg-green-950 p-2 rounded">
+                      ✓ Logo chargé
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 3: Footer (site) */}
+            {step === 3 && (
+              <motion.div
+                key="step-3"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.28 }}
+                className="space-y-6"
+              >
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-background/60 border border-border">
+                  <img src={stepImages[3]} alt="" className="h-10 w-10 object-contain" />
+                  <div className="leading-tight">
+                    <div className="text-sm font-semibold">📞 Pied de page</div>
+                    <div className="text-xs text-muted-foreground">Contacts et réseaux sociaux.</div>
+                  </div>
+                </div>
+                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    📞 <strong>Étape 4/5 : Pied de page</strong><br />
+                    Coordonnées, réseaux sociaux et copyright.
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-foreground mb-1">Pied de page</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Coordonnées et liens affichés en bas du site. Les réseaux sociaux sont facultatifs.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">
+                    Adresse
+                  </label>
+                  <textarea
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary min-h-[88px]"
+                    value={form.footerAddress}
+                    onChange={e => setField('footerAddress', e.target.value)}
+                    placeholder={`123 rue de la Paix, Abidjan`}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={form.footerEmail}
+                    onChange={e => setField('footerEmail', e.target.value)}
+                    placeholder="contact@votre-paroisse.ci"
+                  />
+                  <p className="text-xs text-muted-foreground">Email principal affiché dans le pied de page</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Téléphone modérateur</label>
+                    <input
+                      type="tel"
+                      className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={form.footerModeratorPhone}
+                      onChange={e => setField('footerModeratorPhone', e.target.value)}
+                      placeholder="+225 07 XX XX XX XX"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Téléphone super admin</label>
+                    <input
+                      type="tel"
+                      className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={form.footerSuperAdminPhone}
+                      onChange={e => setField('footerSuperAdminPhone', e.target.value)}
+                      placeholder="+225 07 XX XX XX XX"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Email super admin</label>
+                  <input
+                    type="email"
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={form.footerSuperAdminEmail}
+                    onChange={e => setField('footerSuperAdminEmail', e.target.value)}
+                    placeholder="superadmin@exemple.fr"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Facebook (URL)</label>
+                    <input
+                      type="url"
+                      className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      value={form.footerFacebookUrl}
+                      onChange={e => setField('footerFacebookUrl', e.target.value)}
+                      placeholder="https://facebook.com/…"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">YouTube (URL)</label>
+                    <input
+                      type="url"
+                      className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      value={form.footerYoutubeUrl}
+                      onChange={e => setField('footerYoutubeUrl', e.target.value)}
+                      placeholder="https://youtube.com/…"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Instagram (URL)</label>
+                    <input
+                      type="url"
+                      className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      value={form.footerInstagramUrl}
+                      onChange={e => setField('footerInstagramUrl', e.target.value)}
+                      placeholder="https://instagram.com/…"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">WhatsApp (URL)</label>
+                    <input
+                      type="url"
+                      className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                      value={form.footerWhatsappUrl}
+                      onChange={e => setField('footerWhatsappUrl', e.target.value)}
+                      placeholder="https://wa.me/…"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Texte du copyright</label>
+                  <input
+                    type="text"
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={form.footerCopyrightText}
+                    onChange={e => setField('footerCopyrightText', e.target.value)}
+                    placeholder={`© ${new Date().getFullYear()} Ma Paroisse`}
+                  />
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 4: Premier compte administrateur */}
+            {step === 4 && (
+              <motion.div
+                key="step-4"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.28 }}
+                className="space-y-6"
+              >
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-background/60 border border-border">
+                  <img src={stepImages[4]} alt="" className="h-10 w-10 object-contain" />
+                  <div className="leading-tight">
+                    <div className="text-sm font-semibold">👑 Compte admin</div>
+                    <div className="text-xs text-muted-foreground">Super admin avec téléphone + avatar obligatoires.</div>
+                  </div>
+                </div>
+                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    👤 <strong>Étape 5/5 : Compte administrateur</strong><br />
+                    Créez le premier compte (super administrateur). Vous pourrez inviter d'autres membres ensuite.
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-foreground mb-1">Compte administrateur</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Créez le premier utilisateur (super administrateur de cette paroisse). Vous pourrez inviter d’autres membres ensuite.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">
+                    Nom complet <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={adminFullName}
+                    onChange={e => setAdminFullName(e.target.value)}
+                    placeholder="Ex: Père Basile Diané"
+                    autoComplete="name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">
+                    Téléphone <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={adminPhone}
+                    onChange={e => setAdminPhone(e.target.value)}
+                    placeholder="+225 07 XX XX XX XX"
+                    autoComplete="tel"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={adminEmail}
+                    onChange={e => setAdminEmail(e.target.value)}
+                    placeholder="Ex: basile@nd-compassion.ci"
+                    autoComplete="email"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">
+                    Mot de passe <span className="text-red-500">*</span>
+                  </label>
+                  <PasswordField
+                    value={adminPassword}
+                    onChange={e => setAdminPassword(e.target.value)}
+                    placeholder="Au moins 6 caractères"
+                    autoComplete="new-password"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Minimum 6 caractères (exigence Supabase).</p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="setup-gravatar"
+                    checked={useGravatar}
+                    disabled={!!adminAvatarFile}
+                    onCheckedChange={c => setUseGravatar(c === true)}
+                  />
+                  <label htmlFor="setup-gravatar" className="text-sm cursor-pointer">
+                    Utiliser Gravatar pour la photo de profil (sinon choisissez une image)
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">
+                    Photo de profil <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={() => adminAvatarInputRef.current?.click()}
+                      className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted text-sm"
+                    >
+                      <Camera className="h-4 w-4" />
+                      Choisir une image
+                    </button>
+                    {adminAvatarPreview && (
+                      <img src={adminAvatarPreview} alt="" className="h-16 w-16 rounded-full object-cover border border-border" />
+                    )}
+                    {!adminAvatarPreview && (
+                      <UserCircle2 className="h-16 w-16 text-muted-foreground" />
+                    )}
+                  </div>
+                  <input
+                    ref={adminAvatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => {
+                      const file = e.target.files?.[0] ?? null;
+                      setAdminAvatarFile(file);
+                      setUseGravatar(false);
+                      if (file) {
+                        const r = new FileReader();
+                        r.onload = () => setAdminAvatarPreview(String(r.result));
+                        r.readAsDataURL(file);
+                      } else {
+                        setAdminAvatarPreview(null);
+                      }
+                    }}
+                  />
+                </div>
+
+                {showOtp && (
+                  <div className="mt-6 p-4 rounded-lg border border-border bg-muted/40 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-primary" />
+                      <div className="text-sm font-semibold">Code OTP envoyé par email</div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Un <strong>code a 4 chiffres</strong> a ete envoye a <strong>{pendingUser?.email ?? adminEmail.trim()}</strong>. Il est valable 15 minutes.
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        placeholder="Code à 4 chiffres"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={4}
+                        value={otpCode}
+                        onChange={(e) => {
+                          const v = e.target.value.replace(/\D/g, '').slice(0, 4);
+                          setOtpCode(v);
+                          setOtpError('');
+                        }}
+                      />
+                      <Button type="button" onClick={verifyOtp} disabled={otpLoading || otpCode.trim().length !== 4}>
+                        {otpLoading ? 'Vérification…' : 'Confirmer'}
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={resendOtp}
+                        disabled={otpLoading || otpResendCooldown > 0}
+                        className="text-xs text-primary underline disabled:opacity-50"
+                      >
+                        {otpResendCooldown > 0 ? `Renvoyer dans ${otpResendCooldown}s` : 'Renvoyer le code'}
+                      </button>
+                      <div className="text-[11px] text-muted-foreground">Vérifiez aussi vos spams.</div>
+                    </div>
+                    {otpError && <div className="text-sm text-red-600">{otpError}</div>}
+                  </div>
+                )}
+              </motion.div>
+            )}
+            </AnimatePresence>
+
+            {error && (
+              <div className="mt-4 p-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex h-full min-h-0 w-80 shrink-0 flex-col overflow-y-auto border-l border-border bg-muted/30 p-8">
+            <h5 className="sticky top-0 z-[1] mb-6 bg-muted/30 py-2 font-bold text-lg backdrop-blur-sm [-webkit-backdrop-filter:blur(8px)]">
+              Aperçu
+            </h5>
+
+            {step === 0 && (
+              <div className="space-y-4">
+                <div className="p-4 bg-background rounded-lg border border-border">
+                  <h3 className="text-xl font-bold text-foreground">{form.heroTitle || '(titre vide)'}</h3>
+                  <p className="text-sm text-muted-foreground mt-2">{form.heroSubtitle || '(sous-titre vide)'}</p>
+                  {form.heroImageUrl && (
+                    <img src={form.heroImageUrl} alt="hero" className="mt-4 w-full h-32 object-cover rounded" />
+                  )}
+                  <button className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded font-medium text-sm">
+                    {form.heroButtonText || 'Bouton'}
+                  </button>
+                </div>
+
+                <div className="p-4 bg-background rounded-lg border border-border">
+                  <h4 className="font-semibold text-foreground">{form.featuresTitle || '(titre activités)'}</h4>
+                  <pre className="text-xs mt-2 overflow-auto max-h-32 text-muted-foreground">
+                    {form.featuresContent}
+                  </pre>
+                </div>
+              </div>
+            )}
+
+            {step === 1 && (
+              <div className="p-4 bg-background rounded-lg border border-border">
+                <h4 className="font-semibold text-foreground mb-2">À Propos</h4>
+                <pre className="text-xs overflow-auto max-h-64 text-muted-foreground">
+                  {form.aboutContent}
+                </pre>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="space-y-4">
+                {form.brandingLogo && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2">Logo</p>
+                    <img src={form.brandingLogo} alt="logo" className="w-24 h-24 object-contain" />
+                  </div>
+                )}
+                <div className="p-4 bg-background rounded-lg border border-border space-y-2">
+                  <p className="font-bold text-foreground">{form.brandingName || '(nom vide)'}</p>
+                  <p className="text-sm text-muted-foreground break-all">{form.brandingEmail}</p>
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="space-y-3 text-sm">
+                <div className="p-4 bg-background rounded-lg border border-border space-y-2">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Pied de page</p>
+                  <p className="text-muted-foreground whitespace-pre-line">{form.footerAddress || '(adresse vide)'}</p>
+                  <p className="break-all">{form.footerEmail || '(email)'}</p>
+                  {(form.footerModeratorPhone || form.footerSuperAdminPhone) && (
+                    <p className="text-xs text-muted-foreground">
+                      {form.footerModeratorPhone ? `Mod. ${form.footerModeratorPhone}` : ''}
+                      {form.footerModeratorPhone && form.footerSuperAdminPhone ? ' · ' : ''}
+                      {form.footerSuperAdminPhone ? `Super ${form.footerSuperAdminPhone}` : ''}
+                    </p>
+                  )}
+                  {form.footerSuperAdminEmail && (
+                    <p className="text-xs break-all text-muted-foreground">{form.footerSuperAdminEmail}</p>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground p-2 bg-muted/50 rounded border border-border">
+                  {form.footerCopyrightText}
+                </p>
+              </div>
+            )}
+
+            {step === 4 && (
+              <div className="space-y-4">
+                <div className="p-4 bg-background rounded-lg border border-border space-y-2">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Administrateur</p>
+                  <p className="font-medium text-foreground">{adminFullName.trim() || '(nom)'}</p>
+                  <p className="text-sm text-muted-foreground break-all">{adminEmail.trim() || form.brandingEmail}</p>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Après validation, la paroisse et le contenu sont enregistrés, puis ce compte est créé.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center justify-between border-t border-border bg-muted/30 p-6">
+          <div>
+            {step > 0 && (
+              <button
+                onClick={handlePrev}
+                className="px-6 py-2 border border-border rounded-lg text-foreground hover:bg-muted font-medium transition"
+              >
+                ← Précédent
+              </button>
+            )}
+          </div>
+          <div className="text-sm text-muted-foreground">
+            Les champs avec <span className="text-red-500">*</span> sont obligatoires
+          </div>
+          <div>
+            {step < WIZARD_STEPS - 1 && (
+              <button
+                type="button"
+                onClick={handleNext}
+                className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 font-medium transition"
+              >
+                Suivant →
+              </button>
+            )}
+            {step === WIZARD_STEPS - 1 && (
+              <button
+                type="button"
+                onClick={handleFinish}
+                disabled={loading || showOtp}
+                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium transition"
+              >
+                {loading ? 'Enregistrement...' : showOtp ? 'En attente du code…' : '✓ Terminer'}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const field = (e.target as any)?.dataset?.field as ImageField;
+            if (field) handleImageUpload(e, field);
+          }}
+        />
+
+        <RestoreFromFileModal
+          open={showRestoreModal}
+          onOpenChange={setShowRestoreModal}
+          onRestoreSuccess={() => {
+            onClose();
+            markCompleted();
+          }}
+        />
+      </div>
       </DraggableModal>
 
       <DraggableModal
@@ -898,6 +1662,7 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
                 setLoading(true);
                 setDevBootstrapError(null);
                 try {
+                  // Ensure SYSTEM parish exists (idempotent)
                   await supabase.rpc('ensure_system_parish');
 
                   const email = devEmail.trim().toLowerCase();
@@ -914,6 +1679,7 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
                       code.includes("user_not") ||
                       code.includes("not_found");
 
+                    // If the user truly doesn't exist yet, we can attempt a signup + then signin.
                     if (userLikelyMissing) {
                       const { error: signUpErr } = await supabase.auth.signUp({
                         email,
@@ -927,11 +1693,13 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
                       const { error: signInAfterSignUpErr } = await supabase.auth.signInWithPassword({ email, password });
                       if (signInAfterSignUpErr) throw signInAfterSignUpErr;
                     } else {
+                      // If credentials are wrong, do NOT try to signUp again (it will explode with /auth/v1/signup).
                       setDevBootstrapError(signInErr.message || "Connexion impossible (vérifiez email/mot de passe).");
                       return;
                     }
                   }
 
+                  // Create/repair profile linkage
                   const { error: ensureErr } = await supabase.rpc('ensure_developer_account');
                   if (ensureErr) {
                     const { error: legacyErr } = await supabase.rpc('ensure_developer_exists');
@@ -941,7 +1709,7 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
                   markCompleted();
                   setShowDevBootstrap(false);
                   onClose();
-                  navigate('/developer/admin', { replace: true });
+                  window.location.assign('/admin');
                 } catch (e: any) {
                   const details =
                     typeof e?.message === 'string'

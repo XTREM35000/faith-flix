@@ -15,6 +15,8 @@ export interface DraggableResizableModalProps {
   maxWidthClass?: string;
   /** optional class applied to the header bar; useful for custom colors */
   headerClassName?: string;
+  /** Classes for the scrollable body wrapper around `children` (default: padded + overflow auto) */
+  bodyClassName?: string;
   /** initial position offsets in pixels. Both support negative values. */
   initialX?: number;
   initialY?: number;
@@ -23,6 +25,11 @@ export interface DraggableResizableModalProps {
   minHeight?: string;
   /** the handle size in px used for resizing, defaults to 10 */
   resizeHandleSize?: number;
+  /**
+   * When true (default), first open sets inline width/height from layout (for resize handle).
+   * Set false when the shell size must follow Tailwind/CSS (e.g. `h-[98vh]` on Setup Wizard).
+   */
+  lockIntrinsicSizeOnOpen?: boolean;
 }
 
 export const DraggableResizableModal: React.FC<DraggableResizableModalProps> = ({
@@ -37,11 +44,13 @@ export const DraggableResizableModal: React.FC<DraggableResizableModalProps> = (
   verticalOnly = false,
   maxWidthClass = 'max-w-4xl',
   headerClassName = 'bg-amber-800',
+  bodyClassName = 'p-4 overflow-auto',
   initialX = 0,
   initialY = 0,
   minWidth = '200px',
   minHeight = '150px',
   resizeHandleSize = 10,
+  lockIntrinsicSizeOnOpen = true,
 }) => {
   const ref = useRef<HTMLDivElement | null>(null);
   const dragging = useRef(false);
@@ -78,10 +87,15 @@ export const DraggableResizableModal: React.FC<DraggableResizableModalProps> = (
   useEffect(() => {
     if (!open) return;
     if (ref.current) {
-      const rect = ref.current.getBoundingClientRect();
-      // make explicit width/height so css resize works nicely
-      ref.current.style.width = rect.width + 'px';
-      ref.current.style.height = rect.height + 'px';
+      if (lockIntrinsicSizeOnOpen) {
+        const rect = ref.current.getBoundingClientRect();
+        // make explicit width/height so css resize works nicely
+        ref.current.style.width = rect.width + 'px';
+        ref.current.style.height = rect.height + 'px';
+      } else {
+        ref.current.style.width = '';
+        ref.current.style.height = '';
+      }
       ref.current.style.minWidth = minWidth;
       ref.current.style.minHeight = minHeight;
     }
@@ -90,7 +104,7 @@ export const DraggableResizableModal: React.FC<DraggableResizableModalProps> = (
     if (ref.current) {
       ref.current.style.transform = `translate(${initialX}px, ${initialY}px)`;
     }
-  }, [open, minWidth, minHeight, initialX, initialY]);
+  }, [open, minWidth, minHeight, initialX, initialY, lockIntrinsicSizeOnOpen]);
 
   function onPointerDown(e: React.PointerEvent) {
     if (!open) return;
@@ -214,8 +228,11 @@ export const DraggableResizableModal: React.FC<DraggableResizableModalProps> = (
             </button>
           </div>
         )}
-        <div className="relative flex-1 overflow-auto" style={{ pointerEvents: 'auto' }}>
-          <div className="p-4 overflow-auto">{children}</div>
+        <div
+          className="relative flex flex-1 min-h-0 flex-col overflow-hidden"
+          style={{ pointerEvents: 'auto' }}
+        >
+          <div className={`min-h-0 flex-1 flex flex-col ${bodyClassName}`}>{children}</div>
           {/* resize handle bottom-right */}
           <div
             data-resize-handle
