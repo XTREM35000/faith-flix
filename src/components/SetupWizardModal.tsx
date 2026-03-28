@@ -69,13 +69,8 @@ type SetupWizardModalProps = {
   onSetupCompleted?: (payload: { paroisseId: string }) => void;
 };
 
-  const { markCompleted } = useSetup();
-  const { user, refreshProfile } = useAuth();
-  const { reloadParoisses } = useParoisse();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const isDeveloperUser =
-    user?.user_metadata?.role === 'developer' || user?.app_metadata?.role === 'developer';
+  // isDeveloperUser doit être défini après l'appel à useAuth()
+
 export default function SetupWizardModal({ open, onClose, onSetupCompleted }: SetupWizardModalProps) {
   const { markCompleted } = useSetup();
   const { user, refreshProfile } = useAuth();
