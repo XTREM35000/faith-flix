@@ -1,3 +1,4 @@
+
 // src\components\SetupWizardModal.tsx
 // 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
@@ -72,6 +73,73 @@ type SetupWizardModalProps = {
   // isDeveloperUser doit être défini après l'appel à useAuth()
 
 export default function SetupWizardModal({ open, onClose, onSetupCompleted }: SetupWizardModalProps) {
+    // Navigation étapes wizard
+    const handlePrev = () => {
+      setError(null);
+      setStep(s => Math.max(0, s - 1));
+    };
+
+    const handleNext = () => {
+      if (!validateStep()) return setError('Veuillez remplir les champs requis (*)');
+      setError(null);
+      setStep(s => Math.min(WIZARD_STEPS - 1, s + 1));
+    };
+
+    // Finalisation après OTP (navigation, reset, etc.)
+    const finalizeSetupAfterAuth = async (parishId: string, signedInUser: any, targetPath: string) => {
+      if (isCompleting) {
+        console.warn('[SetupWizard] finalizeSetupAfterAuth: déjà en cours, appel ignoré');
+        return;
+      }
+      setIsCompleting(true);
+      console.info('[SetupWizard] finalizeSetupAfterAuth - début', { parishId, targetPath });
+      try {
+        await reloadParoisses();
+        console.info('[SetupWizard] reloadParoisses terminé');
+      } catch (e) {
+        console.warn('[SetupWizard] reloadParoisses', e);
+      }
+      try {
+        await refreshProfile();
+        console.info('[SetupWizard] refreshProfile terminé');
+      } catch (e) {
+        console.warn('[SetupWizard] refreshProfile', e);
+      }
+      try {
+        await queryClient.invalidateQueries({ queryKey: ['header-config'] });
+        await queryClient.invalidateQueries({ queryKey: ['footer-config'] });
+        await queryClient.invalidateQueries({ queryKey: ['profile'] });
+      } catch {
+        /* ignore */
+      }
+
+      markCompleted();
+      console.info('[SetupWizard] markCompleted()');
+      markAppInitialized();
+
+      if (parishId) {
+        if (onSetupCompleted) {
+          console.info('[SetupWizard] onSetupCompleted - notification parent');
+          onSetupCompleted({ paroisseId: parishId });
+        }
+      }
+
+      // Petit délai pour laisser le parent réagir
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      setShowOtp(false);
+      setPendingParishId(null);
+      setPendingUser(null);
+      setStep(0);
+
+      onClose();
+      console.info('[SetupWizard] onClose() appelé');
+
+      window.requestAnimationFrame(() => {
+        console.info('[SetupWizard] navigation déclenchée →', targetPath);
+        navigate(targetPath, { replace: true });
+      });
+    };
   const { markCompleted } = useSetup();
   const { user, refreshProfile } = useAuth();
   const { reloadParoisses } = useParoisse();
@@ -210,15 +278,56 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
     setForm(prev => ({ ...prev, [k]: v }));
   };
 
+  // Réinitialisation complète des champs (CLEAN)
+
+  // Nettoyage complet des champs (CLEAN)
+  function resetAllFields() {
+    setError(null);
+    setForm({
+      heroTitle: '',
+      heroSubtitle: '',
+      heroButtonText: '',
+      heroButtonLink: '',
+      heroImageUrl: undefined,
+      featuresTitle: '',
+      featuresContent: '',
+      testimonialsTitle: '',
+      testimonialsContent: '',
+      aboutContent: '',
+      brandingName: '',
+      brandingLogo: undefined,
+      brandingEmail: '',
+      footerAddress: '',
+      footerEmail: '',
+      footerModeratorPhone: '',
+      footerSuperAdminPhone: '',
+      footerSuperAdminEmail: '',
+      footerFacebookUrl: '',
+      footerYoutubeUrl: '',
+      footerInstagramUrl: '',
+      footerWhatsappUrl: '',
+      footerCopyrightText: '',
+      headerLogo: undefined,
+      headerMainTitle: '',
+      headerSubtitle: '',
+    });
+    setAdminFullName('');
+    setAdminEmail('');
+    setAdminPassword('');
+    setAdminPhone('');
+    setUseGravatar(false);
+    setAdminAvatarFile(null);
+    setAdminAvatarPreview(null);
+  }
+
+  // Pré-remplissage démo
   const fillWithDemoData = () => {
     setError(null);
-
     setForm((prev) => ({
-      ...prev,
       // Step 1 – Accueil & Header
       headerLogo: 'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/header/1774523308670-logo2.png',
-      headerMainTitle: 'Paroisse Internationale Notre-Dame de la Compassion',
-      headerSubtitle: 'Une communauté vivante au service de la foi et de la fraternité',
+      headerMainTitle: 'Paroisse Internationale',
+      headerSubtitle: 'Notre-Dame de la Compassion',
       heroTitle: 'Bienvenue à la Paroisse Internationale Notre-Dame de la Compassion',
       heroSubtitle: 'Port-Bouët – Adjahui Coubé – Une paroisse qui vous accueille, vous écoute et vous accompagne',
       heroButtonText: 'Découvrir la paroisse',
@@ -285,10 +394,10 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
     setAdminEmail('compassionnotredame5@gmail.com');
     setAdminPassword('P2026@ndc');
 
-    // Make validation pass without forcing an image upload.
-    setUseGravatar(true);
+    // Coller l'URL d'image de profil dans le champ à l'étape 5
+    setUseGravatar(false);
     setAdminAvatarFile(null);
-    setAdminAvatarPreview(null);
+    setAdminAvatarPreview('https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/branding/1774709512892-BasileAccueil.jpg');
   };
 
   const triggerImageUpload = (field: ImageField) => {
@@ -336,84 +445,13 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
         isValidEmail(adminEmail.trim()) &&
         adminPassword.length >= 6 &&
         adminPhone.trim().length >= 6 &&
-        (useGravatar || !!adminAvatarFile)
+        (useGravatar || !!adminAvatarFile || (!!adminAvatarPreview && adminAvatarPreview.trim() !== ''))
       );
     }
     return true;
   };
 
-  const handleNext = () => {
-    if (!validateStep()) return setError('Veuillez remplir les champs requis (*)');
-    setError(null);
-    setStep(s => Math.min(WIZARD_STEPS - 1, s + 1));
-  };
 
-  const handlePrev = () => {
-    setError(null);
-    setStep(s => Math.max(0, s - 1));
-  };
-
-  /** Après signup/OTP : recharger paroisses (liste était vide au 1er montage), profil auth, puis fermer le wizard. */
-  const finalizeSetupAfterAuth = async (parishId: string, signedInUser: ReturnType<typeof useAuth> extends { user: infer U } ? U : never, targetPath: string) => {
-    if (isCompleting) {
-      console.warn('[SetupWizard] finalizeSetupAfterAuth: déjà en cours, appel ignoré');
-      return;
-    }
-    setIsCompleting(true);
-    console.info('[SetupWizard] finalizeSetupAfterAuth - début', { parishId, targetPath });
-    try {
-      await reloadParoisses();
-      console.info('[SetupWizard] reloadParoisses terminé');
-    } catch (e) {
-      console.warn('[SetupWizard] reloadParoisses', e);
-    }
-    try {
-      await refreshProfile();
-      console.info('[SetupWizard] refreshProfile terminé');
-    } catch (e) {
-      console.warn('[SetupWizard] refreshProfile', e);
-    }
-    try {
-      await queryClient.invalidateQueries({ queryKey: ['header-config'] });
-      await queryClient.invalidateQueries({ queryKey: ['footer-config'] });
-      await queryClient.invalidateQueries({ queryKey: ['profile'] });
-    } catch {
-      /* ignore */
-    }
-
-    markCompleted();
-    console.info('[SetupWizard] markCompleted()');
-    markAppInitialized();
-
-    if (parishId) {
-      if (onSetupCompleted) {
-        console.info('[SetupWizard] onSetupCompleted - notification parent');
-        onSetupCompleted({ paroisseId: parishId });
-      }
-    }
-
-    // Petit délai pour laisser le parent réagir
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    setShowOtp(false);
-    setPendingParishId(null);
-    setPendingUser(null);
-    setStep(0);
-
-    onClose();
-    console.info('[SetupWizard] onClose() appelé');
-
-    window.requestAnimationFrame(() => {
-      console.info('[SetupWizard] navigation déclenchée →', targetPath);
-      navigate(targetPath, { replace: true });
-    });
-    
-  };
-  // Remettre le flag à false après la séquence
-  useEffect(() => {
-    if (!isCompleting) return;
-    return () => setIsCompleting(false);
-  }, [isCompleting]);
 
   const enforceSetupUserSuperAdmin = async (userId: string, parishId: string) => {
     const { error: profileRoleError } = await supabase
@@ -718,6 +756,18 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
               >
                 <Sparkles className="mr-2 h-4 w-4" />
                 DÉMO
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                type="button"
+                className="whitespace-nowrap bg-white/10 text-white/90 hover:bg-white/15 hover:text-white"
+                disabled={loading}
+                onClick={resetAllFields}
+                title="Vider tous les champs du SetupWizard"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                CLEAN
               </Button>
               {!adminUnlocked ? (
                 <>
@@ -1442,10 +1492,29 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
                   <label className="block text-sm font-semibold mb-2">
                     Photo de profil <span className="text-red-500">*</span>
                   </label>
+                  {/* Champ de lien pour l'avatar */}
+                  <div className="mb-2">
+                    <Input
+                      type="text"
+                      placeholder="Coller un lien d'image (https://...)"
+                      value={adminAvatarPreview && !adminAvatarFile ? adminAvatarPreview : ''}
+                      onChange={e => {
+                        const url = e.target.value.trim();
+                        setAdminAvatarPreview(url);
+                        setAdminAvatarFile(null);
+                        setUseGravatar(false);
+                      }}
+                      className="w-full"
+                    />
+                    <span className="text-xs text-muted-foreground">Vous pouvez coller un lien d'image ou choisir un fichier.</span>
+                  </div>
                   <div className="flex items-center gap-4">
                     <button
                       type="button"
-                      onClick={() => adminAvatarInputRef.current?.click()}
+                      onClick={() => {
+                        setAdminAvatarPreview('');
+                        adminAvatarInputRef.current?.click();
+                      }}
                       className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted text-sm"
                     >
                       <Camera className="h-4 w-4" />
