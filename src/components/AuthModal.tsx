@@ -43,10 +43,9 @@ const AuthModal: React.FC<AuthModalProps> = ({
   }, [isOpen]);
 
   // Ajustements dynamiques selon le mode pour s'assurer que l'onglet Inscription voit tous les champs
-  // En mode 'register' : modal plus LARGE et fortement haute, mais largeur réduite pour éviter l'effet trop étiré
-  const maxWidthClass = mode === 'register' ? 'max-w-2xl md:max-w-3xl' : 'max-w-md md:max-w-2xl';
-  const maxHeightClass = mode === 'register' ? 'max-h-[110vh]' : 'max-h-[96vh]';
-  const formMinH = mode === 'register' ? 'min-h-[720px]' : 'min-h-[300px]';
+  const maxWidthClass = mode === 'register' ? 'max-w-xl md:max-w-3xl' : 'max-w-md md:max-w-2xl';
+  const maxHeightClass = 'max-h-[95vh]';
+  const formTextClass = mode === 'register' ? 'text-sm' : '';
 
   return (
     <DraggableModal
@@ -56,7 +55,11 @@ const AuthModal: React.FC<AuthModalProps> = ({
       dragHandleOnly={false}
       center={true}
       verticalOnly={false}
+      lockIntrinsicSizeOnOpen={false}
+      minWidth="320px"
+      minHeight="auto"
       maxWidthClass={maxWidthClass}
+      bodyClassName="p-0 overflow-visible"
       title={mode === 'login' ? 'Connexion' : 'Inscription'}
       headerClassName="bg-amber-900"
     >
@@ -65,11 +68,11 @@ const AuthModal: React.FC<AuthModalProps> = ({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98, y: 0 }}
         transition={{ duration: 0.18 }}
-        className={`relative w-full ${maxHeightClass} bg-background/95 backdrop-blur-sm rounded-lg shadow-2xl border border-border/50 flex flex-col overflow-hidden`} 
+        className={`relative w-full ${maxHeightClass} bg-background/95 backdrop-blur-sm rounded-lg shadow-2xl border border-border/50 flex flex-col overflow-visible`} 
       >
 
-        <div className="flex-1 px-4 py-4 md:px-6 md:py-6 overflow-hidden">
-          <div className="flex gap-6 items-stretch h-full">
+        <div className="px-4 py-4 md:px-6 md:py-6 overflow-visible">
+          <div className="flex gap-6 items-start">
             {/* Branding Section */}
             <div className="hidden md:flex flex-col items-center justify-center w-1/3">
               <motion.img
@@ -98,7 +101,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
             </div>
 
             {/* Form Section */}
-            <div className={`w-full md:w-2/3 flex flex-col ${formMinH} ${mode === 'register' ? ' text-sm' : ''}`} style={{ minWidth: 280 }}>
+            <div className={`w-full md:w-2/3 flex flex-col ${formTextClass}`} style={{ minWidth: 280 }}>
               {/* Tabs */}
               {showEmailConfirmedBanner && (
                 <Alert className="mb-3 border-green-500/50 bg-green-500/10 shrink-0">
@@ -147,16 +150,26 @@ const AuthModal: React.FC<AuthModalProps> = ({
                   transition={{ duration: 0.3 }}
                   className="flex-1"
                 >
-                  {mode === 'login' ? <LoginForm onSuccess={onClose} onForgotPassword={onForgotPassword} /> : <RegisterForm onSuccess={onClose} onSwitchToLogin={() => setMode('login')} />}
+                  {mode === 'login' ? (
+                    <LoginForm onSuccess={onClose} onForgotPassword={onForgotPassword} />
+                  ) : (
+                    <RegisterForm
+                      onSuccess={onClose}
+                      onSwitchToLogin={() => setMode('login')}
+                      onCancel={onClose}
+                    />
+                  )}
                 </motion.div>
               </AnimatePresence>
 
-              {/* Cancel Button */}
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mt-4 flex justify-end">
-                <Button variant="outline" onClick={onClose} className="px-6" size="sm">
-                  Annuler
-                </Button>
-              </motion.div>
+              {/* Cancel Button : affiché uniquement en mode Connexion (pour éviter deux boutons Annuler en mode Inscription) */}
+              {mode === 'login' && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mt-4 flex justify-end">
+                  <Button variant="outline" onClick={onClose} className="px-6" size="sm">
+                    Annuler
+                  </Button>
+                </motion.div>
+              )}
             </div>
           </div>
         </div>

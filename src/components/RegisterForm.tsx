@@ -18,10 +18,11 @@ import { uploadPendingAvatar } from '@/utils/uploadPendingAvatar';
 interface RegisterFormProps {
   onSuccess?: () => void;
   onSwitchToLogin?: () => void;
+  onCancel?: () => void;
 }
 
-const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin }) => {
-  const { signUpWithEmail } = useAuth();
+const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin, onCancel }) => {
+  const { signUpWithEmail, login, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
@@ -202,14 +203,19 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin 
     }
   };
   const handleOtpSuccess = async () => {
-    // After OTP is verified server-side, sign the user in with the provided password
+    // Après vérif OTP côté serveur, sign in via la méthode contextuelle (pour mettre à jour le contexte Auth)
     setLoading(true);
     try {
-      const { error: signInErr } = await supabase.auth.signInWithPassword({
-        email: pendingUserEmail ?? email,
-        password,
-      });
-      if (signInErr) throw signInErr;
+      await login(pendingUserEmail ?? email, password);
+
+      // Balance profile/role update dans le contexte pour Header User Menu
+      if (refreshProfile) {
+        try {
+          await refreshProfile();
+        } catch (refreshErr) {
+          console.warn('refreshProfile failed after OTP signin:', refreshErr);
+        }
+      }
 
       const { data: { user: signedInUser } } = await supabase.auth.getUser();
       if (signedInUser?.id) {
@@ -244,53 +250,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin 
           userId={pendingUserId ?? undefined}
           onSuccess={handleOtpSuccess}
           onCancel={() => setShowOtp(false)}
-        />
-      </div>
-    );
-  }
-
-  // If OTP flow is active, show the OTP verification UI instead of the registration form
-  if (showOtp) {
-    return (
-      <div className="w-full">
-        <EmailOtpVerification
-          email={pendingUserEmail ?? email}
-          userId={pendingUserId ?? undefined}
-          onCancel={() => setShowOtp(false)}
-          onSuccess={async () => {
-            setLoading(true);
-            try {
-              // Sign in the user with the password provided during registration
-              const { error: signInErr } = await supabase.auth.signInWithPassword({
-                email: pendingUserEmail ?? email,
-                password,
-              });
-              if (signInErr) throw signInErr;
-
-              const { data } = await supabase.auth.getUser();
-              const signedInUser = data?.user;
-              if (signedInUser?.id) {
-                try {
-                  await ensureProfileExists(signedInUser.id);
-                } catch (profileErr) {
-                  console.error('ensureProfileExists après OTP:', profileErr);
-                }
-                try {
-                  await uploadPendingAvatar(signedInUser.id);
-                } catch (uploadErr) {
-                  console.error('uploadPendingAvatar après OTP:', uploadErr);
-                }
-              }
-
-              toast({ title: '✅ Compte activé', description: 'Vous êtes connecté.' });
-              if (onSuccess) onSuccess();
-              else navigate('/');
-            } catch (e: any) {
-              toast({ title: 'Erreur connexion', description: e?.message || 'Impossible de se connecter.' , variant: 'destructive'});
-            } finally {
-              setLoading(false);
-            }
-          }}
         />
       </div>
     );
@@ -395,8 +354,19 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSuccess, onSwitchToLogin 
       </div>
 
       {/* Boutons d'action */}
-      <div className="flex gap-2 pt-1">
-        <Button type="submit" disabled={loading} className="flex-1 h-8 text-xs">
+      <div className="flex items-center justify-end gap-2 pt-1">
+        {onCancel && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onCancel}
+            className="h-8 text-xs"
+          >
+            Annuler
+          </Button>
+        )}
+        <Button type="submit" disabled={loading} className="h-8 text-xs">
           {loading ? "Création..." : "Créer mon compte"}
         </Button>
       </div>

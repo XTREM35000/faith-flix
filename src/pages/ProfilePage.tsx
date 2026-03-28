@@ -30,7 +30,7 @@ interface UserData {
 const ProfilePage = () => {
   const navigate = useNavigate();
   const location = useLocation(); 
-  const { user, signOut } = useAuth();
+  const { user, signOut, refreshProfile } = useAuth();
   const { profile, isLoading: profileLoading } = useUser();
   const { data: hero, save: saveHero } = usePageHero(location.pathname); // ✅ Utilisable ici
   const { toast } = useToast();
@@ -194,6 +194,16 @@ const ProfilePage = () => {
       setAvatarFile(null);
       setAvatarPreview(null);
       setIsEditing(false);
+
+      // Forcer le rafraîchissement global du profil utilisateur (Header User Menu, etc.)
+      if (refreshProfile) {
+        try {
+          await refreshProfile();
+        } catch (refreshErr) {
+          console.warn('Impossible de rafraîchir le profil global après mise à jour :', refreshErr);
+        }
+      }
+
       toast({ title: 'Profil mis a jour', description: 'Vos modifications ont ete enregistrees.' });
     } catch (err) {
       console.error('Erreur lors de la sauvegarde:', err);

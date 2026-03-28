@@ -94,6 +94,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  const refreshProfile = async () => {
+    await loadSession({ silent: true });
+  };
+
   // Fonction signOut à exposer dans le contexte
   const signOut = async () => {
     setLoading(true);
@@ -189,6 +193,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         signOut,
         login,
+        refreshProfile,
         register,
         signUpWithEmail,
       }}

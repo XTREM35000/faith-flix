@@ -17,6 +17,7 @@ export interface AuthState {
   loading: boolean;
   signOut: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
+  refreshProfile: () => Promise<void>;
   register: (
     email: string,
     password: string,

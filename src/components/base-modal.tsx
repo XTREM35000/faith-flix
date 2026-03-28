@@ -95,7 +95,7 @@ export default function BaseModal({ open, onClose, children, center = false }: B
         zIndex: 2147483647,
         isolation: 'isolate',
       }}
-      className={"fixed inset-0 flex " + (center ? 'items-center' : 'items-start') + " justify-center p-4 pt-8 overflow-y-auto"}
+      className={"fixed inset-0 flex " + (center ? 'items-center' : 'items-start') + " justify-center p-4 pt-8 overflow-y-hidden"}
       role="presentation"
     >
       <div
