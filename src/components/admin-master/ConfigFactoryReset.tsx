@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Skull, RefreshCw, Upload } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,9 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
+import { runFullSystemClean } from "@/lib/fullSystemClean";
+import { useQueryClient } from "@tanstack/react-query";
 import { RestoreFromFileModal } from "./RestoreFromFileModal";
 import { fetchBackups as fetchBackupsQuery, deleteBackup as deleteBackupQuery, BackupRow } from '@/lib/supabase/backupQueries';
 import {
@@ -39,6 +43,8 @@ export interface ConfigFactoryResetProps {
 
 export function ConfigFactoryReset({ onFactoryResetComplete }: ConfigFactoryResetProps) {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>("idle");
   const [confirm1Open, setConfirm1Open] = useState(false);
   const [confirm2Open, setConfirm2Open] = useState(false);
@@ -58,6 +64,8 @@ export function ConfigFactoryReset({ onFactoryResetComplete }: ConfigFactoryRese
   const [loadingBackups, setLoadingBackups] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<BackupRow | null>(null);
+  const [rpcCleanAck, setRpcCleanAck] = useState(false);
+  const [rpcCleanBusy, setRpcCleanBusy] = useState(false);
 
   useEffect(() => {
     void loadSystemBackups();
@@ -206,8 +214,84 @@ export function ConfigFactoryReset({ onFactoryResetComplete }: ConfigFactoryRese
     }
   };
 
+  const runRpcFullClean = async () => {
+    if (!rpcCleanAck) {
+      toast({
+        title: "Confirmation requise",
+        description: "Cochez la case pour confirmer que vous acceptez d’effacer les données.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (
+      !confirm(
+        "Dernière confirmation : lancer le nettoyage RPC (clean_all_data / reset_all_data) ?",
+      )
+    ) {
+      return;
+    }
+    setRpcCleanBusy(true);
+    try {
+      const res = await runFullSystemClean(supabase);
+      if (!res.ok) {
+        toast({
+          title: "Échec du nettoyage RPC",
+          description: res.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      queryClient.clear();
+      toast({
+        title: "Nettoyage RPC terminé",
+        description: `Fonction utilisée : ${res.usedRpc}. Redirection vers l’accueil.`,
+      });
+      onFactoryResetComplete?.({ launchSetupWizard: true });
+      navigate("/", { replace: true });
+    } finally {
+      setRpcCleanBusy(false);
+    }
+  };
+
   return (
     <>
+      <Card className="border-amber-300 mb-6">
+        <CardHeader>
+          <CardTitle className="text-amber-900 flex items-center gap-2">
+            Nettoyage base (RPC)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          <p className="text-muted-foreground leading-relaxed">
+            Même opération que le bouton <strong>CLEAN</strong> du SetupWizard : appelle{" "}
+            <code className="text-xs bg-muted px-1 rounded">clean_all_data</code> puis, si besoin,{" "}
+            <code className="text-xs bg-muted px-1 rounded">reset_all_data</code>. N’utilise pas l’edge
+            function « factory-reset » (sauvegarde + stockage).
+          </p>
+          <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 dark:bg-amber-950/30">
+            <Checkbox
+              id="rpc-clean-ack"
+              checked={rpcCleanAck}
+              onCheckedChange={(c) => setRpcCleanAck(c === true)}
+            />
+            <label htmlFor="rpc-clean-ack" className="text-sm leading-snug cursor-pointer">
+              Je comprends que les données métier en base seront supprimées selon la logique serveur
+              (comptes protégés selon la configuration Supabase).
+            </label>
+          </div>
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={!rpcCleanAck || rpcCleanBusy}
+            onClick={() => void runRpcFullClean()}
+            className="gap-2"
+          >
+            {rpcCleanBusy ? <RefreshCw className="h-4 w-4 animate-spin" /> : null}
+            Nettoyage RPC (base de données)
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card className="border-red-300">
         <CardHeader>
           <CardTitle className="text-red-700 flex items-center gap-2">

@@ -14,6 +14,7 @@ import { ConfigAdmins } from "@/components/admin-master/ConfigAdmins";
 import { AuditLogs } from "@/components/admin-master/AuditLogs";
 import { ConfigFactoryReset } from "@/components/admin-master/ConfigFactoryReset";
 import SetupWizardModal from "@/components/SetupWizardModal";
+import { SETUP_WIZARD_DONE_EVENT, SETUP_WIZARD_FINALIZED_SESSION_KEY } from "@/lib/setupSessionFlags";
 
 const TABS = [
   { id: "backup", label: "Sauvegarde & restauration" },
@@ -123,6 +124,15 @@ export default function AdminMasterReset() {
       <SetupWizardModal
         open={showSetupWizard}
         onClose={() => setShowSetupWizard(false)}
+        onSetupCompleted={() => {
+          try {
+            sessionStorage.setItem(SETUP_WIZARD_FINALIZED_SESSION_KEY, '1');
+          } catch {
+            /* ignore */
+          }
+          setShowSetupWizard(false);
+          window.dispatchEvent(new Event(SETUP_WIZARD_DONE_EVENT));
+        }}
       />
     </div>
   );

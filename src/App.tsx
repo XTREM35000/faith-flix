@@ -82,9 +82,12 @@ import { useAuthContext } from '@/contexts/useAuthContext';
 import { SetupProvider } from '@/contexts/SetupContext';
 import { ParoisseSelector } from '@/components/ParoisseSelector';
 import SetupWizardModal from '@/components/SetupWizardModal';
-import { supabase } from '@/integrations/supabase/client';
-import { syncDeveloperAccess } from '@/lib/initializeDeveloper';
+import { ensureDeveloperAccount } from '@/lib/initDeveloper';
 import { markAppInitialized, runAppInitialization } from '@/lib/appInitializer';
+import {
+  SETUP_WIZARD_DONE_EVENT,
+  SETUP_WIZARD_FINALIZED_SESSION_KEY,
+} from '@/lib/setupSessionFlags';
 
 /**
  * Debug uniquement : `true` = ouvre le sélecteur à chaque chargement (ignore la paroisse sauvegardée).
@@ -92,15 +95,29 @@ import { markAppInitialized, runAppInitialization } from '@/lib/appInitializer';
  */
 const FORCE_PAROISSE_MODAL_ON_LAUNCH = false;
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+      staleTime: 30_000,
+    },
+  },
+});
 
 const AppInner = () => {
   const { paroisse, paroissesList, setParoisse, isLoading, isSelectorOpen, setSelectorOpen } = useParoisse();
   const { user, role, loading: authLoading } = useAuthContext();
   const [showSetupWizardAuto, setShowSetupWizardAuto] = useState(false);
   const [firstLaunchCheckDone, setFirstLaunchCheckDone] = useState(false);
-  // Flag pour bloquer la réouverture du wizard après finalisation
-  const [isSetupFinalized, setIsSetupFinalized] = useState(false);
+  // Flag pour bloquer la réouverture du wizard après finalisation (persisté pour éviter la boucle OTP)
+  const [isSetupFinalized, setIsSetupFinalized] = useState(() => {
+    try {
+      return typeof sessionStorage !== 'undefined' && sessionStorage.getItem(SETUP_WIZARD_FINALIZED_SESSION_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
 
   const isPlatformDeveloper =
     !!user &&
@@ -162,6 +179,20 @@ const AppInner = () => {
   }, [isLoading, authLoading, paroisse, setSelectorOpen]);
 
   useEffect(() => {
+    const onWizardDoneElsewhere = () => {
+      try {
+        sessionStorage.setItem(SETUP_WIZARD_FINALIZED_SESSION_KEY, '1');
+      } catch {
+        /* ignore */
+      }
+      setIsSetupFinalized(true);
+      setShowSetupWizardAuto(false);
+    };
+    window.addEventListener(SETUP_WIZARD_DONE_EVENT, onWizardDoneElsewhere);
+    return () => window.removeEventListener(SETUP_WIZARD_DONE_EVENT, onWizardDoneElsewhere);
+  }, []);
+
+  useEffect(() => {
     let mounted = true;
     const initializeOnFirstLoad = async () => {
       const status = await runAppInitialization();
@@ -209,9 +240,14 @@ const AppInner = () => {
           }}
           onSetupCompleted={() => {
             console.info('[App] onSetupCompleted - wizard à fermer');
-            setIsSetupFinalized(true); // ← IMPORTANT : bloque toute réouverture
+            try {
+              sessionStorage.setItem(SETUP_WIZARD_FINALIZED_SESSION_KEY, '1');
+            } catch {
+              /* ignore */
+            }
+            setIsSetupFinalized(true);
             setShowSetupWizardAuto(false);
-            console.info('[App] setupCompleted flag = true');
+            console.info('[App] setup wizard marqué finalisé (session + state)');
           }}
         />
         <Routes>
@@ -436,47 +472,20 @@ const App = () => {
   useEffect(() => {
     let isMounted = true;
 
-    const initializeDeveloperSync = async () => {
+    const run = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
         if (!isMounted) return;
-
-        if (error) {
-          console.error('[App] Impossible de vérifier la session pour create-developer:', error);
-          return;
-        }
-
-        if (!data.session?.user) {
-          console.debug('[App] Pas d’utilisateur authentifié, create-developer ignoré.');
-          return;
-        }
-
-        // Non bloquant pour l'UI : l'appel n'est pas attendu ici.
-        void syncDeveloperAccess();
+        await ensureDeveloperAccount();
       } catch (err) {
-        console.error('[App] Erreur inattendue pendant l’initialisation developer:', err);
+        console.error('[App] Erreur inattendue pendant ensureDeveloperAccount:', err);
       }
     };
 
-    void initializeDeveloperSync();
+    void run();
 
     return () => {
       isMounted = false;
     };
-  }, []);
-
-  // Debugging: track visibility changes (gardé)
-  React.useEffect(() => {
-    const onVisibilityChange = () => {
-      const state = document.visibilityState;
-      const ts = new Date().toISOString();
-      console.debug('visibilitychange', { state, ts, href: window.location.href });
-      if (state === 'visible') {
-        console.debug('visibilitychange stack:', new Error('visibilitychange stack').stack);
-      }
-    };
-    document.addEventListener('visibilitychange', onVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
   }, []);
 
   // ❌ SUPPRIMÉ : Le blocage de navigation vers /donation-success qui causait le problème

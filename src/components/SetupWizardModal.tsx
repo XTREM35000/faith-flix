@@ -7,12 +7,12 @@ import DraggableModal from './DraggableModal';
 import {
   initFirstParoisseAndUser,
   uploadImageToStorage,
+  upsertPageHeroBanners,
   type SetupData,
   type HomepageSectionRow,
 } from '@/lib/setupWizard';
 import { useSetup } from '@/contexts/SetupContext';
 import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Upload, Loader2, Camera, UserCircle2, Church, BookOpen, Sparkles, Mail, UserCog, Trash2, Phone, MapPin, Images } from 'lucide-react';
 import PasswordField from '@/components/ui/password-field';
@@ -27,6 +27,28 @@ import { uploadPendingAvatar } from '@/utils/uploadPendingAvatar';
 import { markAppInitialized } from '@/lib/appInitializer';
 import { STORAGE_SELECTED_PAROISSE } from '@/lib/paroisseStorage';
 import { useParoisse } from '@/contexts/ParoisseContext';
+import { runFullSystemClean } from '@/lib/fullSystemClean';
+import { invalidateAllPageHeroBanners } from '@/hooks/useHeroBanners';
+
+const PENDING_HERO_BANNERS_KEY = 'ff_pending_hero_banners';
+
+const EPHEMERAL_SETUP_LS_KEYS = ['setupWizardPending', 'setupWizardStep', 'otpValidated'] as const;
+
+/** Expire les cookies visibles côté JS qui ne sont pas des jetons Supabase (sb-*). */
+function clearNonSupabaseCookies() {
+  try {
+    for (const raw of document.cookie.split(';')) {
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+      const eq = trimmed.indexOf('=');
+      const name = (eq >= 0 ? trimmed.slice(0, eq) : trimmed).trim();
+      if (!name || name.startsWith('sb-')) continue;
+      document.cookie = `${name}=;expires=${new Date(0).toUTCString()};path=/`;
+    }
+  } catch {
+    /* ignore */
+  }
+}
 
 type FormState = {
   heroTitle: string;
@@ -75,6 +97,15 @@ const PUBLIC_HERO_BANNER_PAGES: { path: string; label: string }[] = [
   { path: '/galerie', label: 'Galerie' },
   { path: '/videos', label: 'Vidéos' },
   { path: '/evenements', label: 'Événements' },
+  { path: '/verse', label: 'Verset du jour' },
+  { path: '/affiche', label: 'Affiches / Flyers' },
+  { path: '/prayers', label: 'Intentions de prière' },
+  { path: '/announcements', label: 'Annonces paroissiales' },
+  { path: '/chat', label: 'Chat' },
+  { path: '/donate', label: 'Faire un don' },
+  { path: '/homilies', label: 'Homélies' },
+  { path: '/campaigns', label: 'Campagnes' },
+  { path: '/receipts', label: 'Reçus & historique des dons' },
 ];
 
 function emptyHeroBanners(): Record<string, string> {
@@ -92,7 +123,8 @@ type SetupWizardModalProps = {
   // isDeveloperUser doit être défini après l'appel à useAuth()
 
 export default function SetupWizardModal({ open, onClose, onSetupCompleted }: SetupWizardModalProps) {
-    const finalizeRanRef = useRef(false);
+    const setupFinalizedRef = useRef(false);
+    const isMountedRef = useRef(true);
     const otpInFlightRef = useRef(false);
     const heroBannerFileInputRef = useRef<HTMLInputElement>(null);
     const [heroBannerUploadPath, setHeroBannerUploadPath] = useState<string | null>(null);
@@ -109,43 +141,54 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
       setStep(s => Math.min(WIZARD_STEPS - 1, s + 1));
     };
 
-    // Finalisation après OTP (navigation, reset, etc.)
-    const finalizeSetupAfterAuth = async (parishId: string, signedInUser: any, targetPath: string) => {
-      if (finalizeRanRef.current) {
+    // Finalisation après OTP : état stable, invalidation cache, hard navigation pour éviter boucle SPA
+    const finalizeSetupAfterAuth = async (parishId: string, _signedInUser: unknown, targetPath: string) => {
+      if (!isMountedRef.current) return;
+      if (setupFinalizedRef.current) {
         console.warn('[SetupWizard] finalizeSetupAfterAuth: déjà finalisé, ignoré');
         return;
       }
       if (isCompleting) {
-        console.warn('[SetupWizard] finalizeSetupAfterAuth: déjà en cours, appel ignoré');
+        console.warn('[SetupWizard] finalizeSetupAfterAuth: déjà en cours, ignoré');
         return;
       }
-      finalizeRanRef.current = true;
+      setupFinalizedRef.current = true;
       setIsCompleting(true);
       console.info('[SetupWizard] finalizeSetupAfterAuth - début', { parishId, targetPath });
       try {
+        let pendingHeroSnapshot: Record<string, string> | null = null;
         try {
-          await reloadParoisses();
-          console.info('[SetupWizard] reloadParoisses terminé');
-        } catch (e) {
-          console.warn('[SetupWizard] reloadParoisses', e);
+          const raw = localStorage.getItem(PENDING_HERO_BANNERS_KEY);
+          if (raw) pendingHeroSnapshot = JSON.parse(raw) as Record<string, string>;
+        } catch {
+          /* ignore */
         }
-        try {
-          await refreshProfile();
-          console.info('[SetupWizard] refreshProfile terminé');
-        } catch (e) {
-          console.warn('[SetupWizard] refreshProfile', e);
+
+        await queryClient.clear();
+
+        for (const k of EPHEMERAL_SETUP_LS_KEYS) {
+          try {
+            localStorage.removeItem(k);
+          } catch {
+            /* ignore */
+          }
         }
+
+        clearNonSupabaseCookies();
+
         try {
-          await queryClient.invalidateQueries({ queryKey: ['header-config'] });
-          await queryClient.invalidateQueries({ queryKey: ['footer-config'] });
-          await queryClient.invalidateQueries({ queryKey: ['profile'] });
+          sessionStorage.clear();
         } catch {
           /* ignore */
         }
 
         markCompleted();
-        console.info('[SetupWizard] markCompleted()');
         markAppInitialized();
+        try {
+          localStorage.setItem('otpValidated', 'true');
+        } catch {
+          /* ignore */
+        }
 
         const effectiveParishId =
           parishId ||
@@ -153,12 +196,30 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
           (typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_SELECTED_PAROISSE) : '') ||
           '';
 
-        if (onSetupCompleted) {
-          console.info('[SetupWizard] onSetupCompleted - notification parent', { effectiveParishId });
-          onSetupCompleted({ paroisseId: effectiveParishId });
+        await Promise.all([
+          reloadParoisses().catch((e) => console.warn('[SetupWizard] reloadParoisses', e)),
+          refreshProfile().catch((e) => console.warn('[SetupWizard] refreshProfile', e)),
+        ]);
+
+        try {
+          if (pendingHeroSnapshot && Object.keys(pendingHeroSnapshot).length > 0) {
+            await upsertPageHeroBanners(pendingHeroSnapshot);
+            localStorage.removeItem(PENDING_HERO_BANNERS_KEY);
+            console.info('[SetupWizard] Hero banners rejoués après session OTP');
+          }
+        } catch (e) {
+          console.warn('[SetupWizard] pending hero banners', e);
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await queryClient.invalidateQueries({ queryKey: ['header-config'] });
+        await queryClient.invalidateQueries({ queryKey: ['footer-config'] });
+        await queryClient.invalidateQueries({ queryKey: ['profile'] });
+        await invalidateAllPageHeroBanners(queryClient);
+
+        if (onSetupCompleted) {
+          console.info('[SetupWizard] onSetupCompleted', { effectiveParishId });
+          onSetupCompleted({ paroisseId: effectiveParishId });
+        }
 
         setShowOtp(false);
         setPendingParishId(null);
@@ -166,20 +227,30 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
         setStep(0);
 
         onClose();
-        console.info('[SetupWizard] onClose() appelé');
+        console.info('[SetupWizard] onClose()');
 
-        window.requestAnimationFrame(() => {
-          console.info('[SetupWizard] navigation déclenchée →', targetPath);
-          navigate(targetPath, { replace: true });
-        });
+        await new Promise((r) => setTimeout(r, 150));
+
+        const url =
+          targetPath.startsWith('http://') || targetPath.startsWith('https://')
+            ? targetPath
+            : `${window.location.origin}${targetPath.startsWith('/') ? targetPath : `/${targetPath}`}`;
+
+        if (isMountedRef.current) {
+          window.location.replace(url);
+        }
+      } catch (err) {
+        console.error('[SetupWizard] finalizeSetupAfterAuth error:', err);
+        setupFinalizedRef.current = false;
       } finally {
-        setIsCompleting(false);
+        if (isMountedRef.current) {
+          setIsCompleting(false);
+        }
       }
     };
-  const { markCompleted } = useSetup();
+  const { markCompleted, markIncomplete } = useSetup();
   const { user, refreshProfile } = useAuth();
   const { reloadParoisses } = useParoisse();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isDeveloperUser =
     user?.user_metadata?.role === 'developer' || user?.app_metadata?.role === 'developer';
@@ -189,9 +260,11 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
 
   const [step, setStep] = useState(0);
   const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [showCleanConfirm, setShowCleanConfirm] = useState(false);
   const [showDevBootstrap, setShowDevBootstrap] = useState(false);
   const [hasBackups, setHasBackups] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fullCleanLoading, setFullCleanLoading] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const ADMIN_UNLOCK_CODE = '2022';
@@ -303,8 +376,15 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
   }, [step, form.brandingEmail]);
 
   useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!open) return;
-    finalizeRanRef.current = false;
+    setupFinalizedRef.current = false;
     otpInFlightRef.current = false;
     setIsCompleting(false);
   }, [open]);
@@ -323,10 +403,8 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
     setForm(prev => ({ ...prev, [k]: v }));
   };
 
-  // Réinitialisation complète des champs (CLEAN)
-
-  // Nettoyage complet des champs (CLEAN)
-  function resetAllFields() {
+  /** Remet uniquement le formulaire du wizard à zéro (sans toucher à la base). */
+  function resetFormFieldsOnly() {
     setError(null);
     setForm({
       heroTitle: '',
@@ -365,6 +443,43 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
     setAdminAvatarFile(null);
     setAdminAvatarPreview(null);
   }
+
+  /** Nettoyage base (RPC) puis rechargement — sans exiger de session (selon politiques Supabase sur les RPC). */
+  const executeFullSystemClean = async () => {
+    setFullCleanLoading(true);
+    setError(null);
+    try {
+      const res = await runFullSystemClean(supabase);
+      if (res.ok === false) {
+        setError(`Échec du nettoyage : ${res.message}`);
+        return;
+      }
+      markIncomplete();
+      resetFormFieldsOnly();
+      setStep(0);
+      setShowOtp(false);
+      setPendingParishId(null);
+      setPendingUser(null);
+      setShowCleanConfirm(false);
+      queryClient.clear();
+      try {
+        localStorage.clear();
+      } catch {
+        /* ignore */
+      }
+      try {
+        sessionStorage.clear();
+      } catch {
+        /* ignore */
+      }
+      window.location.href = '/';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`Erreur nettoyage : ${msg}`);
+    } finally {
+      setFullCleanLoading(false);
+    }
+  };
 
   // Pré-remplissage démo
   const fillWithDemoData = () => {
@@ -442,9 +557,33 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
 
       heroBanners: {
         ...emptyHeroBanners(),
-        '/': 'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero/1774523372478-accueil.png',
+        '/': 'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-banners/1774760153581-accueil.png',
+        '/a-propos':
+          'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero/1774523372478-accueil.png',
         '/galerie':
           'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/1774734028124_nf5pez.jpg',
+        '/videos':
+          'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-banners/1774762982994-event01.jpeg',
+        '/evenements':
+          'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-banners/1774760305338-event07.jpeg',
+        '/verse':
+          'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-banners/1774760153581-accueil.png',
+        '/affiche':
+          'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-banners/1774760305338-event07.jpeg',
+        '/prayers':
+          'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-banners/1774760326847-event01.jpeg',
+        '/announcements':
+          'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-banners/1774760353565-ecran01.png',
+        '/chat':
+          'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-banners/1774760369224-messe01.jpeg',
+        '/donate':
+          'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-banners/1774760377470-mess02.jpeg',
+        '/homilies':
+          'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-banners/1774760411490-gallerie01.jpeg',
+        '/campaigns':
+          'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-banners/1774760436019-homelies01.png',
+        '/receipts':
+          'https://cghwsbkxcjsutqwzdbwe.supabase.co/storage/v1/object/public/gallery/hero-banners/1774760505593-messe01.png',
       },
     }));
 
@@ -658,6 +797,7 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
 
       await queryClient.invalidateQueries({ queryKey: ['header-config'] });
       await queryClient.invalidateQueries({ queryKey: ['footer-config'] });
+      await invalidateAllPageHeroBanners(queryClient);
 
       if (authData.session) {
         if (authData.user?.id) {
@@ -668,11 +808,18 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
         markCompleted();
         onSetupCompleted?.({ paroisseId });
         onClose();
-        navigate(isDeveloperUser ? '/developer/admin' : '/dashboard', { replace: true });
+        const p = isDeveloperUser ? '/developer/admin' : '/dashboard';
+        window.location.assign(`${window.location.origin}${p.startsWith('/') ? p : `/${p}`}`);
         return;
       }
 
-      // OTP email instead of confirmation link
+      // OTP email instead of confirmation link — sauver les bannières pour rejou après connexion (RLS)
+      try {
+        localStorage.setItem(PENDING_HERO_BANNERS_KEY, JSON.stringify(form.heroBanners));
+      } catch {
+        /* ignore */
+      }
+
       setPendingParishId(paroisseId);
       setPendingUser({
         id: authData.user?.id,
@@ -696,7 +843,7 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
   };
 
   const verifyOtp = async () => {
-    if (otpInFlightRef.current) return;
+    if (otpInFlightRef.current || setupFinalizedRef.current || isCompleting) return;
     otpInFlightRef.current = true;
     setOtpLoading(true);
     setOtpError('');
@@ -865,11 +1012,15 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
                 size="sm"
                 type="button"
                 className="whitespace-nowrap bg-white/10 text-white/90 hover:bg-white/15 hover:text-white"
-                disabled={loading}
-                onClick={resetAllFields}
-                title="Vider tous les champs du SetupWizard"
+                disabled={loading || fullCleanLoading}
+                onClick={() => setShowCleanConfirm(true)}
+                title="Nettoyage complet de la base (RPC) puis réinitialisation du formulaire"
               >
-                <Trash2 className="mr-2 h-4 w-4" />
+                {fullCleanLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 h-4 w-4" />
+                )}
                 CLEAN
               </Button>
               {!adminUnlocked ? (
@@ -937,42 +1088,7 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
                     size="sm"
                     type="button"
                     className="whitespace-nowrap bg-white text-black hover:bg-white/90"
-                    onClick={async () => {
-                      if (
-                        !confirm(
-                          '⚠️ NETTOYAGE COMPLET\n\n' +
-                            'Cette action supprimera TOUTES les données (paroisses, vidéos, événements, etc.)\n\n' +
-                            '✅ Le compte développeur et la paroisse SYSTEM seront conservés.\n\n' +
-                            "✅ L'application reviendra comme une nouvelle installation.\n\n" +
-                            'Confirmer ?',
-                        )
-                      ) {
-                        return;
-                      }
-
-                      try {
-                        const {
-                          data: { session },
-                        } = await supabase.auth.getSession();
-                        if (!session) {
-                          alert('Veuillez vous connecter avec SYSTEM avant de lancer le RESET.');
-                          return;
-                        }
-
-                        const { error } = await supabase.rpc('reset_all_data');
-                        if (error) throw error;
-
-                        alert(
-                          '✅ Nettoyage terminé !\n\n' +
-                            'La base a été réinitialisée.\n' +
-                            'Le compte développeur est prêt.\n\n' +
-                            'Redirection vers l’accueil.',
-                        );
-                        navigate('/', { replace: true });
-                      } catch (err: any) {
-                        alert('❌ Erreur lors du nettoyage: ' + (err?.message || String(err)));
-                      }
-                    }}
+                    onClick={() => setShowCleanConfirm(true)}
                   >
                     <Trash2 className="mr-1 h-4 w-4" />
                     RESET
@@ -1006,24 +1122,7 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
 
         <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-gradient-animated rounded-lg">
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-8">
-            <div className="mb-6 p-4 bg-muted rounded-lg">
-              <p className="text-sm text-muted-foreground mb-3">
-                Vous avez déjà configuré une paroisse ? Vous pouvez restaurer une sauvegarde.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  type="button"
-                  disabled={!hasBackups}
-                  onClick={() => setShowRestoreModal(true)}
-                >
-                  <Upload className="mr-2 h-4 w-4" />
-                  {hasBackups ? 'Restaurer une sauvegarde' : 'Aucune sauvegarde disponible'}
-                </Button>
-              </div>
-            </div>
-
-            {/* Step 0..4: steps - animated container */}
+            {/* Step 0..5: steps - animated container */}
             <AnimatePresence mode="sync">
               {step === 0 && (
                 <motion.div
@@ -1034,6 +1133,23 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
                   transition={{ duration: 0.28 }}
                 >
                   <div className="space-y-6">
+                    <div className="mb-6 p-4 bg-muted rounded-lg">
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Vous avez déjà configuré une paroisse ? Vous pouvez restaurer une sauvegarde.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          type="button"
+                          disabled={!hasBackups}
+                          onClick={() => setShowRestoreModal(true)}
+                        >
+                          <Upload className="mr-2 h-4 w-4" />
+                          {hasBackups ? 'Restaurer une sauvegarde' : 'Aucune sauvegarde disponible'}
+                        </Button>
+                      </div>
+                    </div>
+
                     <div className="flex items-center gap-3 p-3 rounded-lg bg-background/60 border border-border">
                       <img src={stepImages[0]} alt="" className="h-10 w-10 object-contain" />
                       <div className="leading-tight">
@@ -1371,7 +1487,7 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
                     Optionnel : une image par page. Vous pourrez les modifier plus tard depuis chaque page.
                   </p>
                 </div>
-                <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {PUBLIC_HERO_BANNER_PAGES.map(({ path, label }) => (
                     <div
                       key={path}
@@ -1420,6 +1536,10 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
                       ) : null}
                     </div>
                   ))}
+                </div>
+                <div className="text-xs text-muted-foreground bg-muted/30 p-3 rounded-lg border border-border">
+                  Les bannières apparaissent en haut de chaque page publique. Format recommandé : 16:9 (ex.
+                  1200×675 px). Après validation avec OTP, elles sont enregistrées dès que la session est active.
                 </div>
                 <input
                   ref={heroBannerFileInputRef}
@@ -1957,6 +2077,67 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
       </DraggableModal>
 
       <DraggableModal
+        open={showCleanConfirm}
+        onClose={() => {
+          if (!fullCleanLoading) setShowCleanConfirm(false);
+        }}
+        draggableOnMobile={true}
+        dragHandleOnly={false}
+        verticalOnly={true}
+        center={true}
+        maxWidthClass="max-w-lg"
+        title="Confirmation de nettoyage"
+      >
+        <div className="p-6 space-y-4">
+          <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+            <Trash2 className="h-8 w-8 shrink-0" />
+            <h3 className="text-lg font-bold">Action destructive</h3>
+          </div>
+
+          <p className="text-muted-foreground">
+            Cette action supprime les données métier dans la base (RPC{' '}
+            <code className="text-xs">clean_all_data</code> / <code className="text-xs">reset_all_data</code>) :
+          </p>
+
+          <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+            <li>Paroisses, membres, profils (selon la politique côté serveur)</li>
+            <li>Contenus (vidéos, événements, galerie, etc.)</li>
+            <li>Configurations (en-tête, pied de page, bannières)</li>
+          </ul>
+
+          <p className="font-semibold text-amber-600 dark:text-amber-500">
+            Le compte développeur et la paroisse SYSTEM sont en principe conservés par le script SQL.
+          </p>
+
+          <div className="flex flex-wrap gap-3 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={fullCleanLoading}
+              onClick={() => setShowCleanConfirm(false)}
+            >
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={fullCleanLoading}
+              onClick={() => void executeFullSystemClean()}
+            >
+              {fullCleanLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Nettoyage…
+                </>
+              ) : (
+                'Confirmer le nettoyage'
+              )}
+            </Button>
+          </div>
+        </div>
+      </DraggableModal>
+
+      <DraggableModal
         open={showDevBootstrap}
         onClose={() => {
           setShowDevBootstrap(false);
@@ -1972,7 +2153,7 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
             <div>
               <h3 className="text-lg font-bold text-white">Connexion développeur</h3>
               <p className="text-xs text-white/90 mt-1">
-                Si le compte n’existe pas encore, vous pouvez le créer depuis l’application.
+                Le compte est créé ou réparé au chargement de l’application ; connectez-vous ici pour l’admin.
               </p>
             </div>
           </div>
@@ -2015,44 +2196,15 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
                 setLoading(true);
                 setDevBootstrapError(null);
                 try {
-                  // Ensure SYSTEM parish exists (idempotent)
-                  await supabase.rpc('ensure_system_parish');
-
                   const email = devEmail.trim().toLowerCase();
                   const password = devPassword;
 
                   const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
                   if (signInErr) {
-                    const msg = (signInErr.message ?? "").toLowerCase();
-                    const code = (signInErr as any)?.code ? String((signInErr as any).code).toLowerCase() : "";
-                    const userLikelyMissing =
-                      msg.includes("not found") ||
-                      msg.includes("no user") ||
-                      msg.includes("user not") ||
-                      code.includes("user_not") ||
-                      code.includes("not_found");
-
-                    // If the user truly doesn't exist yet, we can attempt a signup + then signin.
-                    if (userLikelyMissing) {
-                      const { error: signUpErr } = await supabase.auth.signUp({
-                        email,
-                        password,
-                        options: {
-                          data: { full_name: 'Thierry Gogo' },
-                        },
-                      });
-                      if (signUpErr) throw signUpErr;
-
-                      const { error: signInAfterSignUpErr } = await supabase.auth.signInWithPassword({ email, password });
-                      if (signInAfterSignUpErr) throw signInAfterSignUpErr;
-                    } else {
-                      // If credentials are wrong, do NOT try to signUp again (it will explode with /auth/v1/signup).
-                      setDevBootstrapError(signInErr.message || "Connexion impossible (vérifiez email/mot de passe).");
-                      return;
-                    }
+                    setDevBootstrapError(signInErr.message || 'Connexion impossible (vérifiez email / mot de passe).');
+                    return;
                   }
 
-                  // Create/repair profile linkage
                   const { error: ensureErr } = await supabase.rpc('ensure_developer_account');
                   if (ensureErr) {
                     const { error: legacyErr } = await supabase.rpc('ensure_developer_exists');
@@ -2063,15 +2215,15 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
                   setShowDevBootstrap(false);
                   onClose();
                   window.location.assign('/admin');
-                } catch (e: any) {
+                } catch (e: unknown) {
                   const details =
-                    typeof e?.message === 'string'
+                    e instanceof Error
                       ? e.message
                       : typeof e === 'string'
                         ? e
                         : JSON.stringify(e ?? {});
                   console.error('SYSTEM modal sign-in error', e);
-                  setDevBootstrapError(details || 'Impossible de créer le compte développeur.');
+                  setDevBootstrapError(details || 'Connexion impossible.');
                 } finally {
                   setLoading(false);
                 }
