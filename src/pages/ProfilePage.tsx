@@ -253,15 +253,12 @@ const ProfilePage = () => {
     navigate('/');
   };
 
+
   if (profileLoading) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        {/* Header provided by Layout */}
-        <HeroBanner
-          title="Mon profil"
-          subtitle="Gérez vos informations personnelles"
-          showBackButton={true}
-        />
+        {/* Hero Banner spécifique à la page profil */}
+        <HeroBanner pageKey="profil" title="Mon profil" subtitle="Gérez vos informations personnelles" showBackButton={true} />
         <div className="flex items-center justify-center py-16 flex-1">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -273,17 +270,11 @@ const ProfilePage = () => {
     return null;
   }
 
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header provided by Layout */}
-
-      <HeroBanner
-        title="Mon profil"
-        subtitle="Gérez vos informations personnelles"
-        showBackButton={true}
-        backgroundImage={hero?.image_url}
-        onBgSave={saveHero}
-      />
+      {/* Hero Banner spécifique à la page profil */}
+      <HeroBanner pageKey="profil" title="Mon profil" subtitle="Gérez vos informations personnelles" showBackButton={true} backgroundImage={hero?.image_url} onBgSave={saveHero} />
 
       {showCompletePrompt && (
         <div className="container mx-auto px-4 mt-4">

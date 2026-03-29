@@ -41,11 +41,34 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onForgotPassword }) =>
     if (t.includes('@')) {
       return { email: t, error: null };
     }
+
     const { data, error } = await supabase.rpc('resolve_email_for_login', { p_identifier: t });
     if (error) {
       console.warn('[LoginForm] resolve_email_for_login', error);
+
+      // Fallback when RPC function is absent in Supabase schema (PGRST202 -> missing function)
+      if (error.code === 'PGRST202' || /Could not find the function/i.test(error.message || '')) {
+        const { data: profileData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('username', t)
+          .single();
+
+        if (profilesError) {
+          console.warn('[LoginForm] fallback resolve_email_for_login failed', profilesError);
+          return { email: null, error: 'rpc' };
+        }
+
+        if (!profileData?.email) {
+          return { email: null, error: 'not_found' };
+        }
+
+        return { email: String(profileData.email), error: null };
+      }
+
       return { email: null, error: 'rpc' };
     }
+
     if (data == null || data === '') {
       return { email: null, error: 'not_found' };
     }

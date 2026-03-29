@@ -23,6 +23,16 @@ const PATH_TO_PAGE: Record<string, string> = {
   '/prospect': 'prospect',
   '/radio': 'radio',
   '/live': 'live',
+  '/mariage': 'mariage',
+  '/bapteme': 'bapteme',
+  '/confession': 'confession',
+  '/faq': 'faq',
+  '/admin/faq': 'admin_faq',
+  '/admin/officiants': 'admin_officiants',
+  '/admin/requests': 'admin_requests',
+  '/admin/culte/faq': 'admin_faq',
+  '/admin/culte/officiants': 'admin_officiants',
+  '/admin/culte/requests': 'admin_requests',
 };
 
 function getPageFromPath(pathname: string): string {

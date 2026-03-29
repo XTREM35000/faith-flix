@@ -46,6 +46,10 @@ import Live from './pages/Live';
 import Homilies from './pages/Homilies';
 import Prayers from './pages/Prayers';
 import Verse from './pages/Verse';
+import CulteMariage from './pages/CulteMariage';
+import CulteBapteme from './pages/CulteBapteme';
+import CulteConfession from './pages/CulteConfession';
+import CulteFaq from './pages/CulteFaq';
 import Directory from './pages/Directory';
 import Donate from './pages/Donate';
 import DonationSuccess from './pages/donation-success';
@@ -58,6 +62,9 @@ import AdminSettings from './pages/AdminSettings';
 import AdminAds from './pages/AdminAds';
 import HelpPage from './pages/HelpPage';
 import Unauthorized from './pages/Unauthorized';
+import AdminCulteRequests from './pages/AdminCulteRequests';
+import AdminCulteOfficiants from './pages/AdminCulteOfficiants';
+import AdminCulteFaq from './pages/AdminCulteFaq';
 import NotificationProvider from '@/components/ui/notification-system';
 import MembersPage from './pages/MembersPage';
 import AdminTutorielsPage from './pages/AdminTutorielsPage';
@@ -373,9 +380,61 @@ const AppInner = () => {
           <Route path="/homilies" element={<Layout><Homilies /></Layout>} />
           <Route path="/prayers" element={<Layout><Prayers /></Layout>} />
           <Route path="/verse" element={<Layout><Verse /></Layout>} />
+          <Route path="/mariage" element={<Layout><CulteMariage /></Layout>} />
+          <Route path="/bapteme" element={<Layout><CulteBapteme /></Layout>} />
+          <Route path="/confession" element={<Layout><CulteConfession /></Layout>} />
+          <Route path="/faq" element={<Layout><CulteFaq /></Layout>} />
           <Route path="/directory" element={<Layout><Directory /></Layout>} />
           <Route path="/donate" element={<Layout><Donate /></Layout>} />
           <Route path="/donation-success" element={<Layout><DonationSuccess /></Layout>} />
+          <Route
+            path="/admin/requests"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <Layout><AdminCulteRequests /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/culte/requests"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <Layout><AdminCulteRequests /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/officiants"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <Layout><AdminCulteOfficiants /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/culte/officiants"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <Layout><AdminCulteOfficiants /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/faq"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <Layout><AdminCulteFaq /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/culte/faq"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <Layout><AdminCulteFaq /></Layout>
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/admin/donate"
             element={

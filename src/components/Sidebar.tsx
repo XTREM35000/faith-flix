@@ -1,6 +1,30 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Video, Image, Calendar, Users, CreditCard, Settings, MessageSquare, BarChart3, ChevronLeft, ChevronRight, Bell, Search, X, FileText, CheckCircle2, Award, Building2 } from 'lucide-react';
+import {
+  Home,
+  Video,
+  Image,
+  Calendar,
+  Users,
+  CreditCard,
+  Settings,
+  MessageSquare,
+  BarChart3,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Bell,
+  Search,
+  X,
+  FileText,
+  CheckCircle2,
+  Award,
+  Building2,
+  Gem,
+  Baby,
+  Heart,
+  MessageCircle,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import useRoleCheck from '@/hooks/useRoleCheck';
 import { useParoisse } from '@/contexts/ParoisseContext';
@@ -23,11 +47,24 @@ export const MENU_GROUPS = [
     ],
   },
   {
-    title: 'Culte & Prière',
+    title: '🙏 VIE SPIRITUELLE',
     items: [
       { label: 'Homélies', href: '/homilies', icon: Video },
       { label: 'Intentions de prière', href: '/prayers', icon: Home },
       { label: 'Verset du jour', href: '/verse', icon: Home },
+      { label: 'Mariage', href: '/mariage', icon: Gem },
+      { label: 'Baptême', href: '/bapteme', icon: Baby },
+      { label: 'Confession', href: '/confession', icon: Heart },
+      { label: 'FAQ', href: '/faq', icon: MessageCircle },
+    ],
+  },
+  {
+    title: 'Culte & Prière Admin',
+    adminOnly: true,
+    items: [
+      { label: 'Demandes', href: '/admin/requests', icon: MessageSquare },
+      { label: 'Officiants', href: '/admin/officiants', icon: Users },
+      { label: 'Modération FAQ', href: '/admin/faq', icon: MessageCircle },
     ],
   },
   {
@@ -103,6 +140,20 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   const { setSelectorOpen } = useParoisse();
   const navRef = useRef<HTMLElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
+    const defaults: Record<string, boolean> = {};
+    for (const g of MENU_GROUPS) {
+      defaults[g.title] = g.title === '🙏 VIE SPIRITUELLE';
+    }
+    return defaults;
+  });
+
+  const toggleSection = (title: string) => {
+    setOpenSections((prev) => ({
+      ...prev,
+      [title]: !prev[title],
+    }));
+  };
 
   // Filter menu items across all groups based on search query
   const getFilteredGroups = () => {
@@ -234,14 +285,23 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       <nav className="px-2 py-4">
         {getFilteredGroups().map((group) => {
           if (group.adminOnly && !isAdmin) return null;
+          const isOpen = searchQuery.trim() ? true : !!openSections[group.title];
           return (
             <div key={group.title} className="mb-6">
               {!isCollapsed && (
-                <div className="px-2 text-sm text-muted-foreground uppercase mb-3 font-bold tracking-wider">
-                  {group.title}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => toggleSection(group.title)}
+                  className="w-full px-2 text-sm text-muted-foreground uppercase mb-3 font-bold tracking-wider flex items-center justify-between hover:text-foreground transition-colors"
+                  aria-expanded={isOpen}
+                >
+                  <span>{group.title}</span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : 'rotate-0'}`}
+                  />
+                </button>
               )}
-              <div className="flex flex-col gap-1">
+              <div className={`${isCollapsed || isOpen ? 'flex' : 'hidden'} flex-col gap-1`}>
                 {group.items.map((item: any) => {
                   if (item.superOnly && !isSuperAdmin) return null;
                   const Icon = item.icon as unknown as LucideIcon;
