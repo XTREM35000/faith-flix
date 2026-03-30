@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { uploadFile, testStorageConnection } from '@/lib/supabase/storage';
 import { useNotification } from './ui/notification-system';
 import { useContentSubmission } from '@/hooks/useContentSubmission';
+import { useParoisse } from '@/contexts/ParoisseContext';
 import SubmissionStatusAlert from './SubmissionStatusAlert';
 import type { GalleryImage, ContentApproval } from '@/types/database';
 
@@ -44,6 +45,7 @@ const GalleryImageModal: React.FC<GalleryImageModalProps> = ({ open, onClose, on
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { notifySuccess, notifyError } = useNotification();
   const { submitContent } = useContentSubmission();
+  const { paroisse } = useParoisse();
 
   // Gérer les changements du formulaire
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -158,6 +160,7 @@ const GalleryImageModal: React.FC<GalleryImageModalProps> = ({ open, onClose, on
         image_url: formData.imageUrl,
         thumbnail_url: formData.thumbnailUrl || formData.imageUrl,
         user_id: user.id,
+        paroisse_id: paroisse?.id ?? null,
         is_public: formData.isPublic,
         metadata: {
           description: formData.description,

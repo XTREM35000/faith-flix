@@ -38,56 +38,14 @@ export async function fetchGalleryImages(options?: {
     if (options?.categoryId) query = query.eq('category_id', options.categoryId);
     if (options?.userId) query = query.eq('user_id', options.userId);
     if (options?.isPublic !== undefined) query = query.eq('is_public', options.isPublic);
-    if (options?.paroisseId) query = query.eq('paroisse_id', options.paroisseId);
+    // Lors des uploads, certains enregistrements peuvent avoir `paroisse_id = null`.
+    // Pour éviter une galerie vide, on inclut aussi `is null` quand un filtre paroisse est fourni.
+    if (options?.paroisseId) query = query.or(`paroisse_id.eq.${options.paroisseId},paroisse_id.is.null`);
     if (options?.search) query = query.or(`title.ilike.%${options.search}%,description.ilike.%${options.search}%`);
 
-    // === Access control: hide non-approved images for non-admins (client-side guard) ===
-    // Determine current user and role to decide which records are visible
-    let uid: string | null = null;
-    let isAdmin = false;
-    try {
-      const { data: authData } = await supabase.auth.getUser();
-      uid = (authData as any)?.user?.id || null;
-      if (uid) {
-        try {
-          const { data: profileData } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
-          const role = (profileData as any)?.role as string | undefined;
-          const lower = role ? role.toLowerCase() : '';
-          if (['admin', 'super_admin', 'administrateur'].includes(lower)) isAdmin = true;
-        } catch (e) {
-          console.error('fetchGalleryImages role lookup failed', e);
-        }
-      }
-    } catch (e) {
-      console.error('fetchGalleryImages auth lookup failed', e);
-    }
-
-    // Apply visibility filters for non-admin users
-    if (!isAdmin) {
-      // If caller requests images for a specific user, keep the user filter but ensure we only
-      // show those user's images that are approved/published/public unless caller is the owner.
-      if (options?.userId) {
-        if (!uid || options.userId !== uid) {
-          // user is querying another user's images: restrict to approved/published/public
-          query = query.or('status.eq.approved,published.eq.true,is_public.eq.true');
-          console.debug('fetchGalleryImages: restricting to approved/published/public for userId:', options.userId);
-        } else {
-          console.debug('fetchGalleryImages: owner requesting own images; no restriction applied');
-        }
-      } else {
-        // General listing for non-admins: allow approved/published/public OR the current user's own images
-        if (!uid) {
-          query = query.or('status.eq.approved,published.eq.true,is_public.eq.true');
-          console.debug('fetchGalleryImages: anonymous listing; restricting to approved/published/public');
-        } else {
-          // include ownership so users can see their own pending uploads
-          query = query.or(`status.eq.approved,published.eq.true,is_public.eq.true,user_id.eq.${uid}`);
-          console.debug('fetchGalleryImages: authenticated non-admin listing; including own images (uid):', uid);
-        }
-      }
-    } else {
-      console.debug('fetchGalleryImages: admin user - no visibility restrictions applied');
-    }
+    // Important:
+    // La visibilité doit être gérée par RLS. On évite les filtres "status/published"
+    // côté client (qui peuvent être incohérents selon la migration/trigger actuelle).
 
     query = query.order('created_at', { ascending: false });
 
@@ -133,26 +91,8 @@ export async function fetchGalleryImageById(id: string) {
     }
 
     if (!data) return null;
-
-    // If approved/published/public, return it
-    if (data.status === 'approved' || data.published === true || data.is_public === true) return (data as any as GalleryImage);
-
-    // Otherwise require owner or admin
-    try {
-      const { data: authData } = await supabase.auth.getUser();
-      const uid = authData?.user?.id;
-      if (!uid) return null;
-      if (data.user_id === uid) return (data as any as GalleryImage);
-
-      const { data: profileData } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
-      const role = (profileData as any)?.role as string | undefined;
-      const lower = role ? role.toLowerCase() : '';
-      if (['admin', 'super_admin', 'administrateur'].includes(lower)) return (data as any as GalleryImage);
-    } catch (e) {
-      console.error('fetchGalleryImageById auth check error', e);
-    }
-
-    return null;
+    // La règle correcte dépend des policies RLS (pas d'un filtre client).
+    return data as any as GalleryImage;
   } catch (e) {
     console.error('fetchGalleryImageById unexpected error', e);
     return null;

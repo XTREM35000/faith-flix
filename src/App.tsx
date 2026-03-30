@@ -241,6 +241,7 @@ const AppInner = () => {
           open={showSetupWizardAuto && !isSetupFinalized}
           onClose={() => {
             setShowSetupWizardAuto(false);
+            handleParoisseSelectorClose();
             if (firstLaunchCheckDone) {
               markAppInitialized();
             }

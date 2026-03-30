@@ -256,6 +256,7 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
     const setupFinalizedRef = useRef(false);
     const isMountedRef = useRef(true);
     const otpInFlightRef = useRef(false);
+    const finalizeExecutedRef = useRef(false);
     const heroBannerFileInputRef = useRef<HTMLInputElement>(null);
     const [heroBannerUploadPath, setHeroBannerUploadPath] = useState<string | null>(null);
 
@@ -322,13 +323,30 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
   const [pendingUser, setPendingUser] = useState<{ id?: string; email?: string } | null>(null);
   const [pendingParishId, setPendingParishId] = useState<string | null>(null);
 
+  const handleClose = () => {
+    // Close nested modals first to avoid "modal en arrière-plan".
+    setShowOtp(false);
+    setShowCleanConfirm(false);
+    setShowRestoreModal(false);
+    setShowDevBootstrap(false);
+
+    // Reset local unlock state as well (so reopening feels clean).
+    setAdminUnlockOpen(false);
+    setAdminUnlocked(false);
+    setAdminCode('');
+    setAdminUnlockError(null);
+
+    onClose();
+  };
+
   // Finalisation après OTP : redirection dure sans refreshProfile / clear React Query (courses verrou GoTrue + Strict Mode).
   const finalizeSetupAfterAuth = async (parishId: string, _signedInUser: unknown, targetPath: string) => {
     if (!isMountedRef.current) return;
-    if (isCompleting || setupFinalizedRef.current) {
+    if (finalizeExecutedRef.current || isCompleting || setupFinalizedRef.current) {
       console.warn('[SetupWizard] finalizeSetupAfterAuth: ignoré (déjà en cours ou finalisé)');
       return;
     }
+    finalizeExecutedRef.current = true;
     setupFinalizedRef.current = true;
     setIsCompleting(true);
     console.info('[SetupWizard] finalizeSetupAfterAuth - début', { parishId, targetPath });
@@ -347,18 +365,36 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
         (typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_SELECTED_PAROISSE) : '') ||
         '';
 
+      markCompleted();
+      markAppInitialized();
+
+      // Nettoyer localStorage avant toute action réseau (évite les relances après reload).
+      try {
+        localStorage.removeItem('setupWizardPending');
+      } catch {
+        /* ignore */
+      }
+      try {
+        localStorage.removeItem(PENDING_HERO_BANNERS_KEY);
+      } catch {
+        /* ignore */
+      }
+
+      // Fermer le modal immédiatement.
+      setShowOtp(false);
+      handleClose();
+
+      // Attendre que le modal soit fermé avant la redirection dure.
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       try {
         if (pendingHeroSnapshot && Object.keys(pendingHeroSnapshot).length > 0) {
           await upsertPageHeroBanners(pendingHeroSnapshot);
-          localStorage.removeItem(PENDING_HERO_BANNERS_KEY);
           console.info('[SetupWizard] Hero banners rejoués après session OTP');
         }
       } catch (e) {
         console.warn('[SetupWizard] pending hero banners', e);
       }
-
-      markCompleted();
-      markAppInitialized();
 
       try {
         sessionStorage.setItem(SETUP_WIZARD_FINALIZED_SESSION_KEY, '1');
@@ -376,10 +412,9 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
           ? targetPath
           : `${window.location.origin}${targetPath.startsWith('/') ? targetPath : `/${targetPath}`}`;
 
-      window.location.replace(url);
+      window.location.href = url;
     } catch (err) {
       console.error('[SetupWizard] finalizeSetupAfterAuth error:', err);
-      setupFinalizedRef.current = false;
     } finally {
       if (isMountedRef.current) {
         setIsCompleting(false);
@@ -481,6 +516,7 @@ export default function SetupWizardModal({ open, onClose, onSetupCompleted }: Se
   useEffect(() => {
     if (!open) return;
     setupFinalizedRef.current = false;
+    finalizeExecutedRef.current = false;
     otpInFlightRef.current = false;
     setIsCompleting(false);
   }, [open]);
@@ -900,7 +936,7 @@ const getPageName = (key: string): string => {
         markAppInitialized();
         markCompleted();
         onSetupCompleted?.({ paroisseId });
-        onClose();
+        handleClose();
         const p = isDeveloperUser ? '/developer/admin' : '/dashboard';
         window.location.assign(`${window.location.origin}${p.startsWith('/') ? p : `/${p}`}`);
         return;
@@ -936,12 +972,12 @@ const getPageName = (key: string): string => {
   };
 
   const verifyOtp = async () => {
-    if (otpInFlightRef.current || setupFinalizedRef.current || isCompleting) return;
+    if (otpInFlightRef.current || finalizeExecutedRef.current || setupFinalizedRef.current || isCompleting) return;
     otpInFlightRef.current = true;
     setOtpLoading(true);
     setOtpError('');
     try {
-      const email = adminEmail.trim();
+      const email = adminEmail.trim().toLowerCase();
       const code = otpCode.trim();
       if (!/^\d{4}$/.test(code)) {
         setOtpError('Veuillez saisir un code à 4 chiffres.');
@@ -954,6 +990,17 @@ const getPageName = (key: string): string => {
       if (fnErr) throw fnErr;
       if (!data?.success) {
         throw new Error(data?.error || 'Code incorrect.');
+      }
+
+      // L'OTP peut confirmer l'email côté admin, mais la propagation peut prendre un instant.
+      // On attend un peu avant d'appeler /token (signInWithPassword) pour éviter les 400 transitoires.
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Best-effort: vérifier l'existence d'un profil (sert surtout de diagnostic; la création se fait via ensureProfileExists après connexion).
+      try {
+        await supabase.from('profiles').select('id').eq('email', email).limit(1).maybeSingle();
+      } catch {
+        /* ignore (RLS/permissions peuvent bloquer la lecture tant que non authentifié) */
       }
 
       const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
@@ -1037,7 +1084,7 @@ const getPageName = (key: string): string => {
     <>
       <DraggableModal
         open={open}
-        onClose={onClose}
+        onClose={handleClose}
         draggableOnMobile={true}
         dragHandleOnly={false}
         verticalOnly={false}
@@ -2173,7 +2220,7 @@ const getPageName = (key: string): string => {
           open={showRestoreModal}
           onOpenChange={setShowRestoreModal}
           onRestoreSuccess={() => {
-            onClose();
+            handleClose();
             markCompleted();
           }}
         />
@@ -2345,7 +2392,7 @@ const getPageName = (key: string): string => {
 
                   markCompleted();
                   setShowDevBootstrap(false);
-                  onClose();
+                  handleClose();
                   window.location.assign('/admin');
                 } catch (e: unknown) {
                   const details =

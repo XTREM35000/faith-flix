@@ -40,7 +40,7 @@ const GalleryPage = () => {
         {images?.map((image) => (
           <div key={image.id} className="relative group">
             <img
-              src={image.url}
+              src={image.thumbnail_url || image.image_url}
               alt={image.title || 'Image de la galerie'}
               className="w-full h-48 object-cover rounded-lg"
             />

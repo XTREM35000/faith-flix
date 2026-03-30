@@ -19,10 +19,18 @@ export const useContentSubmission = () => {
         setError(null);
 
         // Créer une entrée dans content_approvals
+        const user = (await supabase.auth.getUser()).data.user;
+        const userId = user?.id;
+        if (!userId) {
+          const msg = 'Non authentifié: impossible de soumettre pour approbation';
+          setError(msg);
+          return { success: false, error: msg };
+        }
+
         const { error: submitError } = await supabase.from('content_approvals').insert({
           content_type: contentType,
           content_id: contentId,
-          user_id: (await supabase.auth.getUser()).data.user?.id,
+          user_id: userId,
           title,
           description,
           status: 'pending',

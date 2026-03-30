@@ -5,7 +5,7 @@ import { corsHeaders } from '../_shared/cors.ts'
 Deno.serve(async (req) => {
   // Gestion des requêtes OPTIONS (CORS)
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { status: 204, headers: corsHeaders })
   }
 
   try {
