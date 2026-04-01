@@ -1,12 +1,10 @@
 // supabase/functions/create-developer/index.ts
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders } from '../_shared/cors.ts'
-
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info',
 }
 
 
@@ -17,17 +15,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    /** Réaligner mot de passe auth uniquement si le client demande explicitement (ex. première install). */
+    /** Réaligner mot de passe auth uniquement si c’est bien une première install. */
     let isFirstInstall = false
-    try {
-      if (req.method === 'POST') {
-        const clone = req.clone()
-        const body = await clone.json().catch(() => null) as { first_install?: boolean } | null
-        if (body?.first_install === true) isFirstInstall = true
-      }
-    } catch {
-      /* ignore */
-    }
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -44,7 +33,23 @@ Deno.serve(async (req) => {
 
     const systemParishId = '00000000-0000-0000-0000-000000000001'
     const fixedDevUserId = '11111111-1111-1111-1111-111111111111'
-    
+
+    // 🔥 DETECTION DE LA PREMIERE INSTALLATION (base initiale vide)
+    try {
+      const { count: profilesCount } = await supabaseAdmin
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+
+      const { count: parishesCount } = await supabaseAdmin
+        .from('paroisses')
+        .select('*', { count: 'exact', head: true })
+
+      isFirstInstall = (profilesCount === 0 && parishesCount === 0)
+      console.log('[create-developer] isFirstInstall:', isFirstInstall)
+    } catch (e) {
+      console.warn('[create-developer] Impossible de déterminer isFirstInstall:', e)
+    }
+
     console.log('[create-developer] 🔍 Vérification du compte developer...')
 
     // 0) Assurer la paroisse SYSTEM (important après un reset complet).
