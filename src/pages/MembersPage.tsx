@@ -31,6 +31,9 @@ const MembersPage: React.FC = () => {
   const { toast } = useToast();
   const { canEditRole, isSuperAdmin } = useUserRoles();
   const [editingRole, setEditingRole] = useState<Record<string, string>>({});
+  const [availableRoles, setAvailableRoles] = useState<
+    Awaited<ReturnType<typeof getAvailableRoles>>
+  >([]);
 
   const fetchMembers = async () => {
     setLoading(true);
@@ -51,6 +54,16 @@ const MembersPage: React.FC = () => {
 
   useEffect(() => { fetchMembers(); }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    void getAvailableRoles(true).then((roles) => {
+      if (!cancelled) setAvailableRoles(roles);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const location = useLocation();
   const { data: hero, save: saveHero } = usePageHero(location.pathname);
 
@@ -68,8 +81,6 @@ const MembersPage: React.FC = () => {
     if (['developer', 'developper'].includes(lower)) return 'developer';
     return lower;
   };
-
-  const roleOptions = getAvailableRoles(true);
 
   const handleRoleChange = async (memberId: string, newRole: string) => {
     try {
@@ -239,7 +250,7 @@ const MembersPage: React.FC = () => {
                             <SelectValue placeholder="Rôle" />
                           </SelectTrigger>
                           <SelectContent>
-                            {getAvailableRoles(true).map((role) => {
+                            {availableRoles.map((role) => {
                               if (role.value === 'super_admin' && !isSuperAdmin) return null;
                               return (
                                 <SelectItem key={role.value} value={role.value}>
