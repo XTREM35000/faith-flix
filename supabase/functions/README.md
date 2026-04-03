@@ -1,9 +1,10 @@
 # Supabase Scheduled Edge Functions: live-scheduler & replay-worker
 
-This folder contains two production-ready Supabase Edge Functions used to:
+This folder contains production-ready Supabase Edge Functions used to:
 
 - `live-scheduler` — call `SELECT public.activate_scheduled_live()` every minute.
 - `replay-worker` — call `SELECT public.process_replay_queue(p_limit)` every N minutes (default 5).
+- `feast-reminders` — call `SELECT public.process_feast_reminders()` once per day (rappels J-7 / J-3 / J-1 pour les fêtes religieuses).
 
 Both functions:
 
@@ -37,6 +38,7 @@ supabase secrets set CRON_SECRET="<a-strong-secret>" --project-ref <PROJECT_REF>
 # Build & deploy each function
 supabase functions deploy live-scheduler --project-ref <PROJECT_REF>
 supabase functions deploy replay-worker --project-ref <PROJECT_REF>
+supabase functions deploy feast-reminders --project-ref <PROJECT_REF>
 ```
 
 > Use `--no-verify` if your environment requires it, or omit for normal deploy.
@@ -51,7 +53,8 @@ Add to your `supabase.json`:
 {
   "functions": {
     "live-scheduler": { "enabled": true, "cron": "*/1 * * * *" },
-    "replay-worker": { "enabled": true, "cron": "*/5 * * * *" }
+    "replay-worker": { "enabled": true, "cron": "*/5 * * * *" },
+    "feast-reminders": { "enabled": true, "cron": "0 6 * * *" }
   }
 }
 ```

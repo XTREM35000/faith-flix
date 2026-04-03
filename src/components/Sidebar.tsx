@@ -54,6 +54,7 @@ export const MENU_GROUPS = [
       { label: 'Homélies', href: '/homilies', icon: Video },
       { label: 'Intentions de prière', href: '/prayers', icon: Home },
       { label: 'Verset du jour', href: '/verse', icon: Home },
+      { label: 'Fêtes religieuses', href: '/spiritual/feasts', icon: Calendar },
       { label: 'Mariage', href: '/mariage', icon: Gem },
       { label: 'Baptême', href: '/bapteme', icon: Baby },
       { label: 'Confession', href: '/confession', icon: Heart },

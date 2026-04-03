@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface Notification {
   id: string;
@@ -32,6 +34,61 @@ const NotificationsPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterUnread, setFilterUnread] = useState(false);
+  const [feastReminders, setFeastReminders] = useState(true);
+  const [feastPrefsLoading, setFeastPrefsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadFeastPref = async () => {
+      if (!profile?.id) return;
+      setFeastPrefsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("notification_preferences")
+          .eq("id", profile.id)
+          .maybeSingle();
+        if (error) throw error;
+        const prefs = (data?.notification_preferences as Record<string, unknown> | null) ?? {};
+        const v = prefs.feast_reminders;
+        setFeastReminders(v === undefined ? true : Boolean(v));
+      } catch {
+        setFeastReminders(true);
+      } finally {
+        setFeastPrefsLoading(false);
+      }
+    };
+    void loadFeastPref();
+  }, [profile?.id]);
+
+  const handleFeastRemindersChange = async (checked: boolean) => {
+    if (!profile?.id) return;
+    const prev = feastReminders;
+    setFeastReminders(checked);
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("notification_preferences")
+        .eq("id", profile.id)
+        .maybeSingle();
+      if (error) throw error;
+      const base = (data?.notification_preferences as Record<string, unknown> | null) ?? {};
+      const { error: upErr } = await supabase
+        .from("profiles")
+        .update({
+          notification_preferences: { ...base, feast_reminders: checked },
+        })
+        .eq("id", profile.id);
+      if (upErr) throw upErr;
+      toast({ title: "Préférence enregistrée", description: checked ? "Rappels fêtes activés" : "Rappels fêtes désactivés" });
+    } catch {
+      setFeastReminders(prev);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'enregistrer la préférence",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Fetch notifications
   useEffect(() => {
@@ -391,6 +448,30 @@ const NotificationsPage = () => {
       />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8 rounded-lg border border-border bg-card p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+        >
+          <div className="space-y-1">
+            <p className="text-sm font-medium">Rappels des fêtes religieuses</p>
+            <p className="text-sm text-muted-foreground">
+              Recevoir des rappels J-7, J-3 et J-1 avant chaque fête (calendrier Vie spirituelle).
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Switch
+              id="feast-reminders"
+              checked={feastReminders}
+              disabled={feastPrefsLoading || !profile}
+              onCheckedChange={(v) => void handleFeastRemindersChange(v)}
+            />
+            <Label htmlFor="feast-reminders" className="cursor-pointer">
+              {feastReminders ? "Activé" : "Désactivé"}
+            </Label>
+          </div>
+        </motion.section>
+
         {/* Stats Section */}
         <motion.section
           initial={{ opacity: 0, y: 20 }}

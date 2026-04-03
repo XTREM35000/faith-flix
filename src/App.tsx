@@ -47,6 +47,9 @@ import Live from './pages/Live';
 import Homilies from './pages/Homilies';
 import Prayers from './pages/Prayers';
 import Verse from './pages/Verse';
+import ReligiousFeastsCalendar from './pages/ReligiousFeastsCalendar';
+import ReligiousFeastDetail from './pages/ReligiousFeastDetail';
+import AdminReligiousFeasts from './pages/AdminReligiousFeasts';
 import CulteMariage from './pages/CulteMariage';
 import CulteBapteme from './pages/CulteBapteme';
 import CulteConfession from './pages/CulteConfession';
@@ -384,6 +387,16 @@ const AppInner = () => {
           <Route path="/homilies" element={<Layout><Homilies /></Layout>} />
           <Route path="/prayers" element={<Layout><Prayers /></Layout>} />
           <Route path="/verse" element={<Layout><Verse /></Layout>} />
+          <Route path="/spiritual/feasts" element={<Layout><ReligiousFeastsCalendar /></Layout>} />
+          <Route path="/spiritual/feasts/:feastId" element={<Layout><ReligiousFeastDetail /></Layout>} />
+          <Route
+            path="/admin/spiritual/feasts"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <Layout><AdminReligiousFeasts /></Layout>
+              </ProtectedRoute>
+            }
+          />
           <Route path="/mariage" element={<Layout><CulteMariage /></Layout>} />
           <Route path="/bapteme" element={<Layout><CulteBapteme /></Layout>} />
           <Route path="/confession" element={<Layout><CulteConfession /></Layout>} />

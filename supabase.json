@@ -7,6 +7,10 @@
     "replay-worker": {
       "enabled": true,
       "cron": "*/5 * * * *"
+    },
+    "feast-reminders": {
+      "enabled": true,
+      "cron": "0 6 * * *"
     }
   }
 }
