@@ -22,14 +22,27 @@ export default function useLiveStats(liveId?: string, pollInterval = 5000) {
       }
     };
 
-    load();
-    if (pollInterval > 0) {
-      timer = window.setInterval(load, pollInterval);
-    }
+    const startTimer = () => {
+      if (timer != null) window.clearInterval(timer);
+      if (pollInterval <= 0 || !liveId) return;
+      timer = window.setInterval(() => {
+        if (!document.hidden) void load();
+      }, pollInterval);
+    };
+
+    const onVisibility = () => {
+      if (!document.hidden) void load();
+      startTimer();
+    };
+
+    void load();
+    startTimer();
+    document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
       mounted = false;
-      if (timer) window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibility);
+      if (timer != null) window.clearInterval(timer);
     };
   }, [liveId, pollInterval]);
 

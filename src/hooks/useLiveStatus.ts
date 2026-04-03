@@ -10,6 +10,7 @@ export function useLiveStatus() {
   useEffect(() => {
     let cancelled = false;
     let pollTimer: number | null = null;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
     const load = async () => {
       try {
@@ -28,28 +29,54 @@ export function useLiveStatus() {
       }
     };
 
-    load();
+    const subscribeRealtime = () => {
+      if (channel) supabase.removeChannel(channel);
+      channel = supabase
+        .channel("public:live_streams")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "live_streams" },
+          () => {
+            if (!document.hidden) void load();
+          }
+        )
+        .subscribe();
+    };
 
-    const channel = supabase
-      .channel("public:live_streams")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "live_streams" },
-        () => {
-          void load();
+    const startPoll = () => {
+      if (pollTimer != null) window.clearInterval(pollTimer);
+      pollTimer = window.setInterval(() => {
+        if (!document.hidden) void load();
+      }, 30_000);
+    };
+
+    const onVisibility = () => {
+      if (document.hidden) {
+        if (pollTimer != null) {
+          window.clearInterval(pollTimer);
+          pollTimer = null;
         }
-      )
-      .subscribe();
+        if (channel) {
+          supabase.removeChannel(channel);
+          channel = null;
+        }
+      } else {
+        void load();
+        subscribeRealtime();
+        startPoll();
+      }
+    };
 
-    // Fallback : petit polling toutes les 30s pour refléter un changement même si Realtime est inactif
-    pollTimer = window.setInterval(() => {
-      void load();
-    }, 30_000);
+    void load();
+    subscribeRealtime();
+    startPoll();
+    document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
       cancelled = true;
-      if (pollTimer) window.clearInterval(pollTimer);
-      supabase.removeChannel(channel);
+      document.removeEventListener("visibilitychange", onVisibility);
+      if (pollTimer != null) window.clearInterval(pollTimer);
+      if (channel) supabase.removeChannel(channel);
     };
   }, []);
 

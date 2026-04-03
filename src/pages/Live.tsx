@@ -104,10 +104,11 @@ const Live: React.FC = () => {
       console.log('📺 Page visibility:', isPageVisibleRef.current ? 'visible' : 'hidden');
 
       if (isPageVisibleRef.current) {
-        // Page redevient visible : NE PAS recharger, juste reprendre le polling
+        // Reprendre le polling et rafraîchir une fois l’état du direct (onglet repris)
         if (intervalRef.current === null) {
           startPolling();
         }
+        void loadLiveStream();
       } else {
         // Page cachée : arrêter le polling
         if (intervalRef.current !== null) {

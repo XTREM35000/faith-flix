@@ -15,6 +15,7 @@ export default function useLiveSession(liveId?: string) {
       await rpcIncrementViewer(liveId, 1, user?.id);
       // start polling stats
       const p = window.setInterval(async () => {
+        if (document.hidden) return;
         try {
           const s = await getLiveStats(liveId);
           setStats(s);
