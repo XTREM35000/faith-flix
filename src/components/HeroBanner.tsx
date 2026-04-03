@@ -142,22 +142,6 @@ const HeroBanner = ({
         <div className="absolute inset-0 cross-pattern opacity-10" />
       </div>
 
-      {/* Avatar (cercle doré) */}
-      {showAvatar && user && (
-        <div className="absolute top-4 right-4 z-30">
-          <div className="rounded-full p-0.5 bg-gradient-to-r from-amber-400 to-yellow-600 shadow-lg">
-            <Avatar className="h-10 w-10 border-2 border-white/20">
-              <AvatarImage src={profile?.avatar_url || undefined} alt="" />
-              <AvatarFallback className="bg-primary text-primary-foreground">
-                {profile?.full_name?.charAt(0)?.toUpperCase() ||
-                  user.email?.charAt(0)?.toUpperCase() ||
-                  'U'}
-              </AvatarFallback>
-            </Avatar>
-          </div>
-        </div>
-      )}
-
       {/* Bouton crayon : ouvrir le modal de gestion du contenu (admins seulement) */}
       {location.pathname !== '/' && isAdmin && (
         <>
@@ -189,19 +173,42 @@ const HeroBanner = ({
       {/* Content */}
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-3xl">
-          {/* Back Button */}
-          {showBackButton && (
-            <motion.button
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-              onClick={() => navigate(-1)}
-              className="mb-4 md:mb-6 inline-flex items-center gap-2 text-xs md:text-sm text-accent-foreground hover:text-accent-foreground transition-colors backdrop-blur-sm bg-accent/80 hover:bg-accent px-2 md:px-3 py-1.5 rounded-full border border-accent/50"
-            >
-              <ArrowLeft className="w-3 h-3 md:w-4 md:h-4" />
-              Retour
-            </motion.button>
-          )}
+          {(showAvatar && user) || showBackButton ? (
+            <div className="mb-4 md:mb-6 flex flex-col items-start gap-2">
+              {showAvatar && user && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.1 }}
+                  onClick={() => navigate('/profile')}
+                  className="rounded-full p-0.5 bg-gradient-to-r from-amber-400 to-yellow-600 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 cursor-pointer"
+                  title="Voir mon profil"
+                >
+                  <Avatar className="h-16 w-16 md:h-20 md:w-20 border-2 border-white/25">
+                    <AvatarImage src={profile?.avatar_url || undefined} alt="" />
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {profile?.full_name?.charAt(0)?.toUpperCase() ||
+                        user.email?.charAt(0)?.toUpperCase() ||
+                        'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                </motion.button>
+              )}
+
+              {showBackButton && (
+                <motion.button
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 }}
+                  onClick={() => navigate(-1)}
+                  className="inline-flex items-center gap-2 text-xs md:text-sm text-accent-foreground hover:text-accent-foreground transition-colors backdrop-blur-sm bg-accent/80 hover:bg-accent px-2 md:px-3 py-1.5 rounded-full border border-accent/50"
+                >
+                  <ArrowLeft className="w-3 h-3 md:w-4 md:h-4" />
+                  Retour
+                </motion.button>
+              )}
+            </div>
+          ) : null}
 
           {/* Event Badge */}
           {eventTitle && eventDate && (
