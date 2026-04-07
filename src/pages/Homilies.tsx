@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import useRoleCheck from "@/hooks/useRoleCheck";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import HeroBanner from "@/components/HeroBanner";
 import usePageHero from "@/hooks/usePageHero";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,6 +41,10 @@ const HomilyPage = () => {
   const [sortBy, setSortBy] = useState<"date" | "priest">("date");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [playerOpen, setPlayerOpen] = useState(false);
+  const [playerTitle, setPlayerTitle] = useState("");
+  const [playerUrl, setPlayerUrl] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // Fetch homilies
   useEffect(() => {
@@ -69,8 +74,6 @@ const HomilyPage = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer cette homélie ?")) return;
-
     try {
       const { error } = await (supabase as any)
         .from("homilies")
@@ -83,11 +86,17 @@ const HomilyPage = () => {
       fetchHomilies();
     } catch (err) {
       console.error("Erreur:", err);
+      const message =
+        err instanceof Error
+          ? err.message
+          : String((err as { message?: string } | null)?.message || "Impossible de supprimer l'homélie.");
       toast({
         title: "Erreur",
-        description: "Impossible de supprimer l'homélie.",
+        description: message,
         variant: "destructive",
       });
+    } finally {
+      setDeleteConfirmId(null);
     }
   };
 
@@ -123,6 +132,17 @@ const HomilyPage = () => {
   const priests = useMemo(() => {
     return Array.from(new Set(homilies.map((h) => h.priest_name)));
   }, [homilies]);
+
+  const getEmbedUrl = (url: string) => {
+    const normalized = (url || "").trim();
+    const yt =
+      normalized.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/]+)/i) ||
+      normalized.match(/[?&]v=([^&]+)/i);
+    if (yt?.[1]) return `https://www.youtube.com/embed/${yt[1]}`;
+    const vimeo = normalized.match(/vimeo\.com\/(\d+)/i);
+    if (vimeo?.[1]) return `https://player.vimeo.com/video/${vimeo[1]}`;
+    return null;
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -395,7 +415,11 @@ const HomilyPage = () => {
                           <Button
                             variant="default"
                             size="sm"
-                            onClick={() => window.open(homily.video_url, "_blank")}
+                            onClick={() => {
+                              setPlayerTitle(homily.title);
+                              setPlayerUrl(homily.video_url || "");
+                              setPlayerOpen(true);
+                            }}
                             className="flex-1"
                           >
                             <Play className="h-4 w-4 mr-2" />
@@ -417,7 +441,7 @@ const HomilyPage = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleDelete(homily.id)}
+                              onClick={() => setDeleteConfirmId(homily.id)}
                               className="text-destructive hover:text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -468,6 +492,51 @@ const HomilyPage = () => {
           </div>
         </motion.section>
       </div>
+
+      <Dialog open={playerOpen} onOpenChange={setPlayerOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{playerTitle || "Lecture de l'homelie"}</DialogTitle>
+          </DialogHeader>
+          <div className="w-full rounded-lg overflow-hidden border bg-black/80">
+            {getEmbedUrl(playerUrl) ? (
+              <iframe
+                src={getEmbedUrl(playerUrl) || ""}
+                title={playerTitle || "Video homelie"}
+                className="w-full aspect-video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            ) : (
+              <video src={playerUrl} controls className="w-full aspect-video" />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteConfirmId !== null} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Supprimer cette homélie ?</DialogTitle>
+            <DialogDescription>
+              Cette action est irréversible. L’homélie sera supprimée définitivement.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (deleteConfirmId) void handleDelete(deleteConfirmId);
+              }}
+            >
+              Supprimer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

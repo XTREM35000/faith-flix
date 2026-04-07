@@ -203,9 +203,7 @@ const AdminHomepageEditor = () => {
   const handleSaveHero = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from("homepage_sections")
-        .update({
+      const payload = {
           title: heroData.title,
           subtitle: heroData.subtitle,
           content: heroData.content,
@@ -214,10 +212,24 @@ const AdminHomepageEditor = () => {
           image_url: heroData.image_url,
           updated_at: new Date().toISOString(),
           updated_by: user.id,
-        })
-        .eq("section_key", "hero");
+      };
+
+      const { data, error } = await supabase
+        .from("homepage_sections")
+        .upsert(
+          {
+            section_key: "hero",
+            display_order: 1,
+            is_active: true,
+            ...payload,
+          },
+          { onConflict: "section_key" }
+        )
+        .select("id")
+        .limit(1);
 
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Aucune ligne mise à jour pour la section hero.");
       toast({ title: "Succès", description: "Section héro mise à jour" });
     } catch (error) {
       console.error("Error saving hero:", error);
@@ -234,16 +246,21 @@ const AdminHomepageEditor = () => {
   const handleSaveGalleryConfig = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("homepage_sections")
-        .update({
+        .upsert({
+          section_key: "gallery_section",
+          is_active: true,
+          display_order: 2,
           content: JSON.stringify(galleryConfig),
           updated_at: new Date().toISOString(),
           updated_by: user.id,
-        })
-        .eq("section_key", "gallery_section");
+        }, { onConflict: "section_key" })
+        .select("id")
+        .limit(1);
 
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Aucune ligne mise à jour pour la galerie.");
       toast({ title: "Succès", description: "Configuration galerie mise à jour" });
     } catch (error) {
       console.error("Error saving gallery config:", error);
@@ -260,16 +277,21 @@ const AdminHomepageEditor = () => {
   const handleSaveVideosConfig = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("homepage_sections")
-        .update({
+        .upsert({
+          section_key: "videos_section",
+          is_active: true,
+          display_order: 3,
           content: JSON.stringify(videosConfig),
           updated_at: new Date().toISOString(),
           updated_by: user.id,
-        })
-        .eq("section_key", "videos_section");
+        }, { onConflict: "section_key" })
+        .select("id")
+        .limit(1);
 
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Aucune ligne mise à jour pour les videos.");
       toast({ title: "Succès", description: "Configuration vidéos mise à jour" });
     } catch (error) {
       console.error("Error saving videos config:", error);
@@ -286,16 +308,21 @@ const AdminHomepageEditor = () => {
   const handleSaveEventsConfig = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("homepage_sections")
-        .update({
+        .upsert({
+          section_key: "events_section",
+          is_active: true,
+          display_order: 4,
           content: JSON.stringify(eventsConfig),
           updated_at: new Date().toISOString(),
           updated_by: user.id,
-        })
-        .eq("section_key", "events_section");
+        }, { onConflict: "section_key" })
+        .select("id")
+        .limit(1);
 
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Aucune ligne mise à jour pour les evenements.");
       toast({ title: "Succès", description: "Configuration événements mise à jour" });
     } catch (error) {
       console.error("Error saving events config:", error);
@@ -312,16 +339,21 @@ const AdminHomepageEditor = () => {
   const handleSaveMassTimes = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("homepage_sections")
-        .update({
+        .upsert({
+          section_key: "footer_mass_times",
+          is_active: true,
+          display_order: 5,
           content: JSON.stringify(massTimes),
           updated_at: new Date().toISOString(),
           updated_by: user.id,
-        })
-        .eq("section_key", "footer_mass_times");
+        }, { onConflict: "section_key" })
+        .select("id")
+        .limit(1);
 
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Aucune ligne mise à jour pour les horaires.");
       toast({ title: "Succès", description: "Horaires des messes mis à jour" });
     } catch (error) {
       console.error("Error saving mass times:", error);
@@ -428,16 +460,21 @@ const AdminHomepageEditor = () => {
   const handleSaveContact = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("homepage_sections")
-        .update({
+        .upsert({
+          section_key: "footer_contact",
+          is_active: true,
+          display_order: 6,
           content: JSON.stringify(contact),
           updated_at: new Date().toISOString(),
           updated_by: user.id,
-        })
-        .eq("section_key", "footer_contact");
+        }, { onConflict: "section_key" })
+        .select("id")
+        .limit(1);
 
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Aucune ligne mise à jour pour le contact.");
       toast({ title: "Succès", description: "Informations de contact mises à jour" });
     } catch (error) {
       console.error("Error saving contact:", error);

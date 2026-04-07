@@ -6,14 +6,17 @@ export type RequestStatus = 'pending' | 'approved' | 'rejected' | 'completed' | 
 
 export interface OfficiantRow {
   id: string;
-  paroisse_id: string;
+  paroisse_id: string | null;
   name: string;
   title: string | null;
-  phone: string | null;
-  email: string | null;
+  bio?: string | null;
+  photo_url?: string | null;
+  phone?: string | null;
+  email?: string | null;
   is_active: boolean;
-  display_order: number;
-  created_at: string;
+  sort_order?: number | null;
+  display_order?: number | null;
+  created_at?: string | null;
 }
 
 export interface DailyOfficiantRow {

@@ -86,6 +86,7 @@ const HeroBgEditor: React.FC<Props> = ({ current, onSave, bucket }) => {
               </div>
               <div className="flex-1 text-sm text-muted-foreground">Collez une URL publique ou téléversez une image depuis votre ordinateur.</div>
             </div>
+            <p className="text-xs text-muted-foreground">Taille recommandée: 1920x600 minimum (format paysage) pour un hero net.</p>
 
             {uploadError && <div className="text-sm text-destructive mt-2">{uploadError}</div>}
 

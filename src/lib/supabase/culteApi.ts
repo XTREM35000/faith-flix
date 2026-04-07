@@ -9,13 +9,25 @@ import type {
   RequestStatus,
 } from '@/types/culte';
 
+function isMissingRelationError(error: unknown): boolean {
+  const err = error as { code?: string; message?: string } | null;
+  const code = String(err?.code ?? '');
+  const message = String(err?.message ?? '').toLowerCase();
+  return (
+    code === 'PGRST205' ||
+    code === '42P01' ||
+    message.includes('could not find the table') ||
+    message.includes('relation') && message.includes('does not exist')
+  );
+}
+
 export async function fetchOfficiants(paroisseId: string): Promise<OfficiantRow[]> {
   const { data, error } = await supabase
     .from('officiants')
     .select('*')
     .eq('paroisse_id', paroisseId)
     .eq('is_active', true)
-    .order('display_order', { ascending: true });
+    .order('sort_order', { ascending: true });
   if (error) throw error;
   return (data ?? []) as OfficiantRow[];
 }
@@ -31,7 +43,13 @@ export async function fetchDailyOfficiant(
     .eq('paroisse_id', paroisseId)
     .eq('date', day)
     .maybeSingle();
-  if (error) throw error;
+  if (error) {
+    if (isMissingRelationError(error)) {
+      // daily_officiant table is optional in some environments.
+      return { officiant: null };
+    }
+    throw error;
+  }
   if (!row?.officiant_id) return { officiant: null };
   const { data: off, error: e2 } = await supabase
     .from('officiants')
@@ -113,10 +131,10 @@ export async function upsertOfficiant(
     paroisse_id: row.paroisse_id,
     name: row.name,
     title: row.title ?? null,
-    phone: row.phone ?? null,
-    email: row.email ?? null,
+    bio: row.bio ?? null,
+    photo_url: row.photo_url ?? null,
     is_active: row.is_active ?? true,
-    display_order: row.display_order ?? 0,
+    sort_order: Number(row.sort_order ?? row.display_order ?? 0) || 0,
   };
 
   if (row.id) {
@@ -137,7 +155,7 @@ export async function listAllOfficiantsAdmin(paroisseId: string): Promise<Offici
     .from('officiants')
     .select('*')
     .eq('paroisse_id', paroisseId)
-    .order('display_order', { ascending: true });
+    .order('sort_order', { ascending: true });
   if (error) throw error;
   return (data ?? []) as OfficiantRow[];
 }
@@ -152,7 +170,13 @@ export async function setDailyOfficiant(paroisseId: string, dateIso: string, off
     },
     { onConflict: 'paroisse_id,date' },
   );
-  if (error) throw error;
+  if (error) {
+    if (isMissingRelationError(error)) {
+      // Keep page functional if migration for daily_officiant is not applied yet.
+      return;
+    }
+    throw error;
+  }
 }
 
 export async function fetchPublishedFaqs(paroisseId: string): Promise<FaqRow[]> {

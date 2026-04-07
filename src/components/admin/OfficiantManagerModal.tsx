@@ -75,9 +75,11 @@ export function OfficiantManagerModal({ open, onClose, onComplete }: OfficiantMa
     setIsLoading(true);
     try {
       const payload = {
-        ...formData,
         name: formData.full_name,
+        title: formData.title || null,
+        bio: formData.grade || null,
         paroisse_id: profile?.paroisse_id ?? null,
+        is_active: Boolean(formData.is_active),
       };
       if (isEditing && selectedOfficiant?.id) {
         const { error } = await supabase

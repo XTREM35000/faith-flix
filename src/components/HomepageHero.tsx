@@ -67,19 +67,15 @@ const HomepageHero = ({ data, isLoading }: HomepageHeroProps) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
-      className="relative min-h-[13vh] md:min-h-[16vh] lg:min-h-[20vh] py-6 md:py-8 lg:py-10 bg-gradient-to-b from-primary/10 to-background overflow-hidden"
-      style={
-        data.image_url
-          ? {
-              backgroundImage: `url(${data.image_url})`,
-              backgroundSize: 'contain',
-              backgroundRepeat: 'no-repeat',
-              backgroundPosition: 'center',
-              backgroundAttachment: 'fixed',
-            }
-          : undefined
-      }
+      className="relative min-h-[300px] md:min-h-[360px] lg:min-h-[420px] py-6 md:py-8 lg:py-10 bg-gradient-to-b from-primary/10 to-background overflow-hidden"
     >
+      {data.image_url && (
+        <img
+          src={data.image_url}
+          alt="Image hero accueil"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      )}
       {/* Overlay si image présente */}
       {data.image_url && (
         <div className="absolute inset-0 bg-black/50" />
