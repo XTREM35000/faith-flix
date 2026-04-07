@@ -1,77 +1,84 @@
 -- =====================================================
--- MIGRATION: Création de la table announcements
--- Gère les annonces paroissiales
+-- MIGRATION: Création/Amélioration de la table announcements
+-- Gère les annonces paroissiales (version idempotente)
 -- =====================================================
 
--- 1. Créer la table announcements
+-- 1. Créer la table si elle n'existe pas
 CREATE TABLE IF NOT EXISTS public.announcements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
-  -- Contenu
   title VARCHAR(255) NOT NULL,
   content TEXT NOT NULL,
-  
-  -- Images/Médias
   image_url TEXT,
-  
-  -- Métadonnées
   created_by UUID REFERENCES auth.users(id),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   is_active BOOLEAN DEFAULT TRUE
 );
 
--- 2. Créer les index
-CREATE INDEX IF NOT EXISTS idx_announcements_created_at ON public.announcements(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_announcements_active ON public.announcements(is_active);
-CREATE INDEX IF NOT EXISTS idx_announcements_created_by ON public.announcements(created_by);
+-- 2. Ajouter les colonnes manquantes (si la table existait déjà sans certaines colonnes)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'announcements' AND column_name = 'created_by') THEN
+        ALTER TABLE public.announcements ADD COLUMN created_by UUID REFERENCES auth.users(id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'announcements' AND column_name = 'updated_at') THEN
+        ALTER TABLE public.announcements ADD COLUMN updated_at TIMESTAMPTZ DEFAULT NOW();
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'announcements' AND column_name = 'is_active') THEN
+        ALTER TABLE public.announcements ADD COLUMN is_active BOOLEAN DEFAULT TRUE;
+    END IF;
+END $$;
 
--- 3. Activer RLS
+-- 3. Créer les index de manière sécurisée
+CREATE INDEX IF NOT EXISTS idx_announcements_created_at ON public.announcements(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_announcements_created_by ON public.announcements(created_by);
+CREATE INDEX IF NOT EXISTS idx_announcements_active ON public.announcements(is_active);
+
+-- 4. Activer RLS (si pas déjà fait)
 ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 
--- 4. Supprimer les anciennes politiques si elles existent
+-- 5. Supprimer les anciennes politiques si elles existent
 DROP POLICY IF EXISTS "Announcements are viewable by everyone" ON public.announcements;
 DROP POLICY IF EXISTS "Only admins can create announcements" ON public.announcements;
 DROP POLICY IF EXISTS "Only admins can update announcements" ON public.announcements;
 DROP POLICY IF EXISTS "Only admins can delete announcements" ON public.announcements;
 
--- 5. Politique de lecture pour tous
+-- 6. Politique de lecture pour tous
 CREATE POLICY "Announcements are viewable by everyone"
   ON public.announcements
   FOR SELECT
   USING (true);
 
--- 6. Politique de création pour les admins
+-- 7. Politique de création pour les admins
 CREATE POLICY "Only admins can create announcements"
   ON public.announcements
   FOR INSERT
   TO authenticated
   WITH CHECK (
-    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'super_admin', 'administrateur')
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'super_admin', 'administrateur'))
   );
 
--- 7. Politique de mise à jour pour les admins
+-- 8. Politique de mise à jour pour les admins
 CREATE POLICY "Only admins can update announcements"
   ON public.announcements
   FOR UPDATE
   TO authenticated
   USING (
-    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'super_admin', 'administrateur')
-  )
-  WITH CHECK (
-    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'super_admin', 'administrateur')
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'super_admin', 'administrateur'))
   );
 
--- 8. Politique de suppression pour les admins
+-- 9. Politique de suppression pour les admins
 CREATE POLICY "Only admins can delete announcements"
   ON public.announcements
   FOR DELETE
   TO authenticated
   USING (
-    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'super_admin', 'administrateur')
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role IN ('admin', 'super_admin', 'administrateur'))
   );
 
--- 9. Créer un trigger pour mettre à jour updated_at
+-- 10. Trigger pour updated_at
 CREATE OR REPLACE FUNCTION public.update_announcements_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN

@@ -84,6 +84,7 @@ import TermsOfServicePage from './pages/TermsOfServicePage';
 import DocProjetPage from './pages/DocProjetPage';
 import AuthCallback from './pages/AuthCallback';
 import EmailConfirmationSent from './pages/EmailConfirmationSent';
+import InviteConfirmationPage from './pages/InviteConfirmationPage';
 import AdminMemberCards from './pages/AdminMemberCards';
 import AdminCertificates from './pages/AdminCertificates';
 import AdminMasterReset from './pages/AdminMasterReset';
@@ -272,6 +273,7 @@ const AppInner = () => {
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/email-confirmation-sent" element={<EmailConfirmationSent />} />
           <Route path="/email-confirmed" element={<EmailConfirmedPage />} />
+          <Route path="/invite-confirmation" element={<InviteConfirmationPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
           <Route path="/data-deletion" element={<DataDeletionPage />} />

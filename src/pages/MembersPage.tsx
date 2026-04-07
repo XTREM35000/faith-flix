@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Loader2 } from 'lucide-react';
 import useUserRoles from '@/hooks/useUserRoles';
 import { displayRole, getAvailableRoles } from '@/lib/roleUtils';
 
@@ -26,8 +27,10 @@ const MembersPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<Member | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('edit');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [form, setForm] = useState({ full_name: '', email: '', role: 'member' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { canEditRole, isSuperAdmin } = useUserRoles();
   const [editingRole, setEditingRole] = useState<Record<string, string>>({});
@@ -103,11 +106,23 @@ const MembersPage: React.FC = () => {
   const openEdit = (m: Member) => {
     console.debug('Open edit member', { member: m });
     setSelected(m);
+    setModalMode('edit');
     setForm({ full_name: m.full_name || '', email: m.email || '', role: normalize(m.role) });
     setIsOpen(true);
   };
 
-  const close = () => { setIsOpen(false); setSelected(null); };
+  const openCreate = () => {
+    setSelected(null);
+    setModalMode('create');
+    setForm({ full_name: '', email: '', role: 'member' });
+    setIsOpen(true);
+  };
+
+  const close = () => {
+    setIsOpen(false);
+    setSelected(null);
+    setIsSubmitting(false);
+  };
 
   const save = async () => {
     if (!selected) return;
@@ -191,21 +206,69 @@ const MembersPage: React.FC = () => {
   };
 
   const createMember = async () => {
+    setIsSubmitting(true);
     try {
-      const normalizedRole = normalize(form.role) || 'membre';
+      const normalizedRole = normalize(form.role) || 'member';
+      const fullName = form.full_name.trim();
+      const email = form.email.trim().toLowerCase();
 
-      if (normalizedRole === 'super_admin' && !isSuperAdmin) {
-        alert('Seul un Super Admin peut créer un compte avec le rôle super_admin.');
+      if (!email) {
+        toast({ title: 'Email requis', description: "Veuillez renseigner l'email du membre.", variant: 'destructive' });
+        return;
+      }
+      if (!fullName) {
+        toast({ title: 'Nom requis', description: 'Veuillez renseigner le nom du membre.', variant: 'destructive' });
         return;
       }
 
-      const payload: Partial<Member> = { email: form.email || null, full_name: form.full_name || null, role: normalizedRole };
-      const { data, error } = await supabase.from('profiles').insert([payload as unknown as any]);
+      if (normalizedRole === 'super_admin' && !isSuperAdmin) {
+        toast({
+          title: 'Action non autorisée',
+          description: 'Seul un Super Admin peut créer un compte avec le rôle super_admin.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('send-invitation-email', {
+        body: {
+          email,
+          full_name: fullName,
+          role: normalizedRole,
+        },
+      });
+
       if (error) throw error;
-      void data;
+      const payload = data as { success?: boolean; error?: string; code?: string } | null;
+      if (!payload?.success) {
+        throw new Error(payload?.error || "Impossible d'envoyer l'invitation.");
+      }
+
       await fetchMembers();
-      setForm({ full_name: '', email: '', role: 'membre' });
-    } catch (err) { console.error('Erreur create member', err); }
+      setForm({ full_name: '', email: '', role: 'member' });
+      setIsOpen(false);
+      toast({
+        title: 'Invitation envoyée',
+        description:
+          "Le membre a été invité. Il recevra un email pour activer son compte et définir son mot de passe.",
+      });
+    } catch (err: unknown) {
+      console.error('Erreur create member', err);
+      const message = err instanceof Error ? err.message : 'Erreur inconnue';
+      const alreadyExists =
+        message.toLowerCase().includes('already') ||
+        message.toLowerCase().includes('exists') ||
+        message.toLowerCase().includes('registered');
+      toast({
+        title: alreadyExists ? 'Email déjà utilisé' : "Échec de l'invitation",
+        description: alreadyExists
+          ? "Un compte existe déjà pour cet email. Demandez une réinitialisation de mot de passe."
+          : message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -215,7 +278,7 @@ const MembersPage: React.FC = () => {
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">Liste des membres</h2>
-          <Button onClick={() => setIsOpen(true)}>Ajouter un membre</Button>
+          <Button onClick={openCreate}>Ajouter un membre</Button>
         </div>
 
         {loading ? (
@@ -286,12 +349,22 @@ const MembersPage: React.FC = () => {
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent aria-describedby="member-edit-desc">
           <DialogHeader>
-            <DialogTitle>Éditer le membre</DialogTitle>
+            <DialogTitle>{modalMode === 'create' ? 'Ajouter un membre' : 'Éditer le membre'}</DialogTitle>
           </DialogHeader>
 
           <div id="member-edit-desc" className="sr-only">Formulaire d'édition du membre sélectionné.</div>
 
-          <div className="space-y-4">
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (modalMode === 'create') {
+                void createMember();
+              } else {
+                void save();
+              }
+            }}
+          >
             <div>
               <label className="text-sm block mb-1">Nom</label>
               <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
@@ -316,10 +389,23 @@ const MembersPage: React.FC = () => {
               </select>
             </div>
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={close}>Annuler</Button>
-              <Button onClick={save}>Enregistrer</Button>
+              <Button variant="outline" type="button" onClick={close}>Annuler</Button>
+              {modalMode === 'create' ? (
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Envoi...
+                    </>
+                  ) : (
+                    'Envoyer invitation'
+                  )}
+                </Button>
+              ) : (
+                <Button type="submit">Enregistrer</Button>
+              )}
             </div>
-          </div>
+          </form>
         </DialogContent>
       </Dialog>
 
