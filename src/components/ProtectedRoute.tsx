@@ -15,10 +15,13 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole, pageKey }) => {
   const { user, role, loading } = useAuthContext();
   const location = useLocation();
-  const { canAccess } = useRoleAccess();
+  const { canAccess, loadingPermissions } = useRoleAccess();
 
   if (loading) {
     return <div className="p-6">Chargement...</div>;
+  }
+  if (loadingPermissions) {
+    return <div className="p-6">Chargement des permissions...</div>;
   }
 
   if (!user) {

@@ -3,12 +3,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { showToast } from '@/lib/toast';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { displayRole, normalizeRoleName, validateRoleName } from '@/lib/roleUtils';
+import { PUBLIC_PAGES, normalizePagePath } from '@/lib/rolePagePermissions';
 import { Loader2, Plus, Trash2, Edit2, Save, X, Shield, UserCog, Users, User } from 'lucide-react';
 
 interface Role {
@@ -32,6 +34,8 @@ export function RoleManager({ compact = false }: RoleManagerProps) {
   const [newRoleDesc, setNewRoleDesc] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingPermissions, setLoadingPermissions] = useState(false);
+  const [rolePermissions, setRolePermissions] = useState<Set<string>>(new Set());
   const { confirm, DialogComponent: ConfirmDialog } = useConfirmDialog();
 
   const getRoleIcon = (roleName: string) => {
@@ -46,6 +50,16 @@ export function RoleManager({ compact = false }: RoleManagerProps) {
   useEffect(() => {
     void loadRoles();
   }, []);
+
+  useEffect(() => {
+    if (!selectedRoleId) {
+      setRolePermissions(new Set());
+      return;
+    }
+    const selected = roles.find((r) => r.id === selectedRoleId);
+    if (!selected) return;
+    void loadRolePermissions(selected.name);
+  }, [selectedRoleId, roles]);
 
   const loadRoles = async () => {
     setIsLoading(true);
@@ -153,6 +167,64 @@ export function RoleManager({ compact = false }: RoleManagerProps) {
   };
 
   const selectedRole = roles.find((r) => r.id === selectedRoleId);
+  const isRolePermissionsReadOnly =
+    !selectedRole ||
+    ['admin', 'super_admin', 'developer'].includes(String(selectedRole.name).toLowerCase());
+
+  const loadRolePermissions = async (roleName: string) => {
+    setLoadingPermissions(true);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from('role_page_permissions')
+        .select('page_path')
+        .eq('role_name', roleName);
+      if (error) throw error;
+      const perms = new Set<string>();
+      (data ?? []).forEach((row: { page_path?: string | null }) => {
+        if (row?.page_path) perms.add(normalizePagePath(row.page_path));
+      });
+      setRolePermissions(perms);
+    } catch {
+      setRolePermissions(new Set());
+      showToast.error('Erreur chargement des permissions de pages');
+    } finally {
+      setLoadingPermissions(false);
+    }
+  };
+
+  const handleToggleRolePage = async (checked: boolean, pagePath: string) => {
+    if (!selectedRole || isRolePermissionsReadOnly) return;
+    const normalizedPath = normalizePagePath(pagePath);
+
+    const prev = new Set(rolePermissions);
+    const next = new Set(rolePermissions);
+    if (checked) next.add(normalizedPath);
+    else next.delete(normalizedPath);
+    setRolePermissions(next);
+
+    try {
+      if (checked) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (supabase as any).from('role_page_permissions').upsert(
+          { role_name: selectedRole.name, page_path: normalizedPath },
+          { onConflict: 'role_name,page_path' },
+        );
+        if (error) throw error;
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (supabase as any)
+          .from('role_page_permissions')
+          .delete()
+          .eq('role_name', selectedRole.name)
+          .eq('page_path', normalizedPath);
+        if (error) throw error;
+      }
+    } catch {
+      setRolePermissions(prev);
+      showToast.error('Erreur lors de la sauvegarde de la permission');
+    }
+  };
 
   return (
     <>
@@ -287,6 +359,48 @@ export function RoleManager({ compact = false }: RoleManagerProps) {
                       </p>
                     </div>
                   )}
+                  <div className="pt-4 border-t space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label>Permissions par page</Label>
+                      {loadingPermissions && (
+                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Chargement...
+                        </span>
+                      )}
+                    </div>
+                    {isRolePermissionsReadOnly ? (
+                      <p className="text-xs text-muted-foreground">
+                        Ce role conserve un acces global et n'est pas limite par page.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Cochez les pages autorisees pour ce role.
+                      </p>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {PUBLIC_PAGES.map((p) => {
+                        const normalizedPath = normalizePagePath(p.path);
+                        const checked = rolePermissions.has(normalizedPath);
+                        return (
+                          <label
+                            key={p.path}
+                            className={`flex items-center gap-2 rounded-md border p-2 ${
+                              isRolePermissionsReadOnly ? 'opacity-60' : ''
+                            }`}
+                          >
+                            <Checkbox
+                              checked={checked}
+                              disabled={isRolePermissionsReadOnly || loadingPermissions}
+                              onCheckedChange={(v) => void handleToggleRolePage(Boolean(v), p.path)}
+                            />
+                            <span className="text-sm">{p.icon} {p.label}</span>
+                            <span className="text-[11px] text-muted-foreground ml-auto font-mono">{p.path}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>
