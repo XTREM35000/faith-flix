@@ -2,8 +2,15 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { ImageOff } from 'lucide-react';
 import { useUser } from '@/hooks/useUser';
+import usePageHero from '@/hooks/usePageHero';
 import type { HomepageSection } from '@/types/homepage';
 import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  getHomepageSlideshowImageUrls,
+  normalizeDisplayDurationSeconds,
+  normalizeTransitionType,
+} from '@/lib/pageHeroImages';
 
 const goldDonateButtonClass =
   'bg-gold hover:bg-gold-light text-secondary-foreground font-semibold shadow-glow';
@@ -16,12 +23,49 @@ function GoldDonateButton({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
   );
 }
 
+const HOMEPAGE_BANNER_PATH = '/';
+
 interface HomepageHeroProps {
   data?: HomepageSection | null;
   isLoading?: boolean;
 }
 
 const HomepageHero = ({ data, isLoading }: HomepageHeroProps) => {
+  const { profile } = useUser();
+  const isAdmin = !!(
+    profile &&
+    profile.role &&
+    ['admin', 'super_admin', 'administrateur'].includes(String(profile.role).toLowerCase())
+  );
+
+  const { data: homeBanner, isLoading: homeBannerLoading } = usePageHero(HOMEPAGE_BANNER_PATH);
+
+  const slides = useMemo(() => {
+    if (!data) return [];
+    if (homeBannerLoading && homeBanner === undefined) {
+      const legacy = data.image_url?.trim();
+      return legacy ? [legacy] : [];
+    }
+    return getHomepageSlideshowImageUrls(homeBanner ?? null, data.image_url);
+  }, [homeBanner, homeBannerLoading, data]);
+
+  const transitionStyle = normalizeTransitionType(homeBanner?.transition_type);
+  const dwellMs = normalizeDisplayDurationSeconds(homeBanner?.display_duration) * 1000;
+
+  const [slideIndex, setSlideIndex] = useState(0);
+
+  useEffect(() => {
+    setSlideIndex(0);
+  }, [slides.join('|')]);
+
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const id = window.setInterval(() => {
+      setSlideIndex((i) => (i + 1) % slides.length);
+    }, dwellMs);
+    return () => window.clearInterval(id);
+  }, [slides.length, dwellMs]);
+
   if (isLoading) {
     return (
       <section className="relative py-20 bg-gradient-to-b from-primary/10 to-background overflow-hidden">
@@ -35,17 +79,14 @@ const HomepageHero = ({ data, isLoading }: HomepageHeroProps) => {
   }
 
   if (!data) {
-    // Fallback élégant quand la hero n'est pas configurée
-    const { profile } = useUser();
-    const isAdmin = !!(profile && profile.role && ['admin', 'super_admin', 'administrateur'].includes(String(profile.role).toLowerCase()));
-
     return (
       <section className="relative py-20 bg-gradient-to-b from-primary/10 to-background overflow-hidden">
         <div className="container mx-auto px-4 text-center py-16">
           <ImageOff className="w-24 h-24 mx-auto opacity-30 text-muted-foreground mb-4" />
           <h3 className="mt-4 text-2xl font-medium">Section principale en préparation</h3>
           <p className="text-muted-foreground mt-2">
-            Le contenu principal n'a pas encore été configuré. Revenez bientôt ou configurez la page d'accueil.
+            Le contenu principal n'a pas encore été configuré. Revenez bientôt ou configurez la page
+            d'accueil.
           </p>
           <div className="mt-6 flex flex-wrap gap-4 justify-center">
             <GoldDonateButton size="lg" />
@@ -62,6 +103,9 @@ const HomepageHero = ({ data, isLoading }: HomepageHeroProps) => {
     );
   }
 
+  const showImageLayer = slides.length > 0;
+  const isSlideTransition = transitionStyle === 'slide';
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 20 }}
@@ -69,16 +113,40 @@ const HomepageHero = ({ data, isLoading }: HomepageHeroProps) => {
       transition={{ duration: 0.6 }}
       className="relative min-h-[300px] md:min-h-[360px] lg:min-h-[420px] py-6 md:py-8 lg:py-10 bg-gradient-to-b from-primary/10 to-background overflow-hidden"
     >
-      {data.image_url && (
-        <img
-          src={data.image_url}
-          alt="Image hero accueil"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
+      {showImageLayer && slides.length === 1 && (
+        <>
+          <img
+            src={slides[0]}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black/50" />
+        </>
       )}
-      {/* Overlay si image présente */}
-      {data.image_url && (
-        <div className="absolute inset-0 bg-black/50" />
+
+      {showImageLayer && slides.length > 1 && (
+        <>
+          <div className="absolute inset-0">
+            {slides.map((src, idx) => {
+              const active = idx === slideIndex;
+              return (
+                <motion.img
+                  key={`${src}-${idx}`}
+                  src={src}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover"
+                  initial={false}
+                  animate={{
+                    opacity: active ? 1 : 0,
+                    x: isSlideTransition ? (active ? 0 : idx < slideIndex ? -32 : 32) : 0,
+                  }}
+                  transition={{ duration: isSlideTransition ? 0.45 : 0.6, ease: 'easeInOut' }}
+                />
+              );
+            })}
+          </div>
+          <div className="absolute inset-0 bg-black/50" />
+        </>
       )}
 
       <div className="container mx-auto px-4 relative z-10">
@@ -137,8 +205,7 @@ const HomepageHero = ({ data, isLoading }: HomepageHeroProps) => {
                 rawText.toLowerCase().includes('voir tous les événements') ||
                 rawText.toLowerCase().includes('voir tous les evenements');
 
-              const cmsPointsToDonate =
-                shouldOverrideToDonate || normalizedLink === '/donate';
+              const cmsPointsToDonate = shouldOverrideToDonate || normalizedLink === '/donate';
 
               const showCmsButton = !!(data.button_text && data.button_link);
               const href = shouldOverrideToDonate ? '/donate' : rawLink;

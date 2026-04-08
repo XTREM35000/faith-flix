@@ -2,12 +2,19 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchActiveLiveStream, type LiveStream } from "@/lib/supabase/mediaQueries";
 
-export function useLiveStatus() {
+export function useLiveStatus(enabled = true) {
   const [isLiveActive, setIsLiveActive] = useState(false);
   const [currentLive, setCurrentLive] = useState<LiveStream | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!enabled) {
+      setIsLiveActive(false);
+      setCurrentLive(null);
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
     let pollTimer: number | null = null;
     let channel: ReturnType<typeof supabase.channel> | null = null;
@@ -78,7 +85,7 @@ export function useLiveStatus() {
       if (pollTimer != null) window.clearInterval(pollTimer);
       if (channel) supabase.removeChannel(channel);
     };
-  }, []);
+  }, [enabled]);
 
   return { isLiveActive, currentLive, loading } as const;
 }

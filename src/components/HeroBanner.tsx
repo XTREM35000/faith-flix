@@ -1,15 +1,16 @@
 // src\components\HeroBanner.tsx
 
 import { motion } from "framer-motion";
-import { Calendar, ChevronRight, ArrowLeft, Pencil } from "lucide-react";
+import { Calendar, ChevronRight, ChevronLeft, ArrowLeft, Pencil } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import useRoleCheck from '@/hooks/useRoleCheck';
 import usePageHero from '@/hooks/usePageHero';
 import PageContentManager from '@/components/PageContentManager';
 import { useAuth } from '@/hooks/useAuth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getOrderedHeroImageUrls } from '@/lib/pageHeroImages';
 
 const PATH_TO_PAGE: Record<string, string> = {
   '/videos': 'videos',
@@ -52,8 +53,18 @@ interface HeroBannerProps {
   /** Avatar utilisateur en haut à droite (cercle doré) */
   showAvatar?: boolean;
   description?: string;
-  bucket?: string; // Optionnel: bucket pour l'upload d'images
-  onBgSave?: (url: string) => Promise<void> | void; // Optionnel: callback pour persister l'image
+  bucket?: string;
+  /** Surcharge clé PAGE_CONFIG / éditeur (ex. page profil) */
+  pageKey?: string;
+  /** Conservé pour compatibilité API ; la persistance passe par le modal admin / Supabase */
+  onBgSave?: (url: string) => Promise<void> | void;
+}
+
+function shouldShowHeroEditorButton(pathname: string): boolean {
+  const p = pathname.replace(/\/$/, '') || '/';
+  if (p === '/') return false;
+  if (p.startsWith('/admin')) return false;
+  return true;
 }
 
 const HeroBanner = ({
@@ -66,61 +77,46 @@ const HeroBanner = ({
   showAvatar = true,
   description,
   bucket,
-  onBgSave,
+  pageKey: pageKeyProp,
 }: HeroBannerProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, profile } = useAuth();
   // Start without a background to avoid showing a local fallback
   // while we are still resolving the DB-backed hero image.
-  const [bg, setBg] = useState<string | undefined>(undefined);
   const [contentManagerOpen, setContentManagerOpen] = useState(false);
+  const [slideIdx, setSlideIdx] = useState(0);
   const { isAdmin } = useRoleCheck();
-  const { data: hero, isLoading: heroLoading, save: saveHero } = usePageHero(location.pathname);
-  const pageKey = getPageFromPath(location.pathname);
+  const { data: hero, isLoading: heroLoading } = usePageHero(location.pathname);
+  const pageKey = pageKeyProp ?? getPageFromPath(location.pathname);
   const displayTitle = hero?.title ?? title;
   const displaySubtitle = hero?.subtitle ?? subtitle;
 
-  // Determine the background in a "user-first" way:
-  // - If the DB has a hero.image_url -> use it immediately
-  // - Otherwise, wait for the hero query to finish; only then use the provided fallback
+  const resolvedUrls = useMemo(() => {
+    if (heroLoading) return undefined as string[] | undefined;
+    const fromDb = getOrderedHeroImageUrls(hero ?? null);
+    if (fromDb.length > 0) return fromDb;
+    if (backgroundImage?.trim()) return [backgroundImage.trim()];
+    return [];
+  }, [hero, heroLoading, backgroundImage]);
+
   useEffect(() => {
-    if (hero?.image_url) {
-      setBg(hero.image_url);
-      return;
-    }
-    if (!heroLoading) {
-      // Only set the fallback when we know there is no user image
-      setBg(backgroundImage);
-    }
-    // if hero is still loading, keep bg undefined (shows skeleton/gradient)
-  }, [hero?.image_url, heroLoading, backgroundImage]);
+    setSlideIdx(0);
+  }, [resolvedUrls?.join('|')]);
 
-  const handleBgSave = async (url: string) => {
-    // Mettre à jour localement pour un rendu immédiat
-    setBg(url);
-    // Émettre un événement global que l'app peut écouter pour persistance
-    try {
-      const ev = new CustomEvent('hero-bg-changed', { detail: { path: location.pathname, url } });
-      window.dispatchEvent(ev);
-    } catch (e) {
-      // noop
-    }
+  useEffect(() => {
+    if (!resolvedUrls || resolvedUrls.length <= 1) return;
+    const id = window.setInterval(() => {
+      setSlideIdx((i) => (i + 1) % resolvedUrls.length);
+    }, 6000);
+    return () => window.clearInterval(id);
+  }, [resolvedUrls]);
 
-    // Appeler le callback si fourni pour persister la donnée
-    if (onBgSave) {
-      await onBgSave(url);
-    } else {
-      // si la page n'a pas fourni de callback, sauvegarder dans la table page_hero_banners
-      try {
-        await saveHero(url);
-      } catch (e) {
-        // noop: on ne veut pas casser l'édition si la sauvegarde échoue
-        // log pour debug
-        // console.warn('Could not persist hero bg for path', location.pathname, e);
-      }
-    }
-  };
+  const bg =
+    resolvedUrls && resolvedUrls.length > 0
+      ? resolvedUrls[slideIdx % resolvedUrls.length]!
+      : undefined;
+
   return (
     <section className="relative min-h-[300px] md:min-h-[360px] lg:min-h-[420px] h-[38vh] md:h-[42vh] lg:h-[50vh] flex items-center overflow-hidden">
       {/* Background */}
@@ -142,13 +138,38 @@ const HeroBanner = ({
         <div className="absolute inset-0 cross-pattern opacity-10" />
       </div>
 
-      {/* Bouton crayon : ouvrir le modal de gestion du contenu (admins seulement) */}
-      {location.pathname !== '/' && isAdmin && (
+      {resolvedUrls && resolvedUrls.length > 1 ? (
+        <>
+          <Button
+            type="button"
+            size="icon"
+            variant="secondary"
+            className="absolute left-2 top-1/2 z-30 -translate-y-1/2 h-10 w-10 rounded-full shadow-md opacity-90 hover:opacity-100"
+            onClick={() => setSlideIdx((i) => (i - 1 + resolvedUrls.length) % resolvedUrls.length)}
+            aria-label="Image précédente"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <Button
+            type="button"
+            size="icon"
+            variant="secondary"
+            className="absolute right-2 top-1/2 z-30 -translate-y-1/2 h-10 w-10 rounded-full shadow-md opacity-90 hover:opacity-100"
+            onClick={() => setSlideIdx((i) => (i + 1) % resolvedUrls.length)}
+            aria-label="Image suivante"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+        </>
+      ) : null}
+
+      {/* Bouton crayon : éditeur bannière (admins seulement) */}
+      {shouldShowHeroEditorButton(location.pathname) && isAdmin && (
         <>
           <Button
             size="icon"
             onClick={() => setContentManagerOpen(true)}
-            title="Gérer le contenu de la page (hero, suppression, réinitialisation)"
+            title="Modifier la bannière (images, texte, ordre)"
             className={`absolute top-3 z-40 bg-primary hover:bg-primary/90 text-primary-foreground ${
               showAvatar && user ? 'right-14' : 'right-3'
             }`}
@@ -163,9 +184,10 @@ const HeroBanner = ({
             currentData={{
               heroTitle: hero?.title ?? title,
               heroSubtitle: hero?.subtitle ?? subtitle,
-              heroImage: hero?.image_url ?? bg ?? '',
+              heroImage: getOrderedHeroImageUrls(hero ?? null)[0] ?? hero?.image_url ?? '',
+              heroImages: getOrderedHeroImageUrls(hero ?? null),
             }}
-            onSaved={(data) => setBg(data.heroImage || undefined)}
+            onSaved={() => {}}
           />
         </>
       )}

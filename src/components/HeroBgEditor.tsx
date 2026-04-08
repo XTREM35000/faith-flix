@@ -15,19 +15,26 @@ interface Props {
 const HeroBgEditor: React.FC<Props> = ({ current, onSave, bucket }) => {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(current || '');
+  const lastCommittedRef = useRef<string>(current || '');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Synchroniser le state avec les changements de 'current' (pour les navigations)
   useEffect(() => {
-    setValue(current || '');
-  }, [current]);
+    if (open) return;
+    const next = current || lastCommittedRef.current || '';
+    setValue(next);
+  }, [current, open]);
 
   const handleSave = async () => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
     setSaving(true);
     try {
-      await onSave(value);
+      await onSave(trimmed);
+      lastCommittedRef.current = trimmed;
+      setValue(trimmed);
       setOpen(false);
     } finally {
       setSaving(false);
@@ -47,6 +54,7 @@ const HeroBgEditor: React.FC<Props> = ({ current, onSave, bucket }) => {
         : await uploadFile(file);
       console.log('[HeroBgEditor] upload result', res);
       if (res?.publicUrl) {
+        lastCommittedRef.current = res.publicUrl;
         setValue(res.publicUrl);
       } else {
         // fallback: create object URL
@@ -61,6 +69,7 @@ const HeroBgEditor: React.FC<Props> = ({ current, onSave, bucket }) => {
       setUploadError('Téléversement échoué — affichage local seulement. Réessayez pour publier l\'image.');
     } finally {
       setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 

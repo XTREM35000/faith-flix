@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Loader2, Save, X, AlertCircle, Plus, Trash2 } from "lucide-react";
+import { Loader2, Save, X, AlertCircle, Plus, Trash2, ChevronUp, ChevronDown, ImageIcon } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks";
 import { useHomepageContent } from "@/hooks/useHomepageContent";
 import { useHeaderConfig, useUpdateHeaderConfig } from "@/hooks/useHeaderConfig";
@@ -11,12 +12,23 @@ import { uploadFile } from "@/lib/supabase/storage";
 import type { NavigationItem } from "@/hooks/useHeaderConfig";
 import useRoleCheck from '@/hooks/useRoleCheck';
 import HeroBanner from '@/components/HeroBanner';
+import {
+  getOrderedHeroImageUrls,
+  MAX_HERO_IMAGES,
+  clampSlideshowVisibleCount,
+  normalizeDisplayDurationSeconds,
+  normalizeTransitionType,
+  type HeroTransitionType,
+} from '@/lib/pageHeroImages';
+import type { PageHero } from '@/hooks/usePageHero';
 
 // use shared `supabase` client from integrations
 const AdminHomepageEditor = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { sections, isLoading: contentLoading } = useHomepageContent();
+  const homeBannerHydrated = useRef(false);
 
   const [loading, setLoading] = useState(false);
   const [heroData, setHeroData] = useState({
@@ -58,6 +70,13 @@ const AdminHomepageEditor = () => {
   });
 
   const [activeTab, setActiveTab] = useState("hero");
+
+  const [homeHeroSlides, setHomeHeroSlides] = useState<string[]>([]);
+  const [homeHeroTransition, setHomeHeroTransition] = useState<HeroTransitionType>('fade');
+  const [homeHeroDuration, setHomeHeroDuration] = useState<3 | 5 | 7>(5);
+  /** 0 = aucune image en diaporama ; 1–5 = nombre d’images parmi la liste */
+  const [homeHeroVisibleCount, setHomeHeroVisibleCount] = useState(5);
+  const [homeHeroUrlDraft, setHomeHeroUrlDraft] = useState('');
 
   // Header config state
   const { data: headerConfig, isLoading: headerConfigLoading } = useHeaderConfig();
@@ -161,6 +180,36 @@ const AdminHomepageEditor = () => {
     }
   }, [sections, headerConfig]);
 
+  useEffect(() => {
+    if (contentLoading || !sections?.length || homeBannerHydrated.current || !user?.id) return;
+    homeBannerHydrated.current = true;
+    let cancelled = false;
+    (async () => {
+      const { data: row } = await supabase
+        .from("page_hero_banners")
+        .select("*")
+        .eq("path", "/")
+        .maybeSingle();
+      if (cancelled) return;
+      const heroSection = sections.find((s) => s.section_key === "hero");
+      const fromRow = row ? getOrderedHeroImageUrls(row as PageHero) : [];
+      const legacy = heroSection?.image_url?.trim();
+      if (fromRow.length > 0) {
+        setHomeHeroSlides(fromRow.slice(0, MAX_HERO_IMAGES));
+      } else if (legacy) {
+        setHomeHeroSlides([legacy]);
+      }
+      if (row) {
+        setHomeHeroTransition(normalizeTransitionType(row.transition_type));
+        setHomeHeroDuration(normalizeDisplayDurationSeconds(row.display_duration));
+        setHomeHeroVisibleCount(clampSlideshowVisibleCount((row as PageHero).slideshow_visible_count));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [contentLoading, sections, user?.id]);
+
   const { profile, isAdmin } = useRoleCheck();
 
   // Not authenticated
@@ -203,13 +252,16 @@ const AdminHomepageEditor = () => {
   const handleSaveHero = async () => {
     setLoading(true);
     try {
+      const slides = homeHeroSlides.map((u) => u.trim()).filter(Boolean).slice(0, MAX_HERO_IMAGES);
+      const primaryImage = homeHeroVisibleCount === 0 ? "" : slides[0] ?? "";
+
       const payload = {
         title: heroData.title,
         subtitle: heroData.subtitle,
         content: heroData.content,
         button_text: heroData.button_text,
         button_link: heroData.button_link,
-        image_url: heroData.image_url,
+        image_url: primaryImage || null,
         updated_at: new Date().toISOString(),
         updated_by: user.id,
       };
@@ -230,7 +282,26 @@ const AdminHomepageEditor = () => {
 
       if (error) throw error;
       if (!data || data.length === 0) throw new Error("Aucune ligne mise à jour pour la section hero.");
-      toast({ title: "Succès", description: "Section héro mise à jour" });
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: bannerErr } = await (supabase as any).from("page_hero_banners").upsert(
+        {
+          path: "/",
+          image_url: homeHeroVisibleCount === 0 ? null : slides[0] ?? null,
+          images_order: slides,
+          transition_type: homeHeroTransition,
+          display_duration: homeHeroDuration,
+          slideshow_visible_count: homeHeroVisibleCount,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "path" }
+      );
+      if (bannerErr) throw bannerErr;
+
+      setHeroData((prev) => ({ ...prev, image_url: primaryImage }));
+      queryClient.invalidateQueries({ queryKey: ["page-hero", "/"] });
+      queryClient.invalidateQueries({ queryKey: ["homepage-sections"] });
+      toast({ title: "Succès", description: "Section héro et bannière (diaporama) mises à jour" });
     } catch (error) {
       console.error("Error saving hero:", error);
       toast({
@@ -398,22 +469,46 @@ const AdminHomepageEditor = () => {
     }
   };
 
-  const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleHomeHeroSlideUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || homeHeroSlides.length >= MAX_HERO_IMAGES) return;
     try {
       setLoading(true);
-      const fileName = `hero-${Date.now()}-${file.name}`;
+      const fileName = `home-hero-${Date.now()}-${file.name}`;
       const res = await uploadFile(file, `heroes/${fileName}`);
-      if (!res || !res.publicUrl) throw new Error('Upload failed');
-      setHeroData({ ...heroData, image_url: res.publicUrl });
-      toast({ title: 'Succès', description: 'Image héro téléchargée' });
+      if (!res?.publicUrl) throw new Error('Upload failed');
+      setHomeHeroSlides((prev) => [...prev, res.publicUrl].slice(0, MAX_HERO_IMAGES));
+      toast({ title: 'Succès', description: 'Image ajoutée au diaporama' });
     } catch (error) {
       console.error('Error uploading hero image:', error);
-      toast({ title: 'Erreur', description: "Impossible de télécharger l'image héro", variant: 'destructive' });
+      toast({ title: 'Erreur', description: "Impossible de télécharger l'image", variant: 'destructive' });
     } finally {
       setLoading(false);
+      e.target.value = '';
     }
+  };
+
+  const appendHomeHeroUrl = () => {
+    const u = homeHeroUrlDraft.trim();
+    if (!u || homeHeroSlides.length >= MAX_HERO_IMAGES) return;
+    setHomeHeroSlides((prev) => [...prev, u].slice(0, MAX_HERO_IMAGES));
+    setHomeHeroUrlDraft('');
+  };
+
+  const moveHomeHeroSlide = (index: number, dir: -1 | 1) => {
+    setHomeHeroSlides((prev) => {
+      const j = index + dir;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      const t = next[index]!;
+      next[index] = next[j]!;
+      next[j] = t;
+      return next;
+    });
+  };
+
+  const removeHomeHeroSlide = (index: number) => {
+    setHomeHeroSlides((prev) => prev.filter((_, i) => i !== index));
   };
 
   const addNavigationItem = () => {
@@ -525,7 +620,7 @@ const AdminHomepageEditor = () => {
           <div className="flex gap-2 border-b border-border overflow-x-auto pb-3">
             {[
               { id: "header", label: "En‑tête (logo & menu)" },
-              { id: "hero", label: "Section héro (SEO)" },
+              { id: "hero", label: "Section héro & bannière (diaporama)" },
               { id: "gallery", label: "Bloc Galerie" },
               { id: "videos", label: "Bloc Vidéos" },
               { id: "events", label: "Bloc Événements" },
@@ -772,33 +867,141 @@ const AdminHomepageEditor = () => {
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">URL de l'image</label>
-                  <div className="flex gap-4 items-start">
-                    <input
-                      type="text"
-                      value={heroData.image_url}
-                      onChange={(e) => setHeroData({ ...heroData, image_url: e.target.value })}
-                      className="flex-1 px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="/images/hero.png"
-                    />
-                    <div className="flex flex-col items-start gap-2">
-                      <label className="block text-sm font-medium mb-1">Ou téléverser</label>
+                <div className="space-y-4 rounded-lg border border-border bg-muted/30 p-4">
+                  <div>
+                    <h3 className="text-base font-semibold">Bannière hero (diaporama)</h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Jusqu'à {MAX_HERO_IMAGES} images pour la page d'accueil. Aucune image = arrière-plan sans photo.
+                      Paramètres du diaporama (transition, délai) s'appliquent dès qu'il y a au moins 2 images.
+                    </p>
+                  </div>
+                  <div className="grid sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Nombre d&apos;images affichées</label>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        0 = aucune photo de bannière. Les images restent enregistrées mais masquées.
+                      </p>
+                      <select
+                        value={homeHeroVisibleCount}
+                        onChange={(e) => setHomeHeroVisibleCount(clampSlideshowVisibleCount(Number(e.target.value)))}
+                        className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        {[0, 1, 2, 3, 4, 5].map((n) => (
+                          <option key={n} value={n}>
+                            {n === 0 ? '0 — aucune' : `${n}`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Transition</label>
+                      <select
+                        value={homeHeroTransition}
+                        onChange={(e) => setHomeHeroTransition(e.target.value as HeroTransitionType)}
+                        className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="fade">Fondu</option>
+                        <option value="slide">Glissement</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Durée par image</label>
+                      <select
+                        value={homeHeroDuration}
+                        onChange={(e) => setHomeHeroDuration(Number(e.target.value) as 3 | 5 | 7)}
+                        className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        <option value={3}>3 s</option>
+                        <option value={5}>5 s</option>
+                        <option value={7}>7 s</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <span className="text-sm font-medium">Images ({homeHeroSlides.length}/{MAX_HERO_IMAGES})</span>
+                    {homeHeroSlides.length === 0 && (
+                      <p className="text-xs text-muted-foreground">Aucune image — le bandeau reste sur le dégradé.</p>
+                    )}
+                    <ul className="space-y-2">
+                      {homeHeroSlides.map((url, index) => (
+                        <li
+                          key={`${url}-${index}`}
+                          className="flex items-center gap-2 rounded-md border border-border bg-background p-2"
+                        >
+                          <img src={url} alt="" className="h-14 w-20 object-cover rounded" />
+                          <span className="flex-1 text-xs truncate text-muted-foreground font-mono">{url}</span>
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => moveHomeHeroSlide(index, -1)}
+                              disabled={index === 0 || loading}
+                              className="p-1 rounded hover:bg-muted disabled:opacity-40"
+                              aria-label="Monter"
+                            >
+                              <ChevronUp className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveHomeHeroSlide(index, 1)}
+                              disabled={index === homeHeroSlides.length - 1 || loading}
+                              className="p-1 rounded hover:bg-muted disabled:opacity-40"
+                              aria-label="Descendre"
+                            >
+                              <ChevronDown className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeHomeHeroSlide(index)}
+                            disabled={loading}
+                            className="p-2 rounded text-destructive hover:bg-destructive/10"
+                            aria-label="Supprimer"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium mb-1">Ajouter une URL d'image</label>
+                      <input
+                        type="text"
+                        value={homeHeroUrlDraft}
+                        onChange={(e) => setHomeHeroUrlDraft(e.target.value)}
+                        placeholder="https://…"
+                        className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={appendHomeHeroUrl}
+                      disabled={loading || homeHeroSlides.length >= MAX_HERO_IMAGES || !homeHeroUrlDraft.trim()}
+                      className="px-4 py-2 text-sm font-medium rounded-lg border border-border bg-background hover:bg-muted disabled:opacity-50"
+                    >
+                      Ajouter l'URL
+                    </button>
+                    <div>
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={handleHeroImageUpload}
-                        disabled={loading}
-                        className="px-3 py-2 bg-background border border-border rounded-lg focus:outline-none"
+                        id="home-hero-multi-upload"
+                        className="hidden"
+                        onChange={handleHomeHeroSlideUpload}
+                        disabled={loading || homeHeroSlides.length >= MAX_HERO_IMAGES}
                       />
+                      <label
+                        htmlFor="home-hero-multi-upload"
+                        className={`inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer ${
+                          loading || homeHeroSlides.length >= MAX_HERO_IMAGES ? 'pointer-events-none opacity-50' : ''
+                        }`}
+                      >
+                        <ImageIcon className="h-4 w-4" />
+                        Téléverser
+                      </label>
                     </div>
                   </div>
-                  {heroData.image_url && (
-                    <div className="mt-3">
-                      <label className="block text-sm font-medium mb-2">Aperçu</label>
-                      <img src={heroData.image_url} alt="aperçu hero" className="w-full max-h-60 object-cover rounded border border-border" />
-                    </div>
-                  )}
                 </div>
                 <button
                   onClick={handleSaveHero}

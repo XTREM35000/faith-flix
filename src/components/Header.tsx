@@ -79,7 +79,9 @@ const Header = ({ darkMode = false, toggleDarkMode = () => {}, onOpenAuthModal }
   const { data: headerConfig, isLoading: headerLoading } = useHeaderConfig();
   const { unreadCount: unreadNotificationsCount, markAllAsRead: markAllAsReadNotifications } = useUnreadNotifications();
   const { unreadCount: unreadMessagesCount, markAllAsRead } = useUnreadMessages();
-  const { isLiveActive } = useLiveStatus();
+  const disableLiveTrackingOnRoute =
+    location.pathname.startsWith('/admin') || location.pathname.startsWith('/developer');
+  const { isLiveActive } = useLiveStatus(!disableLiveTrackingOnRoute);
   const isConnected = !!user;
   const { paroisse } = useParoisse();
 
