@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from 'react';
-import { fetchExistingOfficiantTitles, insertMissingOfficiantTitles } from '@/lib/supabase/queries';
 
 export const OFFICIANT_TITLES = [
   {
@@ -47,16 +46,9 @@ export function getOfficiantTitleDescription(title: string): string | null {
   return found?.description ?? null;
 }
 
-export async function ensureOfficiantTitles(paroisseId: string | null): Promise<void> {
-  if (!paroisseId) return;
-  try {
-    const existing = await fetchExistingOfficiantTitles(paroisseId);
-    const missing = OFFICIANT_TITLES.filter((t) => !existing.includes(t.title));
-    if (missing.length === 0) return;
-    await insertMissingOfficiantTitles(paroisseId, missing.map((m) => ({ title: m.title, description: m.description })));
-  } catch {
-    // Silent by requirement (do not break admin flows)
-  }
+/** Ne plus insérer de lignes dans `officiants` pour les titres : le catalogue OFFICIANT_TITLES suffit pour les listes déroulantes. */
+export async function ensureOfficiantTitles(_paroisseId: string | null): Promise<void> {
+  return;
 }
 
 export const useOfficiantTitles = (paroisseId: string | null) => {

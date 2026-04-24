@@ -1,46 +1,16 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export async function fetchExistingOfficiantTitles(paroisseId: string): Promise<string[]> {
-  try {
-    const { data, error } = await supabase
-      .from('officiants')
-      .select('title')
-      .eq('paroisse_id', paroisseId);
-    if (error) return [];
-    const titles = (data ?? [])
-      .map((r) => (r as { title?: string | null }).title ?? null)
-      .filter((t): t is string => Boolean(t && t.trim()))
-      .map((t) => t.trim());
-    return Array.from(new Set(titles));
-  } catch {
-    return [];
-  }
+/** @deprecated Les titres canoniques ne sont plus matérialisés en lignes `officiants`. */
+export async function fetchExistingOfficiantTitles(_paroisseId: string): Promise<string[]> {
+  return [];
 }
 
+/** @deprecated Ne plus créer de lignes name = title dans `officiants` (polluait l’admin). */
 export async function insertMissingOfficiantTitles(
-  paroisseId: string,
-  missing: Array<{ title: string; description: string }>,
+  _paroisseId: string,
+  _missing: Array<{ title: string; description: string }>,
 ): Promise<void> {
-  if (!paroisseId) return;
-  if (!missing.length) return;
-
-  // We insert "template" rows so the title + description exist in DB for this paroisse.
-  // Kept silent to avoid breaking admin flows if RLS blocks it.
-  try {
-    const payload = missing.map((m, idx) => ({
-      paroisse_id: paroisseId,
-      name: m.title,
-      title: m.title,
-      description: m.description,
-      bio: null,
-      photo_url: null,
-      is_active: false,
-      sort_order: idx,
-    }));
-    await supabase.from('officiants').insert(payload as any);
-  } catch {
-    // silent
-  }
+  return;
 }
 
 export async function getVideoById(id: string, paroisseId?: string) {

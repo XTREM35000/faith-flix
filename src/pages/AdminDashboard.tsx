@@ -87,8 +87,11 @@ const AdminDashboard: React.FC = () => {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Hero Banner */}
       <HeroBanner
-        title="Tableau de bord administrateur"
-        subtitle="Vue d'ensemble de votre site média Paroisse — Actions et modération en un coup d'œil"
+        title={hero?.title ?? 'Tableau de bord administrateur'}
+        subtitle={
+          hero?.subtitle ??
+          "Vue d'ensemble de votre site média Paroisse — Actions et modération en un coup d'œil"
+        }
         showBackButton={false}
         backgroundImage={hero?.image_url}
         onBgSave={saveHero}

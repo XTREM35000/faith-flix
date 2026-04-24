@@ -28,6 +28,14 @@ export interface DailyOfficiantRow {
   created_at: string;
 }
 
+/** Une entrée d’historique « officiant du jour » (liste admin). */
+export interface DailyOfficiantHistoryEntry {
+  date: string;
+  officiant_id: string | null;
+  name: string | null;
+  title: string | null;
+}
+
 export interface RequestRow {
   id: string;
   paroisse_id: string;

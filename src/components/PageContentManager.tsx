@@ -38,6 +38,30 @@ export const PAGE_CONFIG: Record<
     defaultHero: PageContentManagerData;
   }
 > = {
+  admin: {
+    path: '/admin',
+    label: 'Tableau de bord admin',
+    deleteLabel: '',
+    table: '',
+    defaultHero: {
+      heroTitle: 'Tableau de bord administrateur',
+      heroSubtitle: "Vue d'ensemble de votre site média Paroisse — Actions et modération en un coup d'œil",
+      heroImage: '',
+      heroImages: [],
+    },
+  },
+  admin_officiants: {
+    path: '/admin/officiants',
+    label: 'Officiants (admin)',
+    deleteLabel: '',
+    table: '',
+    defaultHero: {
+      heroTitle: 'Officiants',
+      heroSubtitle: 'Gérez les officiants et l’officiant du jour pour les demandes de culte.',
+      heroImage: '',
+      heroImages: [],
+    },
+  },
   videos: {
     path: '/videos',
     label: 'Vidéos',

@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getOrderedHeroImageUrls } from '@/lib/pageHeroImages';
 
 const PATH_TO_PAGE: Record<string, string> = {
+  '/admin': 'admin',
   '/videos': 'videos',
   '/homilies': 'homilies',
   '/homelies': 'homilies',
@@ -65,6 +66,7 @@ interface HeroBannerProps {
 function shouldShowHeroEditorButton(pathname: string): boolean {
   const p = pathname.replace(/\/$/, '') || '/';
   if (p === '/') return false;
+  if (p === '/admin' || p === '/admin/officiants') return true;
   if (p.startsWith('/admin')) return false;
   return true;
 }

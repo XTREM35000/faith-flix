@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import DraggableModal from '@/components/DraggableModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Plus, Trash2, Edit2, Save, X } from 'lucide-react';
+import { uploadFile } from '@/lib/supabase/storage';
+import { Loader2, Plus, Trash2, Edit2, Save, X, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Select,
@@ -16,7 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { getOfficiantTitleDescription, useOfficiantTitles } from '@/hooks/useOfficiantTitles';
+import { listAllOfficiantsAdmin } from '@/lib/supabase/culteApi';
 
 interface OfficiantManagerModalProps {
   open: boolean;
@@ -32,6 +35,7 @@ type Officiant = {
   description?: string | null;
   grade?: string | null;
   bio?: string | null;
+  photo_url?: string | null;
   phone?: string | null;
   email?: string | null;
   is_active?: boolean | null;
@@ -43,6 +47,7 @@ type OfficiantForm = {
   title: string;
   description: string;
   bio: string;
+  photo_url: string;
   phone: string;
   email: string;
   is_active: boolean;
@@ -53,6 +58,7 @@ const emptyForm: OfficiantForm = {
   title: '',
   description: '',
   bio: '',
+  photo_url: '',
   phone: '',
   email: '',
   is_active: true,
@@ -63,6 +69,7 @@ export function OfficiantManagerModal({ open, onClose, onComplete }: OfficiantMa
   const paroisseId = profile?.paroisse_id ?? null;
   const { ensureTitles, titles: canonicalTitles } = useOfficiantTitles(paroisseId);
   const [isLoading, setIsLoading] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [officiants, setOfficiants] = useState<Officiant[]>([]);
   const [selectedOfficiant, setSelectedOfficiant] = useState<Officiant | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -74,10 +81,12 @@ export function OfficiantManagerModal({ open, onClose, onComplete }: OfficiantMa
   );
 
   const loadOfficiants = async () => {
-    let q = supabase.from('officiants').select('*').order('created_at', { ascending: false });
-    if (paroisseId) q = q.eq('paroisse_id', paroisseId);
-    const { data } = await q;
-    setOfficiants((data as Officiant[]) || []);
+    if (!paroisseId) {
+      setOfficiants([]);
+      return;
+    }
+    const rows = await listAllOfficiantsAdmin(paroisseId, { activeOnly: false, excludeTitleStubs: true });
+    setOfficiants(rows as Officiant[]);
   };
 
   useEffect(() => {
@@ -109,6 +118,7 @@ export function OfficiantManagerModal({ open, onClose, onComplete }: OfficiantMa
         title: formData.title || null,
         description: formData.description || null,
         bio: formData.bio || null,
+        photo_url: formData.photo_url.trim() || null,
         paroisse_id: paroisseId,
         phone: formData.phone || null,
         email: formData.email || null,
@@ -135,6 +145,26 @@ export function OfficiantManagerModal({ open, onClose, onComplete }: OfficiantMa
       toast.error(error?.message || "Erreur lors de l'enregistrement");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePhotoFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setPhotoUploading(true);
+    try {
+      const res = await uploadFile(file, `officiants/${Date.now()}_${file.name.replace(/\s+/g, '_')}`);
+      if (res?.publicUrl) {
+        setFormData((p) => ({ ...p, photo_url: res.publicUrl! }));
+        toast.success('Photo téléversée');
+      } else {
+        toast.error('Échec du téléversement');
+      }
+    } catch {
+      toast.error("Impossible d'uploader la photo");
+    } finally {
+      setPhotoUploading(false);
     }
   };
 
@@ -187,6 +217,8 @@ export function OfficiantManagerModal({ open, onClose, onComplete }: OfficiantMa
       open={open}
       onClose={() => void handleSkip()}
       title="Gestion des officiants"
+      center
+      initialY={40}
       maxWidthClass="max-w-6xl"
       className="h-[85vh] max-h-[85vh]"
       bodyClassName="p-0 overflow-hidden"
@@ -234,6 +266,7 @@ export function OfficiantManagerModal({ open, onClose, onComplete }: OfficiantMa
                           title: o.title || '',
                           description: o.description || '',
                           bio: o.bio || o.grade || '',
+                          photo_url: o.photo_url || '',
                           phone: o.phone || '',
                           email: o.email || '',
                           is_active: o.is_active ?? true,
@@ -339,10 +372,70 @@ export function OfficiantManagerModal({ open, onClose, onComplete }: OfficiantMa
                     rows={4}
                   />
                 </div>
+                <div className="col-span-2 space-y-2">
+                  <Label>Photo</Label>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    {formData.photo_url ? (
+                      <img src={formData.photo_url} alt="" className="h-20 w-20 rounded-md border object-cover" />
+                    ) : (
+                      <div className="flex h-20 w-20 items-center justify-center rounded-md border bg-muted text-xs text-muted-foreground">
+                        —
+                      </div>
+                    )}
+                    <div className="flex flex-1 flex-col gap-2">
+                      <Input
+                        value={formData.photo_url}
+                        onChange={(e) => setFormData({ ...formData, photo_url: e.target.value })}
+                        placeholder="URL de la photo (optionnel)"
+                      />
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="sr-only"
+                          id="modal-officiant-photo"
+                          onChange={(ev) => void handlePhotoFile(ev)}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={photoUploading}
+                          onClick={() => document.getElementById('modal-officiant-photo')?.click()}
+                        >
+                          {photoUploading ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="mr-2 h-4 w-4" />
+                          )}
+                          Téléverser
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="col-span-2 flex items-center justify-between rounded-lg border p-3">
+                  <div>
+                    <Label htmlFor="modal-off-active">Visible (actif)</Label>
+                    <p className="text-xs text-muted-foreground">Inactif : masqué des sélections publiques.</p>
+                  </div>
+                  <Switch
+                    id="modal-off-active"
+                    checked={formData.is_active}
+                    onCheckedChange={(c) => setFormData({ ...formData, is_active: c })}
+                  />
+                </div>
               </div>
             </div>
           ) : selectedOfficiant ? (
             <div className="space-y-4">
+              {selectedOfficiant.photo_url ? (
+                <img
+                  src={selectedOfficiant.photo_url}
+                  alt=""
+                  className="h-24 w-24 rounded-lg border object-cover"
+                />
+              ) : null}
               <h2 className="text-2xl font-bold">{selectedName}</h2>
               <p className="text-muted-foreground">{selectedOfficiant.title || '—'}</p>
               {selectedOfficiant.description ? (

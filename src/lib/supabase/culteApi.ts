@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import type {
   CulteRequestType,
+  DailyOfficiantHistoryEntry,
   FaqModerationStatus,
   FaqRow,
   OfficiantRow,
@@ -21,6 +22,36 @@ function isMissingRelationError(error: unknown): boolean {
   );
 }
 
+/** Ligne « fantôme » : ancien seed avec name = title et sans photo (cf. insertMissingOfficiantTitles). */
+export function isOfficiantTitleStubRow(row: OfficiantRow): boolean {
+  const name = (row.name ?? '').trim();
+  const title = (row.title ?? '').trim();
+  if (!title) return false;
+  if (name.toLowerCase() !== title.toLowerCase()) return false;
+  const photo = (row.photo_url ?? '').trim();
+  return photo === '';
+}
+
+export type ListOfficiantsAdminOptions = {
+  /** Défaut : true — masque les lignes modèle name = title */
+  excludeTitleStubs?: boolean;
+  /** Défaut : true — seulement les officiants actifs */
+  activeOnly?: boolean;
+};
+
+export function filterOfficiantsForDisplay(
+  rows: OfficiantRow[],
+  opts?: ListOfficiantsAdminOptions,
+): OfficiantRow[] {
+  const excludeTitleStubs = opts?.excludeTitleStubs !== false;
+  const activeOnly = opts?.activeOnly !== false;
+  return rows.filter((r) => {
+    if (activeOnly && !r.is_active) return false;
+    if (excludeTitleStubs && isOfficiantTitleStubRow(r)) return false;
+    return true;
+  });
+}
+
 export async function fetchOfficiants(paroisseId: string): Promise<OfficiantRow[]> {
   const { data, error } = await supabase
     .from('officiants')
@@ -29,7 +60,10 @@ export async function fetchOfficiants(paroisseId: string): Promise<OfficiantRow[
     .eq('is_active', true)
     .order('sort_order', { ascending: true });
   if (error) throw error;
-  return (data ?? []) as OfficiantRow[];
+  return filterOfficiantsForDisplay((data ?? []) as OfficiantRow[], {
+    activeOnly: true,
+    excludeTitleStubs: true,
+  });
 }
 
 export async function fetchDailyOfficiant(
@@ -58,6 +92,57 @@ export async function fetchDailyOfficiant(
     .maybeSingle();
   if (e2) throw e2;
   return { officiant: (off as OfficiantRow) ?? null };
+}
+
+/** Dernières désignations (inclus aujourd’hui), triées par date décroissante. */
+export async function fetchDailyOfficiantHistory(
+  paroisseId: string,
+  days = 14,
+): Promise<DailyOfficiantHistoryEntry[]> {
+  const end = new Date();
+  end.setHours(0, 0, 0, 0);
+  const start = new Date(end);
+  start.setDate(start.getDate() - Math.max(1, days) + 1);
+
+  const startIso = start.toISOString().slice(0, 10);
+  const endIso = end.toISOString().slice(0, 10);
+
+  const { data: rows, error } = await supabase
+    .from('daily_officiant')
+    .select('date, officiant_id')
+    .eq('paroisse_id', paroisseId)
+    .gte('date', startIso)
+    .lte('date', endIso)
+    .order('date', { ascending: false });
+
+  if (error) {
+    if (isMissingRelationError(error)) return [];
+    throw error;
+  }
+
+  const list = rows ?? [];
+  const ids = [...new Set(list.map((r) => (r as { officiant_id?: string | null }).officiant_id).filter(Boolean))] as string[];
+
+  const idToOff: Record<string, { name: string; title: string | null }> = {};
+  if (ids.length > 0) {
+    const { data: offs, error: e2 } = await supabase.from('officiants').select('id, name, title').in('id', ids);
+    if (!e2 && offs) {
+      for (const o of offs as Array<{ id: string; name: string; title: string | null }>) {
+        idToOff[o.id] = { name: o.name, title: o.title };
+      }
+    }
+  }
+
+  return list.map((r) => {
+    const row = r as { date: string; officiant_id: string | null };
+    const off = row.officiant_id ? idToOff[row.officiant_id] : undefined;
+    return {
+      date: row.date,
+      officiant_id: row.officiant_id,
+      name: off?.name ?? null,
+      title: off?.title ?? null,
+    };
+  });
 }
 
 export async function insertRequest(payload: {
@@ -151,14 +236,17 @@ export async function deleteOfficiant(id: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function listAllOfficiantsAdmin(paroisseId: string): Promise<OfficiantRow[]> {
+export async function listAllOfficiantsAdmin(
+  paroisseId: string,
+  opts?: ListOfficiantsAdminOptions,
+): Promise<OfficiantRow[]> {
   const { data, error } = await supabase
     .from('officiants')
     .select('*')
     .eq('paroisse_id', paroisseId)
     .order('sort_order', { ascending: true });
   if (error) throw error;
-  return (data ?? []) as OfficiantRow[];
+  return filterOfficiantsForDisplay((data ?? []) as OfficiantRow[], opts);
 }
 
 export async function setDailyOfficiant(paroisseId: string, dateIso: string, officiantId: string | null): Promise<void> {

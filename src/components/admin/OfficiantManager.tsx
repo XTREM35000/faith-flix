@@ -7,6 +7,7 @@ import { useOfficiantTitles } from '@/hooks/useOfficiantTitles';
 export function OfficiantManager() {
   const { paroisse } = useParoisse();
   const paroisseId = paroisse?.id ?? null;
+  const paroisseNom = paroisse?.nom ?? '';
   const { ensureTitles } = useOfficiantTitles(paroisseId);
 
   useEffect(() => {
@@ -26,7 +27,7 @@ export function OfficiantManager() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-10">
-      <OfficiantsAdmin paroisseId={paroisseId} />
+      <OfficiantsAdmin paroisseId={paroisseId} paroisseNom={paroisseNom} />
     </div>
   );
 }

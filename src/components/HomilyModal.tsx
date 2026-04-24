@@ -4,6 +4,8 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
+import { isOfficiantTitleStubRow } from '@/lib/supabase/culteApi';
+import type { OfficiantRow } from '@/types/culte';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Upload, Video, Image as ImageIcon } from 'lucide-react';
@@ -109,11 +111,13 @@ const HomilyModal: React.FC<Props> = ({ open, onClose, onSaved, homilyId = null 
     try {
       const { data: offData } = await supabase
         .from('officiants')
-        .select('id,name')
+        .select('id,name,title')
         .eq('is_active', true)
         .order('sort_order', { ascending: true })
         .order('name', { ascending: true });
-      const officiantRows = (offData || []) as Array<{ id: string; name?: string | null }>;
+      const officiantRows = (offData || []).filter(
+        (row) => !isOfficiantTitleStubRow(row as OfficiantRow),
+      ) as Array<{ id: string; name?: string | null }>;
       const loaded = officiantRows.map((row) => ({
         id: row.id,
         name: row.name || 'Sans nom',
