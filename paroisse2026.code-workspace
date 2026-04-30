@@ -1,0 +1,33 @@
+{
+  "folders": [
+    {
+      "path": ".",
+      "name": "paroisse2026"
+    }
+  ],
+  "settings": {
+    // ===== RECHERCHE DE FICHIERS (Ctrl+P) =====
+    "search.quickOpen.includeHistory": false,
+    "search.quickOpen.includeSymbols": false,
+    "search.quickOpen.history.limit": 0,
+    "workbench.editor.revealIfOpen": false,
+    
+    // ===== LIMITES DE RECHERCHE =====
+    "search.maxResults": 50000,
+    "search.fastSearch": true,
+    
+    // ===== AUCUNE EXCLUSION (temporairement) =====
+    "search.exclude": {},
+    "files.exclude": {},
+    "files.watcherExclude": {},
+    
+    // ===== FORCER L'INDEXATION COMPLÈTE =====
+    "search.useIgnoreFiles": false,
+    "search.useGlobalIgnoreFiles": false,
+    "search.useParentIgnoreFiles": false,
+    
+    // ===== POUR CURSOR =====
+    "cursor.retrieval.indexAllFiles": true,
+    "cursor.retrieval.autoIndex": true
+  }
+}

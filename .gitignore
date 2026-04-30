@@ -6,26 +6,35 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-clean.mjs 
+
+# Fichiers temporaires (à garder)
+clean.mjs
 project_structure*
 
-
+# Dépendances
 node_modules
+
+# Build
 dist
 dist-ssr
+
+# Fichiers locaux
 *.local
 
-# Editor directories and files
-.vscode/*
+# Éditeurs - à simplifier
+.vscode/
 !.vscode/extensions.json
-.idea
+!.vscode/settings.json    # ← AJOUTÉ : Gardez votre settings.json !
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# Environnement
 .vercel
+.env
 .env.local
 .env*.local
-.env

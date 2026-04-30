@@ -1,6 +1,0 @@
-# Crée un fichier .rgignore à la racine de ton projet
-@"
-*
-!.cursor/
-!AGENTS.md
-"@ | Out-File -FilePath .rgignore -Encoding utf8
