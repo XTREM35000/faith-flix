@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp, Copy, MonitorPlay, Radio, Check } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -47,7 +48,7 @@ export const SidebarObsPanel: React.FC<SidebarObsPanelProps> = ({ className }) =
     [mainStreamConfig, getRtmpServer]
   );
 
-  if (!activeStream) return null;
+  const hasActive = !!activeStream;
 
   const copyQuickConfig = async () => {
     const key = mainStreamConfig?.streamKey;
@@ -70,8 +71,8 @@ export const SidebarObsPanel: React.FC<SidebarObsPanelProps> = ({ className }) =
           <div className="flex items-center gap-2 min-w-0">
             <Radio className="w-4 h-4 text-primary shrink-0" />
             <span className="text-sm font-medium truncate">OBS Multi-Stream</span>
-            <Badge variant="secondary" className="text-[10px] px-1">
-              ACTIF
+            <Badge variant={hasActive ? 'secondary' : 'outline'} className="text-[10px] px-1">
+              {hasActive ? 'ACTIF' : 'AUCUN LIVE'}
             </Badge>
           </div>
           {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -80,40 +81,56 @@ export const SidebarObsPanel: React.FC<SidebarObsPanelProps> = ({ className }) =
         <CollapsibleContent>
           <ScrollArea className="max-h-[280px] p-3 pt-0">
             <div className="space-y-3">
-              <div className="text-xs font-medium truncate">{activeStream.title}</div>
-
-              <button
-                onClick={copyQuickConfig}
-                className="w-full text-xs bg-primary/10 hover:bg-primary/20 rounded-md p-2 transition-colors flex items-center justify-between"
-                disabled={!rtmpServer || !mainStreamConfig?.streamKey}
-                title="Copier la config rapide"
-              >
-                <span className="flex items-center gap-1">
-                  <MonitorPlay className="w-3 h-3" />
-                  Config OBS
-                </span>
-                {copied ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
-              </button>
-
-              <div className="space-y-1">
-                {config.streams.slice(0, 3).map((s, i) => (
-                  <div key={`${s.provider}_${i}`} className="text-xs text-muted-foreground flex items-center justify-between">
-                    <span className="capitalize truncate">{String(s.provider)}</span>
-                    <Badge variant="outline" className="text-[9px]">
-                      RTMP
-                    </Badge>
+              {!hasActive ? (
+                <>
+                  <div className="text-xs text-muted-foreground">
+                    Aucun live n’est actif. Activez un live dans l’admin pour afficher la config OBS.
                   </div>
-                ))}
-                {config.streams.length > 3 ? (
-                  <div className="text-[10px] text-center text-muted-foreground">
-                    +{config.streams.length - 3} autre(s)
-                  </div>
-                ) : null}
-              </div>
+                  <NavLink
+                    to="/admin/live"
+                    className="w-full text-xs bg-primary/10 hover:bg-primary/20 rounded-md p-2 transition-colors flex items-center justify-center"
+                  >
+                    Ouvrir l’admin Streaming
+                  </NavLink>
+                </>
+              ) : (
+                <>
+                  <div className="text-xs font-medium truncate">{activeStream!.title}</div>
 
-              <div className="text-[10px] text-center text-muted-foreground pt-2 border-t">
-                Ouvrez “Streaming” pour la config complète
-              </div>
+                  <button
+                    onClick={copyQuickConfig}
+                    className="w-full text-xs bg-primary/10 hover:bg-primary/20 rounded-md p-2 transition-colors flex items-center justify-between"
+                    disabled={!rtmpServer || !mainStreamConfig?.streamKey}
+                    title="Copier la config rapide"
+                  >
+                    <span className="flex items-center gap-1">
+                      <MonitorPlay className="w-3 h-3" />
+                      Config OBS
+                    </span>
+                    {copied ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
+                  </button>
+
+                  <div className="space-y-1">
+                    {config.streams.slice(0, 3).map((s, i) => (
+                      <div key={`${s.provider}_${i}`} className="text-xs text-muted-foreground flex items-center justify-between">
+                        <span className="capitalize truncate">{String(s.provider)}</span>
+                        <Badge variant="outline" className="text-[9px]">
+                          RTMP
+                        </Badge>
+                      </div>
+                    ))}
+                    {config.streams.length > 3 ? (
+                      <div className="text-[10px] text-center text-muted-foreground">
+                        +{config.streams.length - 3} autre(s)
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="text-[10px] text-center text-muted-foreground pt-2 border-t">
+                    Ouvrez “Streaming” pour la config complète
+                  </div>
+                </>
+              )}
             </div>
           </ScrollArea>
         </CollapsibleContent>

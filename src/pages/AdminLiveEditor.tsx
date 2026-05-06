@@ -35,6 +35,7 @@ import { ProviderManager, streamManager } from '@/lib/providers';
 import type { ProviderType } from '@/lib/providers/types';
 import HeroBanner from '@/components/HeroBanner';
 import { ObsMultiStreamConfig } from '@/components/live/ObsMultiStreamConfig';
+import AdminLiveSourcesEditor from '@/components/AdminLiveSourcesEditor';
 
 const AdminLiveEditor: React.FC = () => {
   const navigate = useNavigate();
@@ -399,13 +400,25 @@ const AdminLiveEditor: React.FC = () => {
           )}
         </div>
 
-        {liveStreams.some((s) => s.is_active) && (
-          <ObsMultiStreamConfig
-            liveStreamId={liveStreams.find((s) => s.is_active)!.id}
-            streamTitle={liveStreams.find((s) => s.is_active)!.title}
-            isActive
-          />
-        )}
+        {(() => {
+          const active = liveStreams.find((s) => s.is_active) || null;
+          if (!active) {
+            return (
+              <Card className="mt-8">
+                <CardContent className="py-6 text-sm text-muted-foreground">
+                  Aucun live actif. Activez un live (switch “Activer”) pour afficher la configuration OBS, la gestion des clés RTMP et le monitoring.
+                </CardContent>
+              </Card>
+            );
+          }
+
+          return (
+            <div className="mt-8 space-y-6">
+              <AdminLiveSourcesEditor liveId={active.id} liveTitle={active.title} />
+              <ObsMultiStreamConfig liveStreamId={active.id} streamTitle={active.title} isActive />
+            </div>
+          );
+        })()}
 
         <AlertDialog open={deleteStreamId !== null} onOpenChange={(o) => { if (!o) setDeleteStreamId(null); }}>
           <AlertDialogContent>
